@@ -1,7 +1,13 @@
 use std::ffi::c_void;
+use std::net::TcpStream;
+use std::os::fd::{FromRawFd, OwnedFd};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
+use pb_runtime_secure::{
+    EndpointRole, PairingActionResult, RuntimeState, SecureRuntime, StateStore,
+    run_responder_session,
+};
 use pb_worker_core::{
     HealthSample, LeaseState, ResourceGuardState, ThermalBand, WorkerCore, WorkerState,
 };
@@ -18,6 +24,8 @@ const ERROR_NOT_RUNNING: JInt = -2;
 const ERROR_ENTROPY: JInt = -3;
 const ERROR_PANIC_CONTAINED: JInt = -4;
 const ERROR_BAD_LOCAL_SAMPLE: JInt = -5;
+const ERROR_SECURE_STATE: JInt = -6;
+const ERROR_SECURE_SESSION: JInt = -7;
 
 const STATE_STOPPED: JInt = 0;
 const STATE_COLD_START: JInt = WorkerState::ColdStart as JInt;
@@ -26,6 +34,138 @@ const STATE_PAIRING_REQUIRED: JInt = WorkerState::PairingRequired as JInt;
 fn worker_slot() -> &'static Mutex<Option<WorkerCore>> {
     static WORKER: OnceLock<Mutex<Option<WorkerCore>>> = OnceLock::new();
     WORKER.get_or_init(|| Mutex::new(None))
+}
+
+fn secure_slot() -> &'static Mutex<Option<Arc<SecureRuntime>>> {
+    static SECURE: OnceLock<Mutex<Option<Arc<SecureRuntime>>>> = OnceLock::new();
+    SECURE.get_or_init(|| Mutex::new(None))
+}
+
+fn initialize_secure(directory_fd: JInt) -> JInt {
+    if directory_fd < 0 {
+        return ERROR_SECURE_STATE;
+    }
+    let Ok(mut slot) = secure_slot().lock() else {
+        return ERROR_INTERNAL;
+    };
+    if slot.is_some() {
+        // The descriptor ownership crosses JNI even on an idempotent call.
+        drop(unsafe { OwnedFd::from_raw_fd(directory_fd) });
+        return RESULT_ALREADY_RUNNING;
+    }
+    // SAFETY: Kotlin transfers an fd with ParcelFileDescriptor.detachFd and
+    // never closes or reuses it afterwards. Rust becomes its sole owner here.
+    let directory = unsafe { OwnedFd::from_raw_fd(directory_fd) };
+    let Ok(store) = StateStore::from_directory_fd(directory) else {
+        return ERROR_SECURE_STATE;
+    };
+    let Ok(runtime) = SecureRuntime::initialize(EndpointRole::AndroidResponder, store) else {
+        return ERROR_SECURE_STATE;
+    };
+    *slot = Some(Arc::new(runtime));
+    RESULT_OK
+}
+
+fn secure_runtime() -> Result<Arc<SecureRuntime>, JInt> {
+    secure_slot()
+        .lock()
+        .map_err(|_| ERROR_INTERNAL)?
+        .as_ref()
+        .map(Arc::clone)
+        .ok_or(ERROR_SECURE_STATE)
+}
+
+fn accept_secure_fd(socket_fd: JInt, prefix_first: JInt, prefix_second: JInt) -> JInt {
+    if socket_fd < 0
+        || !matches!(prefix_first, -1..=255)
+        || !matches!(prefix_second, -1..=255)
+        || (prefix_first == -1) != (prefix_second == -1)
+    {
+        return ERROR_SECURE_SESSION;
+    }
+    let runtime = match secure_runtime() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            // SAFETY: the rejected JNI call still transferred this fd.
+            drop(unsafe { OwnedFd::from_raw_fd(socket_fd) });
+            return error;
+        }
+    };
+    // SAFETY: Kotlin transfers a detached socket fd and relinquishes ownership.
+    let socket = unsafe { OwnedFd::from_raw_fd(socket_fd) };
+    let mut stream = TcpStream::from(socket);
+    let prefix = if prefix_first < 0 {
+        Vec::new()
+    } else {
+        vec![prefix_first as u8, prefix_second as u8]
+    };
+    match run_responder_session(&mut stream, &runtime, &prefix) {
+        Ok(_) => RESULT_OK,
+        Err(_) => ERROR_SECURE_SESSION,
+    }
+}
+
+fn secure_state() -> JInt {
+    let Ok(runtime) = secure_runtime() else {
+        return ERROR_SECURE_STATE;
+    };
+    match runtime.snapshot().state {
+        RuntimeState::Unpaired => 0,
+        RuntimeState::PairingXx => 1,
+        RuntimeState::SasPending => 2,
+        RuntimeState::LocalConfirmed => 3,
+        RuntimeState::PeerConfirmed => 4,
+        RuntimeState::MutualConfirmed => 5,
+        RuntimeState::TrustCommitting => 6,
+        RuntimeState::CommittedWaitingPeer => 7,
+        RuntimeState::Paired => 8,
+        RuntimeState::Authenticated => 9,
+        RuntimeState::PairRejected => 10,
+        RuntimeState::PairingFailed => 11,
+        RuntimeState::Cooldown => 12,
+    }
+}
+
+fn secure_sas() -> JInt {
+    let Ok(runtime) = secure_runtime() else {
+        return ERROR_SECURE_STATE;
+    };
+    runtime
+        .snapshot()
+        .sas
+        .and_then(|sas| sas.parse::<JInt>().ok())
+        .unwrap_or(ERROR_SECURE_STATE)
+}
+
+fn secure_action(action: JInt) -> JInt {
+    let Ok(runtime) = secure_runtime() else {
+        return ERROR_SECURE_STATE;
+    };
+    let result = match action {
+        0 => runtime.local_confirm(),
+        1 => runtime.cancel(),
+        2 => runtime.mismatch(),
+        _ => return ERROR_SECURE_STATE,
+    };
+    match result {
+        PairingActionResult::Accepted => RESULT_OK,
+        PairingActionResult::Duplicate => RESULT_ALREADY_RUNNING,
+        PairingActionResult::InvalidState => ERROR_SECURE_STATE,
+    }
+}
+
+fn secure_field(field: JInt) -> JLong {
+    let Ok(runtime) = secure_runtime() else {
+        return ERROR_SECURE_STATE as JLong;
+    };
+    let snapshot = runtime.snapshot();
+    match field {
+        0 => i64::from(snapshot.authenticated),
+        1 => snapshot.heartbeat_count as JLong,
+        2 => snapshot.committed_peer_count as JLong,
+        3 => snapshot.mismatch_count as JLong,
+        _ => ERROR_SECURE_STATE as JLong,
+    }
 }
 
 fn int_boundary(action: impl FnOnce() -> JInt) -> JInt {
@@ -259,6 +399,60 @@ pub extern "system" fn Java_org_phoneboost_app_WorkerNative_workerAuthorityState
     field: JInt,
 ) -> JInt {
     int_boundary(|| authority_state(field))
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureInitialize(
+    _env: JniEnv,
+    _object: JObject,
+    directory_fd: JInt,
+) -> JInt {
+    int_boundary(|| initialize_secure(directory_fd))
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureAcceptFd(
+    _env: JniEnv,
+    _object: JObject,
+    socket_fd: JInt,
+    prefix_first: JInt,
+    prefix_second: JInt,
+) -> JInt {
+    int_boundary(|| accept_secure_fd(socket_fd, prefix_first, prefix_second))
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureState(
+    _env: JniEnv,
+    _object: JObject,
+) -> JInt {
+    int_boundary(secure_state)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureSas(
+    _env: JniEnv,
+    _object: JObject,
+) -> JInt {
+    int_boundary(secure_sas)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureAction(
+    _env: JniEnv,
+    _object: JObject,
+    action: JInt,
+) -> JInt {
+    int_boundary(|| secure_action(action))
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureField(
+    _env: JniEnv,
+    _object: JObject,
+    field: JInt,
+) -> JLong {
+    long_boundary(|| secure_field(field))
 }
 
 #[cfg(feature = "jni-test-probes")]

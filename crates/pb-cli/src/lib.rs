@@ -45,6 +45,31 @@ pub struct StatusView {
     remote_worker_state: String,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct PairingView {
+    state: String,
+    sas: Option<String>,
+    authenticated: bool,
+}
+
+impl fmt::Display for PairingView {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(formatter, "Pairing state: {}", self.state)?;
+        if let Some(sas) = &self.sas {
+            writeln!(formatter, "Pairing code: {sas}")?;
+        }
+        write!(
+            formatter,
+            "Secure session: {}",
+            if self.authenticated {
+                "AUTHENTICATED"
+            } else {
+                "NOT_AUTHENTICATED"
+            }
+        )
+    }
+}
+
 impl fmt::Display for StatusView {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(formatter, "PhoneBoost: {}", self.runtime_state)?;
@@ -54,15 +79,61 @@ impl fmt::Display for StatusView {
 }
 
 pub fn status() -> Result<StatusView, CliError> {
+    let mut stream = connect_local_api()?;
+    status_over_stream(&mut stream, next_request_id())
+}
+
+pub fn pair() -> Result<PairingView, CliError> {
+    pairing_request("pairing.begin")
+}
+
+pub fn pair_confirm() -> Result<PairingView, CliError> {
+    pairing_request("pairing.confirm")
+}
+
+pub fn pair_cancel() -> Result<PairingView, CliError> {
+    pairing_request("pairing.cancel")
+}
+
+fn connect_local_api() -> Result<UnixStream, CliError> {
     let socket_path = canonical_control_socket(env::var_os("XDG_RUNTIME_DIR"))?;
-    let mut stream = UnixStream::connect(socket_path).map_err(|_| CliError::ConnectFailed)?;
+    let stream = UnixStream::connect(socket_path).map_err(|_| CliError::ConnectFailed)?;
     stream
         .set_read_timeout(Some(IO_TIMEOUT))
         .map_err(|_| CliError::IoFailed)?;
     stream
         .set_write_timeout(Some(IO_TIMEOUT))
         .map_err(|_| CliError::IoFailed)?;
-    status_over_stream(&mut stream, next_request_id())
+    Ok(stream)
+}
+
+fn pairing_request(method: &'static str) -> Result<PairingView, CliError> {
+    let mut stream = connect_local_api()?;
+    let request_id = next_request_id();
+    let response = request_value(&mut stream, request_id, method)?;
+    let result = response.as_object().ok_or(CliError::MalformedResponse)?;
+    let state = required_string(result, "state")?;
+    let authenticated = result
+        .get("authenticated")
+        .and_then(Value::as_bool)
+        .ok_or(CliError::MalformedResponse)?;
+    let sas = match result.get("sas") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(value))
+            if value.len() == 6 && value.bytes().all(|byte| byte.is_ascii_digit()) =>
+        {
+            Some(value.clone())
+        }
+        _ => return Err(CliError::MalformedResponse),
+    };
+    if method == "pairing.begin" && state == "SAS_PENDING" && sas.is_none() {
+        return Err(CliError::MalformedResponse);
+    }
+    Ok(PairingView {
+        state,
+        sas,
+        authenticated,
+    })
 }
 
 fn canonical_control_socket(runtime: Option<OsString>) -> Result<PathBuf, CliError> {
@@ -83,12 +154,21 @@ fn next_request_id() -> Value {
 }
 
 fn status_over_stream(stream: &mut UnixStream, request_id: Value) -> Result<StatusView, CliError> {
-    let request = json!({
-        "api": 1,
-        "id": request_id,
-        "method": "system.status",
-        "params": {}
-    });
+    let response = request_value(stream, request_id, "system.status")?;
+    let result = response.as_object().ok_or(CliError::MalformedResponse)?;
+    Ok(StatusView {
+        runtime_state: required_string(result, "runtime_state")?,
+        local_api_state: required_string(result, "local_api_state")?,
+        remote_worker_state: required_string(result, "remote_worker_state")?,
+    })
+}
+
+fn request_value(
+    stream: &mut UnixStream,
+    request_id: Value,
+    method: &'static str,
+) -> Result<Value, CliError> {
+    let request = json!({"api": 1, "id": request_id, "method": method, "params": {}});
     let expected_id = request["id"].clone();
     let mut bytes = serde_json::to_vec(&request).map_err(|_| CliError::MalformedResponse)?;
     if bytes.len() + 1 > MAX_NDJSON_LINE_BYTES {
@@ -98,7 +178,7 @@ fn status_over_stream(stream: &mut UnixStream, request_id: Value) -> Result<Stat
     stream.write_all(&bytes).map_err(|_| CliError::IoFailed)?;
 
     let response = read_bounded_line(stream)?;
-    validate_status_response(&response, &expected_id)
+    validate_response(&response, &expected_id)
 }
 
 fn read_bounded_line(stream: &mut impl Read) -> Result<Vec<u8>, CliError> {
@@ -124,7 +204,7 @@ fn read_bounded_line(stream: &mut impl Read) -> Result<Vec<u8>, CliError> {
     }
 }
 
-fn validate_status_response(bytes: &[u8], expected_id: &Value) -> Result<StatusView, CliError> {
+fn validate_response(bytes: &[u8], expected_id: &Value) -> Result<Value, CliError> {
     let value: Value = serde_json::from_slice(bytes).map_err(|_| CliError::MalformedResponse)?;
     let object = value.as_object().ok_or(CliError::MalformedResponse)?;
     let api_is_one = matches!(object.get("api"), Some(Value::Number(number)) if number.is_u64() && number.as_u64() == Some(1));
@@ -133,17 +213,10 @@ fn validate_status_response(bytes: &[u8], expected_id: &Value) -> Result<StatusV
     }
 
     match object.get("ok") {
-        Some(Value::Bool(true)) if !object.contains_key("error") => {
-            let result = object
-                .get("result")
-                .and_then(Value::as_object)
-                .ok_or(CliError::MalformedResponse)?;
-            Ok(StatusView {
-                runtime_state: required_string(result, "runtime_state")?,
-                local_api_state: required_string(result, "local_api_state")?,
-                remote_worker_state: required_string(result, "remote_worker_state")?,
-            })
-        }
+        Some(Value::Bool(true)) if !object.contains_key("error") => object
+            .get("result")
+            .cloned()
+            .ok_or(CliError::MalformedResponse),
         Some(Value::Bool(false)) if !object.contains_key("result") => {
             let error = object
                 .get("error")
@@ -255,7 +328,7 @@ mod tests {
     #[test]
     fn status_rejects_malformed_json_response() {
         assert_eq!(
-            validate_status_response(b"{", &json!("cli-test-id")),
+            validate_response(b"{", &json!("cli-test-id")),
             Err(CliError::MalformedResponse)
         );
     }

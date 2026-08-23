@@ -6,6 +6,7 @@
 
 mod admission;
 mod local_api;
+mod remote_secure;
 mod startup;
 mod transport;
 
@@ -18,6 +19,10 @@ pub use admission::{
 };
 pub use local_api::{
     A4_DEFERRED_HANDLER, LocalApiRequestEvent, LocalHandlerDomain, serve_local_client,
+};
+pub use remote_secure::{
+    initialize_remote_secure, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,
+    remote_secure_runtime, remote_status,
 };
 pub use startup::{
     ReadyRuntime, StartupError, StartupErrorKind, StartupEvent, StartupEventKind, StartupIssue,

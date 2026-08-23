@@ -13,5 +13,5 @@ default = []
 jni-test-probes = []
 
 [dependencies]
+pb-runtime-secure = { path = "../../crates/pb-runtime-secure" }
 pb-worker-core = { path = "../../crates/pb-worker-core" }
-

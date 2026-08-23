@@ -69,7 +69,8 @@ if grep -qE 'D2|D3|D4|Noise|PBMUX|params|raw request|raw response' <<<"${logs_af
     exit 1
 fi
 
-XDG_RUNTIME_DIR="${daemon_runtime}" "${daemon}" --foreground \
+XDG_RUNTIME_DIR="${daemon_runtime}" XDG_STATE_HOME="${daemon_runtime}/state" \
+    "${daemon}" --foreground \
     --manual-endpoint "${endpoint}" \
     >"${daemon_runtime}/daemon.stdout" 2>"${daemon_runtime}/daemon.stderr" &
 daemon_pid=$!

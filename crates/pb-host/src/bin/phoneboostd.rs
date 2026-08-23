@@ -1,12 +1,14 @@
 use std::ffi::OsString;
 use std::io::{self, Write};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use pb_host::{
     ReadyRuntime, StartupOutcome, TransportCandidate, TransportManager, TransportState,
-    host_startup, os_jitter_sample, retry_delay_ms, serve_local_client,
+    host_startup, initialize_remote_secure, os_jitter_sample, retry_delay_ms, serve_local_client,
 };
+use pb_runtime_secure::{SecureRuntime, run_initiator_session};
 
 struct DaemonArguments {
     manual_endpoint: Option<SocketAddr>,
@@ -20,14 +22,24 @@ fn main() {
 
     match host_startup() {
         Ok(StartupOutcome::Ready(ready)) => {
+            if let Some(endpoint) = arguments.manual_endpoint {
+                let runtime = match initialize_remote_secure() {
+                    Ok(runtime) => runtime,
+                    Err(error) => {
+                        eprintln!(
+                            "C05_SECURE state=UNAVAILABLE reason={}",
+                            error.reason_code()
+                        );
+                        std::process::exit(1);
+                    }
+                };
+                if start_manual_transport(endpoint, runtime).is_err() {
+                    eprintln!("C04_TRANSPORT state=UNAVAILABLE reason=THREAD_START_FAILED");
+                    std::process::exit(1);
+                }
+            }
             println!("READY");
             let _flush_result = io::stdout().flush();
-            if let Some(endpoint) = arguments.manual_endpoint
-                && start_manual_transport(endpoint).is_err()
-            {
-                eprintln!("C04_TRANSPORT state=UNAVAILABLE reason=THREAD_START_FAILED");
-                std::process::exit(1);
-            }
             run_local_loop(ready);
         }
         Ok(outcome @ StartupOutcome::AlreadyRunning(_)) => {
@@ -62,14 +74,14 @@ fn parse_arguments(args: impl IntoIterator<Item = OsString>) -> Option<DaemonArg
     })
 }
 
-fn start_manual_transport(endpoint: SocketAddr) -> io::Result<()> {
+fn start_manual_transport(endpoint: SocketAddr, runtime: Arc<SecureRuntime>) -> io::Result<()> {
     std::thread::Builder::new()
         .name("phoneboost-c04-transport".to_owned())
-        .spawn(move || run_manual_transport(endpoint))?;
+        .spawn(move || run_manual_transport(endpoint, runtime))?;
     Ok(())
 }
 
-fn run_manual_transport(endpoint: SocketAddr) -> ! {
+fn run_manual_transport(endpoint: SocketAddr, runtime: Arc<SecureRuntime>) -> ! {
     let mut transport = TransportManager::new(TransportCandidate::manual(endpoint));
     let mut retry_attempt = 0_usize;
     loop {
@@ -83,12 +95,26 @@ fn run_manual_transport(endpoint: SocketAddr) -> ! {
                     metrics.stability_score,
                 );
                 let _flush_result = io::stdout().flush();
-                while transport.state() == TransportState::ConnectedUnauthenticated {
+                while transport.state() == TransportState::ConnectedUnauthenticated
+                    && !runtime.session_requested()
+                {
                     std::thread::sleep(Duration::from_millis(200));
                     match transport.poll_loss() {
                         Ok(false) => {}
                         Ok(true) | Err(_) => break,
                     }
+                }
+                if transport.state() == TransportState::ConnectedUnauthenticated {
+                    match transport.take_connected_stream() {
+                        Ok(mut stream) => match run_initiator_session(&mut stream, &runtime) {
+                            Ok(_) => println!("C05_SECURE state=LOST reason=SESSION_CLOSED"),
+                            Err(error) => {
+                                println!("C05_SECURE state=LOST reason={}", error.reason_code())
+                            }
+                        },
+                        Err(_) => println!("C05_SECURE state=LOST reason=DEVICE_LOST"),
+                    }
+                    let _flush_result = io::stdout().flush();
                 }
                 let metrics = transport.metrics();
                 println!(

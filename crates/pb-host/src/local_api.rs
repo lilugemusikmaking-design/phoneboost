@@ -3,8 +3,10 @@ use std::time::{Duration, Instant};
 
 use crate::{
     AuthenticatedLocalClient, FramedLocalClient, LocalFrameOutcome, LocalMethod,
-    LocalValidationError, LocalValidationErrorKind, ValidatedLocalRequest,
+    LocalValidationError, LocalValidationErrorKind, ValidatedLocalRequest, remote_pairing_begin,
+    remote_pairing_cancel, remote_pairing_confirm, remote_status,
 };
+use pb_runtime_secure::PairingActionResult;
 
 const C12_API: u64 = 1;
 const C12_SCOPE_REQUEST: &str = "REQUEST";
@@ -165,15 +167,15 @@ fn dispatch(request: &ValidatedLocalRequest, framed: &FramedLocalClient) -> C12R
         | LocalMethod::JobsGet
         | LocalMethod::DiagnosticsRedacted
         | LocalMethod::EventsTail
-        | LocalMethod::PairingBegin
-        | LocalMethod::PairingConfirm
-        | LocalMethod::PairingCancel
         | LocalMethod::PeerUnpair
         | LocalMethod::ControllerAcquire
         | LocalMethod::ControllerRelease
         | LocalMethod::ComputeSubmit
         | LocalMethod::ComputeCancel
         | LocalMethod::BenchmarkRun => a4_deferred_handler(request),
+        LocalMethod::PairingBegin => pairing_begin(request),
+        LocalMethod::PairingConfirm => pairing_confirm(request),
+        LocalMethod::PairingCancel => pairing_cancel(request),
     }
 }
 
@@ -197,9 +199,86 @@ fn system_status(request: &ValidatedLocalRequest, framed: &FramedLocalClient) ->
             "local_clients_max": limits.max_clients(),
             "max_line_bytes": limits.max_line_bytes(),
             "idle_timeout_seconds": limits.idle_timeout().as_secs(),
-            "remote_worker_state": "NOT_CONFIGURED"
+            "remote_worker_state": if remote_status().is_some_and(|status| status.authenticated) {
+                "AUTHENTICATED"
+            } else {
+                "NOT_CONFIGURED"
+            }
         }),
     )
+}
+
+fn pairing_begin(request: &ValidatedLocalRequest) -> C12Response {
+    if !system_status_params_are_empty(request) {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_BAD_REQUEST,
+            "pairing.begin requires empty object params",
+        );
+    }
+    match remote_pairing_begin() {
+        Ok(snapshot) => C12Response::success(
+            request.id().clone(),
+            json!({
+                "state": snapshot.state.as_str(),
+                "sas": snapshot.sas,
+                "authenticated": snapshot.authenticated,
+            }),
+        ),
+        Err(error) => C12Response::error(
+            request.id().clone(),
+            error.reason_code(),
+            "pairing begin failed",
+        ),
+    }
+}
+
+fn pairing_confirm(request: &ValidatedLocalRequest) -> C12Response {
+    pairing_action(
+        request,
+        "pairing.confirm requires empty object params",
+        remote_pairing_confirm,
+    )
+}
+
+fn pairing_cancel(request: &ValidatedLocalRequest) -> C12Response {
+    pairing_action(
+        request,
+        "pairing.cancel requires empty object params",
+        remote_pairing_cancel,
+    )
+}
+
+fn pairing_action(
+    request: &ValidatedLocalRequest,
+    invalid_params: &'static str,
+    action: impl FnOnce() -> Result<PairingActionResult, pb_runtime_secure::RuntimeError>,
+) -> C12Response {
+    if !system_status_params_are_empty(request) {
+        return C12Response::error(request.id().clone(), LOCAL_BAD_REQUEST, invalid_params);
+    }
+    match action() {
+        Ok(PairingActionResult::Accepted | PairingActionResult::Duplicate) => {
+            let snapshot = remote_status();
+            C12Response::success(
+                request.id().clone(),
+                json!({
+                    "state": snapshot.as_ref().map_or("UNAVAILABLE", |state| state.state.as_str()),
+                    "authenticated": snapshot.is_some_and(|state| state.authenticated),
+                }),
+            )
+        }
+        Ok(PairingActionResult::InvalidState) => C12Response::error(
+            request.id().clone(),
+            "PAIRING_NOT_COMMITTED",
+            "pairing action unavailable in current state",
+        ),
+        Err(error) => C12Response::error(
+            request.id().clone(),
+            error.reason_code(),
+            "pairing action failed",
+        ),
+    }
 }
 
 fn system_status_params_are_empty(request: &ValidatedLocalRequest) -> bool {
@@ -365,12 +444,17 @@ mod tests {
     }
 
     #[test]
-    fn all_fourteen_unwired_methods_are_explicitly_deferred() {
+    fn all_eleven_unwired_methods_are_explicitly_deferred() {
         assert_eq!(A4_DEFERRED_HANDLER, "A4_DEFERRED_HANDLER");
-        for method in LocalMethod::ALL
-            .into_iter()
-            .filter(|method| *method != LocalMethod::SystemStatus)
-        {
+        for method in LocalMethod::ALL.into_iter().filter(|method| {
+            !matches!(
+                method,
+                LocalMethod::SystemStatus
+                    | LocalMethod::PairingBegin
+                    | LocalMethod::PairingConfirm
+                    | LocalMethod::PairingCancel
+            )
+        }) {
             let value = response_value(a4_deferred_handler(&request(method, json!({}))));
             assert_eq!(value["error"]["code"], LOCAL_UNSUPPORTED_METHOD);
             assert_eq!(value["error"]["message_safe"], MESSAGE_DEFERRED_HANDLER);

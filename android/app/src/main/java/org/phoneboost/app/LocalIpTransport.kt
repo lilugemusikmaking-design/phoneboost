@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -22,7 +23,7 @@ private const val LOG_TAG = "PhoneBoostC04"
 private const val MAX_ACTIVE_STREAMS = 2
 private const val PENDING_STREAMS = 2
 private const val PROBE_MAX_BYTES = 64
-private const val RAW_BUFFER_BYTES = 4096
+private val DEBUG_D0_PROBE = "PHONEBOOST-C04-D0".toByteArray(Charsets.US_ASCII)
 
 enum class LanPermissionState {
     NOT_REQUIRED_API_LT_37,
@@ -222,9 +223,9 @@ class LocalIpTransport(private val context: Context) {
             Log.i(LOG_TAG, "C04_STREAM state=CONNECTED_UNAUTHENTICATED trust=NONE")
             try {
                 if (isDebuggable()) {
-                    runBoundedDebugProbe(socket)
+                    runBoundedDebugOrSecure(socket)
                 } else {
-                    drainOpaqueBytes(socket)
+                    runSecureSession(socket, null)
                 }
             } catch (_: Exception) {
                 // Loss is represented only as transport loss; bytes are never inspected.
@@ -243,23 +244,49 @@ class LocalIpTransport(private val context: Context) {
         }
     }
 
-    private fun runBoundedDebugProbe(socket: Socket) {
-        val bytes = ByteArray(PROBE_MAX_BYTES)
-        val read = socket.getInputStream().read(bytes)
-        if (read <= 0) return
-        receivedBytes.addAndGet(read.toLong())
-        socket.getOutputStream().write(bytes, 0, read)
-        socket.getOutputStream().flush()
-        transmittedBytes.addAndGet(read.toLong())
+    private fun runBoundedDebugOrSecure(socket: Socket) {
+        val prefix = ByteArray(2)
+        val input = socket.getInputStream()
+        if (input.read(prefix, 0, 2) != 2) return
+        if (prefix.contentEquals(DEBUG_D0_PROBE.copyOfRange(0, 2))) {
+            val bytes = ByteArray(DEBUG_D0_PROBE.size)
+            prefix.copyInto(bytes)
+            var offset = 2
+            while (offset < bytes.size) {
+                val read = input.read(bytes, offset, bytes.size - offset)
+                if (read <= 0) return
+                offset += read
+            }
+            if (!bytes.contentEquals(DEBUG_D0_PROBE) || bytes.size > PROBE_MAX_BYTES) return
+            receivedBytes.addAndGet(bytes.size.toLong())
+            socket.getOutputStream().write(bytes)
+            socket.getOutputStream().flush()
+            transmittedBytes.addAndGet(bytes.size.toLong())
+            return
+        }
+        runSecureSession(socket, prefix)
     }
 
-    private fun drainOpaqueBytes(socket: Socket) {
-        val bytes = ByteArray(RAW_BUFFER_BYTES)
-        while (running) {
-            val read = socket.getInputStream().read(bytes)
-            if (read <= 0) return
-            receivedBytes.addAndGet(read.toLong())
+    private fun runSecureSession(socket: Socket, prefix: ByteArray?) {
+        val detached = try {
+            ParcelFileDescriptor.fromSocket(socket).detachFd()
+        } catch (_: Exception) {
+            Log.e(LOG_TAG, "C05_SECURE state=LOST reason=DEVICE_LOST")
+            return
         }
+        val result = WorkerNative.secureAcceptFd(
+            detached,
+            prefix?.get(0)?.toInt()?.and(0xff) ?: -1,
+            prefix?.get(1)?.toInt()?.and(0xff) ?: -1,
+        )
+        Log.i(
+            LOG_TAG,
+            if (result == WorkerNative.RESULT_OK) {
+                "C05_SECURE state=LOST reason=SESSION_CLOSED"
+            } else {
+                "C05_SECURE state=LOST reason=SECURE_SESSION_FAILED"
+            },
+        )
     }
 
     private fun isDebuggable(): Boolean =

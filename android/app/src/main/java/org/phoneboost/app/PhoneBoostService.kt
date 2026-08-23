@@ -10,8 +10,10 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
+import java.io.File
 
 class PhoneBoostService : Service() {
     companion object {
@@ -35,6 +37,7 @@ class PhoneBoostService : Service() {
     private var healthThread: HandlerThread? = null
     private var healthHandler: Handler? = null
     private var localIpTransport: LocalIpTransport? = null
+    private var secureReady = false
     private val sampleHealth = object : Runnable {
         override fun run() {
             try {
@@ -90,12 +93,13 @@ class PhoneBoostService : Service() {
         )
         isActive = true
         startHealthSampler()
-        startLocalIpTransport()
+        secureReady = initializeSecureRuntime()
+        if (secureReady) startLocalIpTransport()
         Log.i(LOG_TAG, "FGS_STARTED state=PAIRING_REQUIRED")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (localIpTransport == null && lanPermissionState() != LanPermissionState.DENIED) {
+        if (secureReady && localIpTransport == null && lanPermissionState() != LanPermissionState.DENIED) {
             startLocalIpTransport()
         }
         return START_NOT_STICKY
@@ -142,6 +146,28 @@ class PhoneBoostService : Service() {
                 Handler(mainLooper).postDelayed(this, 500)
             }
         })
+    }
+
+    private fun initializeSecureRuntime(): Boolean {
+        val stateDirectory = File(filesDir, "phoneboost")
+        if ((!stateDirectory.exists() && !stateDirectory.mkdir()) || !stateDirectory.isDirectory) {
+            Log.e(LOG_TAG, "SECURE_INIT state=UNAVAILABLE reason=PAIR_PERSIST_FAILED")
+            return false
+        }
+        val directoryFd = try {
+            ParcelFileDescriptor.open(stateDirectory, ParcelFileDescriptor.MODE_READ_ONLY)
+        } catch (_: Exception) {
+            Log.e(LOG_TAG, "SECURE_INIT state=UNAVAILABLE reason=PAIR_PERSIST_FAILED")
+            return false
+        }
+        val detached = directoryFd.detachFd()
+        val result = WorkerNative.secureInitialize(detached)
+        if (result != WorkerNative.RESULT_OK && result != WorkerNative.RESULT_ALREADY_RUNNING) {
+            Log.e(LOG_TAG, "SECURE_INIT state=UNAVAILABLE reason=STATE_CORRUPT")
+            return false
+        }
+        Log.i(LOG_TAG, "SECURE_INIT state=PAIRING_REQUIRED")
+        return true
     }
 
     private fun createNotificationChannel() {

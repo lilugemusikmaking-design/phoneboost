@@ -308,6 +308,7 @@ dependencies = [
 name = "pb-host"
 version = "0.1.0"
 dependencies = [
+ "pb-runtime-secure",
  "rustix",
  "serde_json",
 ]
@@ -317,6 +318,20 @@ name = "pb-pbmux"
 version = "0.1.0"
 dependencies = [
  "pb-types",
+]
+
+[[package]]
+name = "pb-runtime-secure"
+version = "0.1.0"
+dependencies = [
+ "curve25519-dalek",
+ "pb-pbmux",
+ "pb-secure",
+ "pb-types",
+ "rustix",
+ "serde_json",
+ "sha2",
+ "snow",
 ]
 
 [[package]]
@@ -340,6 +355,7 @@ version = "0.1.0"
 name = "phoneboost-core-jni"
 version = "0.1.0"
 dependencies = [
+ "pb-runtime-secure",
  "pb-worker-core",
 ]
 

@@ -4,6 +4,7 @@ members = [
     "crates/pb-types",
     "crates/pb-pbmux",
     "crates/pb-secure",
+    "crates/pb-runtime-secure",
     "crates/pb-host",
     "crates/pb-cli",
     "crates/pb-worker-core",
@@ -25,3 +26,4 @@ serde_json = "1.0.149"
 sha2 = "0.10.9"
 snow = "=0.9.6"
 rustix = "=1.1.4"
+curve25519-dalek = "=4.1.3"

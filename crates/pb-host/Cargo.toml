@@ -16,5 +16,6 @@ path = "src/bin/c04-lan-probe.rs"
 required-features = ["c04-test-probe"]
 
 [dependencies]
+pb-runtime-secure = { path = "../pb-runtime-secure" }
 rustix = { workspace = true, features = ["fs", "net", "process"] }
 serde_json.workspace = true

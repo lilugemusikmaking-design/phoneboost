@@ -296,6 +296,15 @@ impl TransportManager {
         self.state = TransportState::Lost;
     }
 
+    pub fn take_connected_stream(&mut self) -> Result<TcpStream, TransportError> {
+        if self.state != TransportState::ConnectedUnauthenticated {
+            return Err(TransportError::NotConnected);
+        }
+        self.finish_connected_period();
+        self.state = TransportState::Lost;
+        self.stream.take().ok_or(TransportError::NotConnected)
+    }
+
     pub fn metrics(&self) -> TransportMetrics {
         let total = self.created_at.elapsed();
         let connected = self.accumulated_connected

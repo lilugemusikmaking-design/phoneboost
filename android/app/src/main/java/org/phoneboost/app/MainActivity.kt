@@ -16,6 +16,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import java.util.Locale
 
 class MainActivity : Activity() {
     companion object {
@@ -24,6 +25,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var statusView: TextView
+    private lateinit var secureStatusView: TextView
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +58,13 @@ class MainActivity : Activity() {
             textSize = 28f
             setTypeface(typeface, Typeface.BOLD)
         })
+        secureStatusView = TextView(this).apply {
+            text = "State: UNPAIRED\nSecure session: NOT_AUTHENTICATED\nTransport: NOT_CONFIGURED"
+            textSize = 24f
+            setPadding(0, 24, 0, 24)
+            setTypeface(typeface, Typeface.BOLD)
+        }
+        content.addView(secureStatusView)
         content.addView(Button(this).apply {
             text = "Recreate UI"
             contentDescription = "Recreate UI"
@@ -65,6 +74,30 @@ class MainActivity : Activity() {
             text = "Refresh observations"
             contentDescription = "Refresh observations"
             setOnClickListener { refreshStatus() }
+        })
+        content.addView(Button(this).apply {
+            text = "CONFIRM"
+            contentDescription = "Confirm pairing"
+            setOnClickListener {
+                WorkerNative.secureAction(0)
+                refreshStatus()
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "CANCEL"
+            contentDescription = "Cancel pairing"
+            setOnClickListener {
+                WorkerNative.secureAction(1)
+                refreshStatus()
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "MISMATCH"
+            contentDescription = "Reject pairing code"
+            setOnClickListener {
+                WorkerNative.secureAction(2)
+                refreshStatus()
+            }
         })
         statusView = TextView(this).apply {
             text = "Worker core: STARTING"
@@ -88,6 +121,10 @@ class MainActivity : Activity() {
         val observations = readAndroidObservations()
         val health = WorkerNative.healthSnapshot(SystemClock.elapsedRealtime())
         val transport = PhoneBoostService.transportSnapshot()
+        val secureStateCode = WorkerNative.secureState()
+        val secureState = secureStateName(secureStateCode)
+        val authenticated = WorkerNative.secureField(0) == 1L
+        val sas = WorkerNative.secureSas()
         val running = worker.state == WorkerNative.STATE_PAIRING_REQUIRED &&
             worker.incarnationNonzero && PhoneBoostService.isActive
         val panicContained = WorkerNative.workerPanicProbe() == WorkerNative.ERROR_PANIC_CONTAINED
@@ -100,9 +137,18 @@ class MainActivity : Activity() {
         val incarnation = if (worker.incarnationNonzero) worker.shortIncarnation() else "UNAVAILABLE"
         val battery = observations.batteryPercent?.let { "$it%" } ?: "UNKNOWN"
 
+        secureStatusView.text = buildString {
+            appendLine("State: $secureState")
+            if (sas >= 0 && !authenticated) {
+                appendLine("Pairing code: ${String.format(Locale.US, "%06d", sas)}")
+            }
+            appendLine("Secure session: ${if (authenticated) "AUTHENTICATED" else "NOT_AUTHENTICATED"}")
+            append("Transport: ${if (authenticated) "AUTHENTICATED" else transport.state}")
+        }
+
         statusView.text = buildString {
             appendLine("Worker core: ${if (running) "RUNNING" else "NOT_RUNNING"}")
-            appendLine("State: $state")
+            appendLine("Worker state: $state")
             appendLine("Incarnation: $incarnation")
             appendLine("Incarnation bits: ${if (worker.incarnationNonzero) 128 else 0}")
             appendLine("Foreground service: ${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"}")
@@ -120,7 +166,6 @@ class MainActivity : Activity() {
             appendLine("Controller lease: ${if (WorkerNative.workerAuthorityState(0) == 0) "NONE" else "ERROR"}")
             appendLine("ResourceGuard: ${if (WorkerNative.workerAuthorityState(1) == 1) "ACTIVE" else "ERROR"}")
             appendLine("Remote control: INACTIVE_FOR_REMOTE_CONTROL")
-            appendLine("Transport: ${transport.state}")
             appendLine("Transport permission: ${transport.permission}")
             append("Diagnostic endpoint: ${transport.diagnosticEndpoint()}")
         }
@@ -130,7 +175,8 @@ class MainActivity : Activity() {
                 "fgs=${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"} " +
                 "health_samples=${health.samples.coerceAtLeast(0)} safety=${safetyName(health.safety)} " +
                 "lease=NONE resource_guard=ACTIVE remote=INACTIVE_FOR_REMOTE_CONTROL " +
-                "transport=${transport.state} transport_permission=${transport.permission}",
+                "transport=${if (authenticated) "AUTHENTICATED" else transport.state} " +
+                "secure_state=$secureState transport_permission=${transport.permission}",
         )
     }
 
@@ -141,6 +187,23 @@ class MainActivity : Activity() {
         WorkerNative.SAFETY_REFUSED_THERMAL -> "REFUSED_THERMAL"
         WorkerNative.SAFETY_REFUSED_BATTERY -> "REFUSED_BATTERY"
         WorkerNative.SAFETY_REFUSED_STALE -> "REFUSED_STALE_STATE"
+        else -> "UNAVAILABLE"
+    }
+
+    private fun secureStateName(value: Int): String = when (value) {
+        WorkerNative.SECURE_UNPAIRED -> "UNPAIRED"
+        WorkerNative.SECURE_PAIRING_XX -> "PAIRING_XX"
+        WorkerNative.SECURE_SAS_PENDING -> "SAS_PENDING"
+        WorkerNative.SECURE_LOCAL_CONFIRMED -> "LOCAL_CONFIRMED"
+        WorkerNative.SECURE_PEER_CONFIRMED -> "PEER_CONFIRMED"
+        WorkerNative.SECURE_MUTUAL_CONFIRMED -> "MUTUAL_CONFIRMED"
+        WorkerNative.SECURE_TRUST_COMMITTING -> "TRUST_COMMITTING"
+        WorkerNative.SECURE_COMMITTED_WAITING_PEER -> "COMMITTED_WAITING_PEER"
+        WorkerNative.SECURE_PAIRED -> "PAIRED"
+        WorkerNative.SECURE_AUTHENTICATED -> "AUTHENTICATED"
+        WorkerNative.SECURE_PAIR_REJECTED -> "PAIR_REJECTED"
+        WorkerNative.SECURE_PAIRING_FAILED -> "PAIRING_FAILED"
+        WorkerNative.SECURE_COOLDOWN -> "PAIRING_COOLDOWN"
         else -> "UNAVAILABLE"
     }
 
