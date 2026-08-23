@@ -3,11 +3,27 @@
 use std::fs::File;
 use std::io::{self, Read};
 
-const INCARNATION_BYTES: usize = 16;
+mod lease;
+mod resource_guard;
+
+pub use lease::{
+    AuthenticatedSession, CommandAdmission, ControllerLeaseManager, LEASE_TTL_MS, LeaseError,
+    LeaseId, LeaseState, RECOMMENDED_RENEWAL_MS, TerminalCode,
+};
+pub use resource_guard::{
+    BatteryBand, CommitDecision, HEALTH_INTERVAL_MS, HEALTH_STALE_AFTER_MS, HealthSample,
+    HealthStatus, MEMORY_MARGIN_BYTES, MIN_AVAILABLE_BYTES, NATIVE_OPERATION_THREADS,
+    POC_CAP_BYTES, RECOVERY_AVAILABLE_BYTES, RESERVATION_TTL_MS, ReleaseDecision, RequestId,
+    ReservationDecision, ReservationId, ReserveRequest, ResourceClass, ResourceGuard,
+    ResourceGuardState, SafetyBand, TERMINAL_RETENTION_MS, ThermalBand, poc_budget,
+};
+
+const RANDOM_ID_BYTES: usize = 16;
 const MAX_ZERO_RETRIES: usize = 8;
 
 /// A5 implements no trust, lease, resource, buffer, or compute authority.
 pub const DEFERRED_BY_BUILD_ORDER: &str = "DEFERRED_BY_BUILD_ORDER";
+pub const REMOTE_CONTROL_STATUS: &str = "INACTIVE_FOR_REMOTE_CONTROL";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
@@ -16,11 +32,11 @@ pub enum WorkerState {
     PairingRequired = 2,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub struct WorkerIncarnationId([u8; INCARNATION_BYTES]);
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkerIncarnationId([u8; RANDOM_ID_BYTES]);
 
 impl WorkerIncarnationId {
-    pub const BITS: usize = INCARNATION_BYTES * 8;
+    pub const BITS: usize = RANDOM_ID_BYTES * 8;
 
     pub const fn high_u64(self) -> u64 {
         u64::from_be_bytes([
@@ -59,6 +75,8 @@ impl std::error::Error for WorkerStartError {}
 pub struct WorkerCore {
     incarnation: WorkerIncarnationId,
     state: WorkerState,
+    lease_manager: ControllerLeaseManager,
+    resource_guard: ResourceGuard,
 }
 
 impl WorkerCore {
@@ -67,7 +85,12 @@ impl WorkerCore {
         let incarnation =
             random_incarnation_id().map_err(|_| WorkerStartError::EntropyUnavailable)?;
         initialize_a5_skeleton(&mut state);
-        Ok(Self { incarnation, state })
+        Ok(Self {
+            incarnation,
+            state,
+            lease_manager: ControllerLeaseManager::new(incarnation),
+            resource_guard: ResourceGuard::new(),
+        })
     }
 
     pub const fn state(&self) -> WorkerState {
@@ -77,6 +100,27 @@ impl WorkerCore {
     pub const fn incarnation(&self) -> WorkerIncarnationId {
         self.incarnation
     }
+
+    /// Accepts only Android-local observations. It grants no remote authority.
+    pub fn record_local_health(&mut self, sample: HealthSample) -> HealthStatus {
+        self.resource_guard.record_health(sample)
+    }
+
+    pub fn health_status(&self, now_ms: u64) -> HealthStatus {
+        self.resource_guard.health_status(now_ms)
+    }
+
+    pub const fn health_sample_count(&self) -> u64 {
+        self.resource_guard.health_sample_count()
+    }
+
+    pub const fn lease_state(&self) -> LeaseState {
+        self.lease_manager.state()
+    }
+
+    pub const fn resource_guard_state(&self) -> ResourceGuardState {
+        self.resource_guard.state()
+    }
 }
 
 fn initialize_a5_skeleton(state: &mut WorkerState) {
@@ -84,13 +128,16 @@ fn initialize_a5_skeleton(state: &mut WorkerState) {
 }
 
 fn random_incarnation_id() -> io::Result<WorkerIncarnationId> {
+    random_nonzero_128().map(WorkerIncarnationId)
+}
+
+pub(crate) fn random_nonzero_128() -> io::Result<[u8; RANDOM_ID_BYTES]> {
     let mut source = File::open("/dev/urandom")?;
     for _ in 0..MAX_ZERO_RETRIES {
-        let mut bytes = [0_u8; INCARNATION_BYTES];
+        let mut bytes = [0_u8; RANDOM_ID_BYTES];
         source.read_exact(&mut bytes)?;
-        let candidate = WorkerIncarnationId(bytes);
-        if candidate.is_nonzero() {
-            return Ok(candidate);
+        if bytes.iter().any(|byte| *byte != 0) {
+            return Ok(bytes);
         }
     }
     Err(io::Error::other("OS RNG returned repeated zero values"))

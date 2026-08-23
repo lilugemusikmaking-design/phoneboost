@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
 import android.widget.Button
@@ -18,7 +19,7 @@ import android.widget.TextView
 
 class MainActivity : Activity() {
     companion object {
-        private const val LOG_TAG = "PhoneBoostA5"
+        private const val LOG_TAG = "PhoneBoostA6"
     }
 
     private lateinit var statusView: TextView
@@ -83,6 +84,7 @@ class MainActivity : Activity() {
     private fun refreshStatus() {
         val worker = WorkerNative.snapshot()
         val observations = readAndroidObservations()
+        val health = WorkerNative.healthSnapshot(SystemClock.elapsedRealtime())
         val running = worker.state == WorkerNative.STATE_PAIRING_REQUIRED &&
             worker.incarnationNonzero && PhoneBoostService.isActive
         val panicContained = WorkerNative.workerPanicProbe() == WorkerNative.ERROR_PANIC_CONTAINED
@@ -108,14 +110,33 @@ class MainActivity : Activity() {
             appendLine("Charging: ${if (observations.charging) "YES" else "NO"}")
             appendLine("Power save: ${if (observations.powerSave) "ON" else "OFF"}")
             appendLine("Memory observed: ${observations.availableMemoryMib} MiB")
-            appendLine("Health scheduler: DEFERRED_TO_A6")
+            appendLine("Low memory: ${if (observations.lowMemory) "YES" else "NO"}")
+            appendLine("Health scheduler: ACTIVE (2s)")
+            appendLine("Health samples: ${health.samples.coerceAtLeast(0)}")
+            appendLine("Health safety band: ${safetyName(health.safety)}")
+            appendLine("Controller lease: ${if (WorkerNative.workerAuthorityState(0) == 0) "NONE" else "ERROR"}")
+            appendLine("ResourceGuard: ${if (WorkerNative.workerAuthorityState(1) == 1) "ACTIVE" else "ERROR"}")
+            appendLine("Remote control: INACTIVE_FOR_REMOTE_CONTROL")
             append("Transport: NOT_CONFIGURED")
         }
         Log.i(
             LOG_TAG,
             "UI_STATUS state=$state incarnation=$incarnation " +
-                "fgs=${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"}",
+                "fgs=${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"} " +
+                "health_samples=${health.samples.coerceAtLeast(0)} safety=${safetyName(health.safety)} " +
+                "lease=NONE resource_guard=ACTIVE remote=INACTIVE_FOR_REMOTE_CONTROL " +
+                "transport=NOT_CONFIGURED",
         )
+    }
+
+    private fun safetyName(value: Long): String = when (value.toInt()) {
+        WorkerNative.SAFETY_NOMINAL -> "NOMINAL"
+        WorkerNative.SAFETY_THROTTLE -> "THROTTLE"
+        WorkerNative.SAFETY_REFUSED_MEMORY -> "REFUSED_MEMORY_PRESSURE"
+        WorkerNative.SAFETY_REFUSED_THERMAL -> "REFUSED_THERMAL"
+        WorkerNative.SAFETY_REFUSED_BATTERY -> "REFUSED_BATTERY"
+        WorkerNative.SAFETY_REFUSED_STALE -> "REFUSED_STALE_STATE"
+        else -> "UNAVAILABLE"
     }
 
     private fun requestNotificationPermission() {

@@ -18,7 +18,7 @@ test "$("${adb}" -d shell getprop ro.product.cpu.abi | tr -d '\r')" = "arm64-v8a
 sleep 1
 
 status_lines() {
-    "${adb}" -d logcat -d -s PhoneBoostA5:I '*:S' 2>/dev/null
+    "${adb}" -d logcat -d -s PhoneBoostA6:I '*:S' 2>/dev/null
 }
 
 latest_incarnation() {

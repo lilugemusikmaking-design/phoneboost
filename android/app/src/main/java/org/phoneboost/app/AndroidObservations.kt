@@ -11,10 +11,13 @@ import android.os.PowerManager
 data class AndroidObservations(
     val api: Int,
     val thermal: String,
+    val thermalCode: Int,
     val batteryPercent: Int?,
     val charging: Boolean,
     val powerSave: Boolean,
     val availableMemoryMib: Long,
+    val availableMemoryBytes: Long,
+    val lowMemory: Boolean,
 )
 
 fun Context.readAndroidObservations(): AndroidObservations {
@@ -33,10 +36,13 @@ fun Context.readAndroidObservations(): AndroidObservations {
     return AndroidObservations(
         api = Build.VERSION.SDK_INT,
         thermal = thermalName(power.currentThermalStatus),
+        thermalCode = power.currentThermalStatus,
         batteryPercent = percent,
         charging = charging,
         powerSave = power.isPowerSaveMode,
         availableMemoryMib = memory.availMem / (1024L * 1024L),
+        availableMemoryBytes = memory.availMem,
+        lowMemory = memory.lowMemory,
     )
 }
 
@@ -50,4 +56,3 @@ private fun thermalName(status: Int): String = when (status) {
     PowerManager.THERMAL_STATUS_SHUTDOWN -> "SHUTDOWN"
     else -> "UNKNOWN"
 }
-
