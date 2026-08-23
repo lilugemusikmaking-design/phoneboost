@@ -41,6 +41,7 @@ pub enum PbmuxErrorKind {
     LogicalLengthInvalid,
     FragmentInvalid,
     UnsupportedMessage,
+    InvalidCommandPayload,
     SequenceMismatch,
     ReassemblyQuota,
     ReassemblyMissing,
@@ -52,6 +53,25 @@ pub enum PbmuxErrorKind {
 pub struct PbmuxError {
     pub kind: PbmuxErrorKind,
     pub scope: ErrorScope,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CommandType {
+    Acquire = 1,
+    Renew = 2,
+    Release = 3,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CommandPayload {
+    pub command_type: u8,
+    pub lease_present: u8,
+    pub lease_id: [u8; 16],
+    pub command_seq: u64,
+    pub trace_id: [u8; 16],
+    pub provider_present: u8,
+    pub provider_id: u8,
+    pub payload_len: u16,
 }
 
 impl PbmuxError {
@@ -73,6 +93,7 @@ impl PbmuxError {
         match self.kind {
             PbmuxErrorKind::FrameTooLarge => ReasonCode::FrameTooLarge,
             PbmuxErrorKind::UnsupportedMessage => ReasonCode::UnsupportedMessage,
+            PbmuxErrorKind::InvalidCommandPayload => ReasonCode::LocalBadRequest,
             PbmuxErrorKind::SequenceMismatch => ReasonCode::SequenceError,
             PbmuxErrorKind::PairingNotCommitted => ReasonCode::PairingNotCommitted,
             PbmuxErrorKind::PairConfirmUnexpected => ReasonCode::PairConfirmUnexpected,
@@ -80,7 +101,6 @@ impl PbmuxError {
         }
     }
 }
-
 impl fmt::Display for PbmuxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?} ({:?})", self.kind, self.scope)
@@ -99,6 +119,170 @@ fn read_u32(bytes: &[u8], offset: usize) -> u32 {
 
 fn read_u64(bytes: &[u8], offset: usize) -> u64 {
     u64::from_be_bytes(bytes[offset..offset + 8].try_into().expect("fixed slice"))
+}
+
+const COMMAND_PAYLOAD_LEN: usize = 46;
+
+fn encode_command_payload(payload: &CommandPayload) -> Result<Vec<u8>, PbmuxError> {
+    // Validate payload
+    if payload.lease_present > 1 || payload.provider_present > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if payload.lease_present == 0 {
+        if payload.lease_id != [0u8; 16] {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    } else {
+        // lease_present == 1, lease_id must be non-zero (checked later per command type)
+    }
+    if payload.provider_present != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if payload.provider_id != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if payload.payload_len != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+
+    // Command type specific validation
+    match payload.command_type {
+        1 => {
+            // Acquire
+            if payload.lease_present != 0 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if payload.command_seq != 0 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        2 => {
+            // Renew
+            if payload.lease_present != 1 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if payload.lease_id == [0u8; 16] {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        3 => {
+            // Release
+            if payload.lease_present != 1 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if payload.lease_id == [0u8; 16] {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        _ => {
+            return Err(PbmuxError::logical(PbmuxErrorKind::UnsupportedMessage));
+        }
+    }
+
+    // Encode to bytes
+    let mut buf = Vec::with_capacity(COMMAND_PAYLOAD_LEN);
+    buf.push(payload.command_type);
+    buf.push(payload.lease_present);
+    buf.extend_from_slice(&payload.lease_id);
+    buf.extend_from_slice(&payload.command_seq.to_be_bytes());
+    buf.extend_from_slice(&payload.trace_id);
+    buf.push(payload.provider_present);
+    buf.push(payload.provider_id);
+    buf.extend_from_slice(&payload.payload_len.to_be_bytes());
+    debug_assert_eq!(buf.len(), COMMAND_PAYLOAD_LEN);
+    Ok(buf)
+}
+
+fn decode_command_payload(bytes: &[u8]) -> Result<CommandPayload, PbmuxError> {
+    if bytes.len() != COMMAND_PAYLOAD_LEN {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    let command_type = bytes[0];
+    let lease_present = bytes[1];
+    let lease_id = {
+        let mut arr = [0u8; 16];
+        arr.copy_from_slice(&bytes[2..18]);
+        arr
+    };
+    let command_seq = u64::from_be_bytes({
+        let mut arr = [0u8; 8];
+        arr.copy_from_slice(&bytes[18..26]);
+        arr
+    });
+    let trace_id = {
+        let mut arr = [0u8; 16];
+        arr.copy_from_slice(&bytes[26..42]);
+        arr
+    };
+    let provider_present = bytes[42];
+    let provider_id = bytes[43];
+    let payload_len = u16::from_be_bytes({
+        let mut arr = [0u8; 2];
+        arr.copy_from_slice(&bytes[44..46]);
+        arr
+    });
+
+    // Validate presence fields
+    if lease_present > 1 || provider_present > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if lease_present == 0 && lease_id != [0u8; 16] {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if provider_present != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if provider_id != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if payload_len != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+
+    // Validate command_type specific rules
+    match command_type {
+        1 => {
+            // Acquire
+            if lease_present != 0 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if command_seq != 0 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        2 => {
+            // Renew
+            if lease_present != 1 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if lease_id == [0u8; 16] {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        3 => {
+            // Release
+            if lease_present != 1 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+            if lease_id == [0u8; 16] {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        }
+        _ => {
+            return Err(PbmuxError::logical(PbmuxErrorKind::UnsupportedMessage));
+        }
+    }
+
+    Ok(CommandPayload {
+        command_type,
+        lease_present,
+        lease_id,
+        command_seq,
+        trace_id,
+        provider_present,
+        provider_id,
+        payload_len,
+    })
 }
 
 fn validate_fragment_fields(header: &Header) -> Result<(), PbmuxError> {
@@ -596,5 +780,175 @@ mod tests {
                 .kind,
             PbmuxErrorKind::PairingNotCommitted
         );
+    }
+
+    #[test]
+    fn gv_c07_01_acquire() {
+        // Build a valid Acquire command payload
+        let payload = CommandPayload {
+            command_type: 1, // Acquire
+            lease_present: 0,
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let encoded = encode_command_payload(&payload).unwrap();
+        assert_eq!(encoded.len(), COMMAND_PAYLOAD_LEN);
+        // Decode it back
+        let decoded = decode_command_payload(&encoded).unwrap();
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn gv_c07_02_renew() {
+        let mut lease_id = [0u8; 16];
+        lease_id[0] = 1; // non-zero
+        let payload = CommandPayload {
+            command_type: 2, // Renew
+            lease_present: 1,
+            lease_id,
+            command_seq: 0xdead_beef_dead_beef, // any value
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let encoded = encode_command_payload(&payload).unwrap();
+        assert_eq!(encoded.len(), COMMAND_PAYLOAD_LEN);
+        let decoded = decode_command_payload(&encoded).unwrap();
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn gv_c07_03_release() {
+        let mut lease_id = [0u8; 16];
+        lease_id[15] = 1; // non-zero
+        let payload = CommandPayload {
+            command_type: 3, // Release
+            lease_present: 1,
+            lease_id,
+            command_seq: 0xfeed_feed_feed_feed, // any value
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let encoded = encode_command_payload(&payload).unwrap();
+        assert_eq!(encoded.len(), COMMAND_PAYLOAD_LEN);
+        let decoded = decode_command_payload(&encoded).unwrap();
+        assert_eq!(decoded, payload);
+    }
+
+    #[test]
+    fn gv_c07_04_acquire_with_lease() {
+        let mut lease_id = [0u8; 16];
+        lease_id[0] = 1; // non-zero, which is invalid for Acquire
+        let payload = CommandPayload {
+            command_type: 1,  // Acquire
+            lease_present: 0, // but lease_id non-zero -> invalid
+            lease_id,
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+
+    #[test]
+    fn gv_c07_05_renew_without_lease() {
+        let payload = CommandPayload {
+            command_type: 2,  // Renew
+            lease_present: 0, // missing lease
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+
+    #[test]
+    fn renew_with_zero_lease_id() {
+        let payload = CommandPayload {
+            command_type: 2, // Renew
+            lease_present: 1,
+            lease_id: [0u8; 16], // all zero
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+
+    #[test]
+    fn wrong_payload_size() {
+        // Too short
+        let mut buf = vec![0u8; COMMAND_PAYLOAD_LEN - 1];
+        let err = decode_command_payload(&buf).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        // Too long
+        let mut buf = vec![0u8; COMMAND_PAYLOAD_LEN + 1];
+        let err = decode_command_payload(&buf).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn invalid_presence() {
+        // lease_present = 2 (invalid)
+        let mut payload = CommandPayload {
+            command_type: 1,
+            lease_present: 2,
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        // provider_present = 2
+        payload.lease_present = 0;
+        payload.provider_present = 2;
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn unknown_command_type() {
+        let payload = CommandPayload {
+            command_type: 99, // unknown
+            lease_present: 0,
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0u8; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let err = encode_command_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        // Also test decoding unknown command_type from bytes
+        let mut bytes = [0u8; COMMAND_PAYLOAD_LEN];
+        bytes[0] = 99;
+        let err = decode_command_payload(&bytes).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
     }
 }
