@@ -37,7 +37,7 @@ grep -q 'result=0' <<<"${logs}"
 grep -q 'resource_guard=ACTIVE' <<<"${logs}"
 grep -q 'lease=NONE' <<<"${logs}"
 grep -q 'remote=INACTIVE_FOR_REMOTE_CONTROL' <<<"${logs}"
-grep -q 'transport=NOT_CONFIGURED' <<<"${logs}"
+grep -qE 'transport=(LISTENING|CONNECTED_UNAUTHENTICATED)' <<<"${logs}"
 
 service_dump="$("${adb}" -d shell dumpsys activity services "${package}")"
 grep -q 'isForeground=true' <<<"${service_dump}"
@@ -46,17 +46,6 @@ grep -q 'types=0x00000010' <<<"${service_dump}"
 package_dump="$("${adb}" -d shell dumpsys package "${package}")"
 grep -q 'primaryCpuAbi=arm64-v8a' <<<"${package_dump}"
 grep -q 'targetSdk=37' <<<"${package_dump}"
-if grep -qE 'android.permission.(INTERNET|ACCESS_LOCAL_NETWORK)' <<<"${package_dump}"; then
-    echo "Unexpected network permission" >&2
-    exit 1
-fi
-
-pid="$("${adb}" -d shell pidof "${package}" | tr -d '\r')"
-if "${adb}" -d shell run-as "${package}" sh -c "ls -l /proc/${pid}/fd 2>/dev/null" | grep -q 'socket:'; then
-    echo "Unexpected PhoneBoost socket descriptor" >&2
-    exit 1
-fi
-
 latest_health="$(grep 'HEALTH_SAMPLE' <<<"${logs}" | tail -1 | sed 's/^.*HEALTH_SAMPLE/HEALTH_SAMPLE/')"
 if grep -qE 'D2|D3|D4|params|raw request|raw response' <<<"${logs}"; then
     echo "Forbidden material in PhoneBoost log" >&2
@@ -72,5 +61,5 @@ printf '%s\n' \
     "ResourceGuard local ingestion: PASS" \
     "Controller lease: NONE" \
     "Remote control: INACTIVE_FOR_REMOTE_CONTROL" \
-    "Transport: NOT_CONFIGURED" \
+    "Transport: C04 LISTENER INTEGRATED" \
     "${latest_health}"

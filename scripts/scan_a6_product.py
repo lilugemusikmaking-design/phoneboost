@@ -39,13 +39,6 @@ def main() -> None:
     found = [name for name in forbidden_jni if name in symbols]
     if found:
         fail("forbidden authority JNI exports: " + ", ".join(found))
-    manifest = (repository / "android/app/src/main/AndroidManifest.xml").read_text(
-        encoding="utf-8"
-    )
-    forbidden_permissions = ("android.permission.INTERNET", "ACCESS_LOCAL_NETWORK")
-    found_permissions = [name for name in forbidden_permissions if name in manifest]
-    if found_permissions:
-        fail("forbidden permissions: " + ", ".join(found_permissions))
     print(f"A6 product authority isolation PASS: {product}")
 
 

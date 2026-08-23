@@ -7,6 +7,7 @@
 mod admission;
 mod local_api;
 mod startup;
+mod transport;
 
 pub use admission::{
     AuthenticatedLocalClient, FramedLocalClient, LocalAdmissionError, LocalAdmissionErrorKind,
@@ -21,4 +22,10 @@ pub use local_api::{
 pub use startup::{
     ReadyRuntime, StartupError, StartupErrorKind, StartupEvent, StartupEventKind, StartupIssue,
     StartupOutcome, StartupReport, host_startup,
+};
+pub use transport::{
+    AUTHENTICATED_BACKOFF_RESET, CONNECT_TIMEOUT, ConnectAttemptLimiter,
+    MAX_CONCURRENT_ATTEMPTS_PER_DEVICE, PermissionState, RETRY_BASE_MS, TransportCandidate,
+    TransportError, TransportManager, TransportMetrics, TransportState, TransportType,
+    os_jitter_sample, retry_delay_ms,
 };

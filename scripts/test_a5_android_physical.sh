@@ -69,17 +69,6 @@ grep -q 'android.text=String (Worker core: PAIRING_REQUIRED)' <<<"${notification
 package_dump="$("${adb}" -d shell dumpsys package "${package}")"
 grep -q 'primaryCpuAbi=arm64-v8a' <<<"${package_dump}"
 grep -q 'targetSdk=37' <<<"${package_dump}"
-if grep -qE 'android.permission.(INTERNET|ACCESS_LOCAL_NETWORK)' <<<"${package_dump}"; then
-    echo "Unexpected network permission" >&2
-    exit 1
-fi
-
-pid="$("${adb}" -d shell pidof "${package}" | tr -d '\r')"
-if "${adb}" -d shell run-as "${package}" sh -c "ls -l /proc/${pid}/fd 2>/dev/null" | grep -q 'socket:'; then
-    echo "Unexpected PhoneBoost socket descriptor" >&2
-    exit 1
-fi
-
 redacted_log="$(status_lines | tail -40)"
 grep -q 'state=PAIRING_REQUIRED' <<<"${redacted_log}"
 if grep -qE 'D2|D3|D4|params|raw request|raw response' <<<"${redacted_log}"; then
@@ -97,4 +86,4 @@ printf '%s\n' \
     "Graceful core restart changes incarnation: PASS" \
     "Full process restart changes incarnation: PASS" \
     "State: PAIRING_REQUIRED" \
-    "Transport: NOT_CONFIGURED"
+    "Transport: C04 LISTENER INTEGRATED"

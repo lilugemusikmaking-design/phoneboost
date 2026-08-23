@@ -6,6 +6,15 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+c04-test-probe = []
+
+[[bin]]
+name = "c04-lan-probe"
+path = "src/bin/c04-lan-probe.rs"
+required-features = ["c04-test-probe"]
+
 [dependencies]
 rustix = { workspace = true, features = ["fs", "net", "process"] }
 serde_json.workspace = true

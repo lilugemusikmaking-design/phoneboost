@@ -23,10 +23,18 @@ class PhoneBoostService : Service() {
         @Volatile
         var isActive: Boolean = false
             private set
+
+        @Volatile
+        private var latestTransport = AndroidTransportSnapshot.unavailable(
+            LanPermissionState.NOT_REQUIRED_API_LT_37,
+        )
+
+        fun transportSnapshot(): AndroidTransportSnapshot = latestTransport
     }
 
     private var healthThread: HandlerThread? = null
     private var healthHandler: Handler? = null
+    private var localIpTransport: LocalIpTransport? = null
     private val sampleHealth = object : Runnable {
         override fun run() {
             try {
@@ -82,10 +90,16 @@ class PhoneBoostService : Service() {
         )
         isActive = true
         startHealthSampler()
+        startLocalIpTransport()
         Log.i(LOG_TAG, "FGS_STARTED state=PAIRING_REQUIRED")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (localIpTransport == null && lanPermissionState() != LanPermissionState.DENIED) {
+            startLocalIpTransport()
+        }
+        return START_NOT_STICKY
+    }
 
     override fun onDestroy() {
         isActive = false
@@ -93,6 +107,10 @@ class PhoneBoostService : Service() {
         healthThread?.quitSafely()
         healthHandler = null
         healthThread = null
+        localIpTransport?.stop()
+        latestTransport = localIpTransport?.snapshot()
+            ?: AndroidTransportSnapshot.unavailable(lanPermissionState())
+        localIpTransport = null
         WorkerNative.workerStop()
         stopForeground(STOP_FOREGROUND_REMOVE)
         Log.i(LOG_TAG, "WORKER_STOP")
@@ -106,6 +124,24 @@ class PhoneBoostService : Service() {
         thread.start()
         healthThread = thread
         healthHandler = Handler(thread.looper).also { it.post(sampleHealth) }
+    }
+
+    private fun startLocalIpTransport() {
+        val transport = LocalIpTransport(this)
+        latestTransport = transport.snapshot()
+        if (!transport.start()) {
+            latestTransport = transport.snapshot()
+            return
+        }
+        localIpTransport = transport
+        latestTransport = transport.snapshot()
+        Handler(mainLooper).post(object : Runnable {
+            override fun run() {
+                val activeTransport = localIpTransport ?: return
+                latestTransport = activeTransport.snapshot()
+                Handler(mainLooper).postDelayed(this, 500)
+            }
+        })
     }
 
     private fun createNotificationChannel() {
