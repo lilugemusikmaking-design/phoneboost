@@ -333,6 +333,17 @@ name = "pb-types"
 version = "0.1.0"
 
 [[package]]
+name = "pb-worker-core"
+version = "0.1.0"
+
+[[package]]
+name = "phoneboost-core-jni"
+version = "0.1.0"
+dependencies = [
+ "pb-worker-core",
+]
+
+[[package]]
 name = "poly1305"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

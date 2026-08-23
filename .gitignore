@@ -3,4 +3,9 @@
 /.rustup-home/
 /.tooling/
 /inputs/
+/.work/
+/android/.gradle/
+/android/.kotlin/
+/android/app/build/
+/android/local.properties
 *.zip

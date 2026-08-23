@@ -1,0 +1,17 @@
+[package]
+name = "phoneboost-core-jni"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+jni-test-probes = []
+
+[dependencies]
+pb-worker-core = { path = "../../crates/pb-worker-core" }
+

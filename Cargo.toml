@@ -6,6 +6,8 @@ members = [
     "crates/pb-secure",
     "crates/pb-host",
     "crates/pb-cli",
+    "crates/pb-worker-core",
+    "android/core-jni",
     "tools/pb-fixture-gen",
     "tools/pb-fixture-check",
     "tests/linux-replay",

@@ -1,0 +1,128 @@
+package org.phoneboost.app
+
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Typeface
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+
+class MainActivity : Activity() {
+    companion object {
+        private const val LOG_TAG = "PhoneBoostA5"
+    }
+
+    private lateinit var statusView: TextView
+    private val handler = Handler(Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(buildContent())
+        requestNotificationPermission()
+        startForegroundService(Intent(this, PhoneBoostService::class.java))
+        handler.postDelayed(::refreshStatus, 350)
+        Log.i(LOG_TAG, "UI_CREATED")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        handler.postDelayed(::refreshStatus, 150)
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    private fun buildContent(): ScrollView {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 56, 40, 40)
+        }
+        content.addView(TextView(this).apply {
+            text = "PhoneBoost"
+            textSize = 28f
+            setTypeface(typeface, Typeface.BOLD)
+        })
+        content.addView(Button(this).apply {
+            text = "Recreate UI"
+            contentDescription = "Recreate UI"
+            setOnClickListener { recreate() }
+        })
+        content.addView(Button(this).apply {
+            text = "Refresh observations"
+            contentDescription = "Refresh observations"
+            setOnClickListener { refreshStatus() }
+        })
+        statusView = TextView(this).apply {
+            text = "Worker core: STARTING"
+            textSize = 18f
+            setPadding(0, 24, 0, 0)
+        }
+        content.addView(statusView)
+        return ScrollView(this).apply {
+            addView(
+                content,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+    }
+
+    private fun refreshStatus() {
+        val worker = WorkerNative.snapshot()
+        val observations = readAndroidObservations()
+        val running = worker.state == WorkerNative.STATE_PAIRING_REQUIRED &&
+            worker.incarnationNonzero && PhoneBoostService.isActive
+        val panicContained = WorkerNative.workerPanicProbe() == WorkerNative.ERROR_PANIC_CONTAINED
+        val state = when (worker.state) {
+            WorkerNative.STATE_PAIRING_REQUIRED -> "PAIRING_REQUIRED"
+            WorkerNative.STATE_COLD_START -> "COLD_START"
+            WorkerNative.STATE_STOPPED -> "STOPPED"
+            else -> "ERROR"
+        }
+        val incarnation = if (worker.incarnationNonzero) worker.shortIncarnation() else "UNAVAILABLE"
+        val battery = observations.batteryPercent?.let { "$it%" } ?: "UNKNOWN"
+
+        statusView.text = buildString {
+            appendLine("Worker core: ${if (running) "RUNNING" else "NOT_RUNNING"}")
+            appendLine("State: $state")
+            appendLine("Incarnation: $incarnation")
+            appendLine("Incarnation bits: ${if (worker.incarnationNonzero) 128 else 0}")
+            appendLine("Foreground service: ${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"}")
+            appendLine("JNI panic boundary: ${if (panicContained) "PASS" else "FAIL"}")
+            appendLine("Android API: ${observations.api}")
+            appendLine("Thermal: ${observations.thermal}")
+            appendLine("Battery: $battery")
+            appendLine("Charging: ${if (observations.charging) "YES" else "NO"}")
+            appendLine("Power save: ${if (observations.powerSave) "ON" else "OFF"}")
+            appendLine("Memory observed: ${observations.availableMemoryMib} MiB")
+            appendLine("Health scheduler: DEFERRED_TO_A6")
+            append("Transport: NOT_CONFIGURED")
+        }
+        Log.i(
+            LOG_TAG,
+            "UI_STATUS state=$state incarnation=$incarnation " +
+                "fgs=${if (PhoneBoostService.isActive) "ACTIVE" else "INACTIVE"}",
+        )
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4105)
+        }
+    }
+}
