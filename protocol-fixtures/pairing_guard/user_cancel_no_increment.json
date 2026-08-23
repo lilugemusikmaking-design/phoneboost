@@ -1,0 +1,13 @@
+{
+  "base_now_ms": 1700000000000,
+  "case": "user_cancel_no_increment",
+  "cooldown_until_wall_ms": null,
+  "extra": {
+    "mismatch_count_after": 1,
+    "mismatch_count_before": 1,
+    "state_changed": false
+  },
+  "fixture_schema": "phoneboost.pairing_guard.v1",
+  "mismatch_count": 1,
+  "updated_wall_ms": 1700000000000
+}

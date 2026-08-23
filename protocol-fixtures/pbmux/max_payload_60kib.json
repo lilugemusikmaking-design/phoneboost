@@ -1,0 +1,9 @@
+{
+  "binary_file": "max_payload_60kib.bin",
+  "fixture_schema": "phoneboost.pbmux.max_payload.v1",
+  "frame_sha256": "558f6b735f046baa7b12b2a117ef2239049f0d1ac778d6131636fcc8f233e7b2",
+  "noise_ciphertext_len_with_16_byte_tag": 61496,
+  "payload_len": 61440,
+  "payload_rule": "payload[i] = i mod 256",
+  "pbmux_plaintext_len": 61480
+}

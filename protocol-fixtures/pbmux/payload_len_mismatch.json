@@ -1,0 +1,9 @@
+{
+  "actual_payload_len": 0,
+  "allocation_after": 0,
+  "allocation_before": 0,
+  "declared_payload_len": 1,
+  "error_kind": "PayloadLengthMismatch",
+  "fixture_schema": "phoneboost.pbmux.payload_mismatch.v1",
+  "frame_hex": "50424d31010000030001002800000000000000070000000000000000000000000000000100000001"
+}
