@@ -668,6 +668,7 @@ mod tests {
     use std::thread;
 
     use super::*;
+    use pb_types::PeerId;
 
     const MIB: u64 = 1024 * 1024;
 
@@ -695,7 +696,7 @@ mod tests {
     }
 
     fn authority(now_ms: u64) -> (ControllerLeaseManager, AuthenticatedSession, LeaseId) {
-        let session = AuthenticatedSession::test_only(7);
+        let session = AuthenticatedSession::test_only(PeerId::from_sha256_digest([7; 32]));
         let mut leases = ControllerLeaseManager::new(incarnation());
         let lease = leases.acquire(&session, now_ms).expect("lease");
         (leases, session, lease)
@@ -1055,14 +1056,15 @@ mod tests {
     #[test]
     fn auth_t01_to_t04_no_auth_no_lease_wrong_peer_and_expiry_fail_closed() {
         let mut leases = ControllerLeaseManager::new(incarnation());
-        let unauth = AuthenticatedSession::test_unauthenticated(7);
+        let unauth =
+            AuthenticatedSession::test_unauthenticated(PeerId::from_sha256_digest([7; 32]));
         assert_eq!(
             leases.acquire(&unauth, 0),
             Err(crate::LeaseError::Unauthenticated)
         );
-        let session = AuthenticatedSession::test_only(7);
+        let session = AuthenticatedSession::test_only(PeerId::from_sha256_digest([7; 32]));
         let lease = leases.acquire(&session, 0).expect("lease");
-        let other = AuthenticatedSession::test_only(8);
+        let other = AuthenticatedSession::test_only(PeerId::from_sha256_digest([8; 32]));
         let mut guard = ready_guard(0);
         assert_eq!(
             guard.reserve(&mut leases, &other, lease, request(1, MIB), 1),

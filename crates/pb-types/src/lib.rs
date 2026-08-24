@@ -23,6 +23,35 @@ pub const PAIRING_COOLDOWN_MS: u64 = 600_000;
 pub const PAIRING_MISMATCH_LIMIT: u8 = 3;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct PeerId([u8; 32]);
+
+impl PeerId {
+    pub const fn from_sha256_digest(digest: [u8; 32]) -> Self {
+        Self(digest)
+    }
+
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    pub const fn into_bytes(self) -> [u8; 32] {
+        self.0
+    }
+}
+
+impl From<[u8; 32]> for PeerId {
+    fn from(digest: [u8; 32]) -> Self {
+        Self::from_sha256_digest(digest)
+    }
+}
+
+impl From<PeerId> for [u8; 32] {
+    fn from(peer_id: PeerId) -> Self {
+        peer_id.into_bytes()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[repr(u8)]
 pub enum Channel {
     Control = 0,

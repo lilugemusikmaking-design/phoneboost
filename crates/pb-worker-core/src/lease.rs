@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, VecDeque};
 
 use crate::{WorkerIncarnationId, random_nonzero_128};
+use pb_types::PeerId;
 
 pub const LEASE_TTL_MS: u64 = 60_000;
 pub const RECOMMENDED_RENEWAL_MS: u64 = 20_000;
@@ -67,13 +68,13 @@ pub enum CommandAdmission {
 /// This capability deliberately has no constructor in product builds. C04-C06
 /// will eventually own its creation after authenticated, pinned admission.
 pub struct AuthenticatedSession {
-    peer_id: u64,
+    peer_id: PeerId,
     authenticated_and_pinned: bool,
 }
 
 impl AuthenticatedSession {
     #[cfg(test)]
-    pub(crate) const fn test_only(peer_id: u64) -> Self {
+    pub(crate) const fn test_only(peer_id: PeerId) -> Self {
         Self {
             peer_id,
             authenticated_and_pinned: true,
@@ -81,7 +82,7 @@ impl AuthenticatedSession {
     }
 
     #[cfg(test)]
-    pub(crate) const fn test_unauthenticated(peer_id: u64) -> Self {
+    pub(crate) const fn test_unauthenticated(peer_id: PeerId) -> Self {
         Self {
             peer_id,
             authenticated_and_pinned: false,
@@ -93,7 +94,7 @@ impl AuthenticatedSession {
 pub(crate) struct LeaseProof {
     pub(crate) lease_id: LeaseId,
     pub(crate) incarnation: WorkerIncarnationId,
-    pub(crate) peer_id: u64,
+    pub(crate) peer_id: PeerId,
 }
 
 struct TerminalEntry {
@@ -103,7 +104,7 @@ struct TerminalEntry {
 
 struct ActiveLease {
     id: LeaseId,
-    peer_id: u64,
+    peer_id: PeerId,
     incarnation: WorkerIncarnationId,
     expires_at_ms: u64,
     next_command_sequence: u64,
@@ -118,7 +119,7 @@ pub struct ControllerLeaseManager {
     active: Option<ActiveLease>,
     state: LeaseState,
     last_transition: Option<LeaseTransition>,
-    last_released: Option<(LeaseId, u64, WorkerIncarnationId)>,
+    last_released: Option<(LeaseId, PeerId, WorkerIncarnationId)>,
 }
 
 impl ControllerLeaseManager {
@@ -322,13 +323,18 @@ impl ControllerLeaseManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pb_types::PeerId;
 
     fn incarnation(byte: u8) -> WorkerIncarnationId {
         WorkerIncarnationId([byte; 16])
     }
 
+    fn peer_id(byte: u8) -> PeerId {
+        PeerId::from_sha256_digest([byte; 32])
+    }
+
     fn active() -> (ControllerLeaseManager, AuthenticatedSession, LeaseId) {
-        let session = AuthenticatedSession::test_only(7);
+        let session = AuthenticatedSession::test_only(peer_id(7));
         let mut manager = ControllerLeaseManager::new(incarnation(1));
         let lease = manager.acquire(&session, 1_000).expect("test lease");
         (manager, session, lease)
@@ -337,7 +343,7 @@ mod tests {
     #[test]
     fn auth_t01_acquire_requires_authenticated_pinned_session() {
         let mut manager = ControllerLeaseManager::new(incarnation(1));
-        let session = AuthenticatedSession::test_unauthenticated(7);
+        let session = AuthenticatedSession::test_unauthenticated(peer_id(7));
         assert_eq!(
             manager.acquire(&session, 0),
             Err(LeaseError::Unauthenticated)
@@ -347,7 +353,7 @@ mod tests {
     #[test]
     fn l_t03_second_peer_is_busy() {
         let (mut manager, _, _) = active();
-        let second = AuthenticatedSession::test_only(8);
+        let second = AuthenticatedSession::test_only(peer_id(8));
         assert_eq!(
             manager.acquire(&second, 1_001),
             Err(LeaseError::ControllerBusy)
@@ -357,7 +363,7 @@ mod tests {
     #[test]
     fn l_t02_lease_id_is_random_128_and_nonzero() {
         let (_, _, first) = active();
-        let session = AuthenticatedSession::test_only(7);
+        let session = AuthenticatedSession::test_only(peer_id(7));
         let mut manager = ControllerLeaseManager::new(incarnation(1));
         let second = manager.acquire(&session, 0).expect("second id");
         assert!(first.is_nonzero());
@@ -455,7 +461,7 @@ mod tests {
     #[test]
     fn l_t13_wrong_peer_or_lease_is_stale() {
         let (mut manager, session, lease) = active();
-        let other = AuthenticatedSession::test_only(8);
+        let other = AuthenticatedSession::test_only(peer_id(8));
         assert_eq!(
             manager.begin_mutation(&other, lease, 0, 1_001),
             CommandAdmission::StaleLease
