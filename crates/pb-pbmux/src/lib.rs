@@ -4,10 +4,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use pb_types::{
-    Channel, ControlType, ErrorScope, FLAG_END, FLAG_START, KNOWN_FLAGS, MAX_INFLIGHT_CONTROL,
-    MAX_INFLIGHT_PER_DATA_CHANNEL, MAX_LOGICAL_MESSAGE, MAX_PBMUX_PAYLOAD, MAX_PBMUX_PLAINTEXT,
-    MAX_REASSEMBLY_PER_CHANNEL, MAX_REASSEMBLY_PER_SESSION, PBMUX_HEADER_LEN, PBMUX_MAGIC,
-    PBMUX_VERSION, ReasonCode, is_known_message_type,
+    Channel, ControlType, ErrorScope, FLAG_ACK_REQUIRED, FLAG_END, FLAG_START, KNOWN_FLAGS,
+    MAX_INFLIGHT_CONTROL, MAX_INFLIGHT_PER_DATA_CHANNEL, MAX_LOGICAL_MESSAGE, MAX_PBMUX_PAYLOAD,
+    MAX_PBMUX_PLAINTEXT, MAX_REASSEMBLY_PER_CHANNEL, MAX_REASSEMBLY_PER_SESSION, PBMUX_HEADER_LEN,
+    PBMUX_MAGIC, PBMUX_VERSION, ReasonCode, is_known_message_type,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -670,6 +670,9 @@ pub enum DispatchMode {
     Committed,
 }
 
+/// Authorize a decoded frame for a given dispatch mode. In committed mode any
+/// non-PairConfirm frame is allowed; while pairing only a small CONTROL set is
+/// permitted (Ping/Pong/Error/SessionClose).
 pub fn authorize_dispatch(frame: &Frame, mode: DispatchMode) -> Result<(), PbmuxError> {
     if frame.header.channel == Channel::Control
         && frame.header.message_type == ControlType::PairConfirm as u16
@@ -695,6 +698,142 @@ pub fn authorize_dispatch(frame: &Frame, mode: DispatchMode) -> Result<(), Pbmux
     } else {
         Err(PbmuxError::logical(PbmuxErrorKind::PairingNotCommitted))
     }
+}
+
+/// Build a locked CONTROL/5 COMMAND frame. The frame profile exactly matches
+/// addendum §5.1: START|END|ACK_REQUIRED, nonzero request_id, single fragment,
+/// payload and logical length both 46. The private COMMAND codec is the only
+/// validator of the payload bytes.
+pub fn build_command_frame(
+    payload: &CommandPayload,
+    request_id: u64,
+    sequence: u64,
+) -> Result<Frame, PbmuxError> {
+    if request_id == 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    let payload = encode_command_payload(payload)?;
+    debug_assert_eq!(payload.len(), COMMAND_PAYLOAD_LEN);
+    Ok(Frame {
+        header: Header {
+            channel: Channel::Control,
+            flags: FLAG_START | FLAG_END | FLAG_ACK_REQUIRED,
+            message_type: ControlType::Command as u16,
+            request_id,
+            sequence,
+            fragment_index: 0,
+            payload_len: COMMAND_PAYLOAD_LEN as u32,
+            logical_message_len: COMMAND_PAYLOAD_LEN as u32,
+        },
+        payload,
+    })
+}
+
+/// Parse and strictly validate a C07 COMMAND frame. Every locked profile field
+/// must match exactly before the private decoder runs; any mismatch is a
+/// malformed logical message.
+pub fn parse_command_frame(frame: &Frame) -> Result<CommandPayload, PbmuxError> {
+    let h = &frame.header;
+    if h.channel != Channel::Control
+        || h.message_type != ControlType::Command as u16
+        || h.flags != FLAG_START | FLAG_END | FLAG_ACK_REQUIRED
+        || h.request_id == 0
+        || h.fragment_index != 0
+        || h.payload_len != COMMAND_PAYLOAD_LEN as u32
+        || h.logical_message_len != COMMAND_PAYLOAD_LEN as u32
+        || frame.payload.len() != COMMAND_PAYLOAD_LEN
+    {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    decode_command_payload(&frame.payload)
+}
+
+/// Build a locked CONTROL/6 COMMAND_ACK frame (addendum §6.1): flags
+/// START|END, nonzero request_id matching the COMMAND being acknowledged,
+/// payload and logical length 98. No request correlation state is invented
+/// here; only the nonzero request_id profile rule is enforced.
+pub fn build_command_ack_frame(
+    payload: &AckPayload,
+    request_id: u64,
+    sequence: u64,
+) -> Result<Frame, PbmuxError> {
+    if request_id == 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    let payload = encode_ack_payload(payload)?;
+    debug_assert_eq!(payload.len(), ACK_PAYLOAD_LEN);
+    Ok(Frame {
+        header: Header {
+            channel: Channel::Control,
+            flags: FLAG_START | FLAG_END,
+            message_type: ControlType::CommandAck as u16,
+            request_id,
+            sequence,
+            fragment_index: 0,
+            payload_len: ACK_PAYLOAD_LEN as u32,
+            logical_message_len: ACK_PAYLOAD_LEN as u32,
+        },
+        payload,
+    })
+}
+
+/// Parse an exact locked CONTROL/6 COMMAND_ACK frame and return its payload.
+pub fn parse_command_ack_frame(frame: &Frame) -> Result<AckPayload, PbmuxError> {
+    let h = &frame.header;
+    if h.channel != Channel::Control
+        || h.message_type != ControlType::CommandAck as u16
+        || h.flags != FLAG_START | FLAG_END
+        || h.request_id == 0
+        || h.fragment_index != 0
+        || h.payload_len != ACK_PAYLOAD_LEN as u32
+        || h.logical_message_len != ACK_PAYLOAD_LEN as u32
+        || frame.payload.len() != ACK_PAYLOAD_LEN
+    {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    decode_ack_payload(&frame.payload)
+}
+
+/// Build a locked METRICS/1 HEARTBEAT frame (addendum §7.1): unsolicited
+/// one-way with `request_id = 0`, flags START|END, payload and logical
+/// length 110. No ACK_REQUIRED is ever set.
+pub fn build_heartbeat_frame(
+    payload: &HeartbeatPayload,
+    sequence: u64,
+) -> Result<Frame, PbmuxError> {
+    let payload = encode_heartbeat_payload(payload)?;
+    debug_assert_eq!(payload.len(), HEARTBEAT_PAYLOAD_LEN);
+    Ok(Frame {
+        header: Header {
+            channel: Channel::Metrics,
+            flags: FLAG_START | FLAG_END,
+            message_type: 1,
+            request_id: 0,
+            sequence,
+            fragment_index: 0,
+            payload_len: HEARTBEAT_PAYLOAD_LEN as u32,
+            logical_message_len: HEARTBEAT_PAYLOAD_LEN as u32,
+        },
+        payload,
+    })
+}
+
+/// Parse an exact locked METRICS/1 HEARTBEAT frame and return its payload.
+/// The heartbeat never carries a request_id and must be a single frame.
+pub fn parse_heartbeat_frame(frame: &Frame) -> Result<HeartbeatPayload, PbmuxError> {
+    let h = &frame.header;
+    if h.channel != Channel::Metrics
+        || h.message_type != 1
+        || h.flags != FLAG_START | FLAG_END
+        || h.request_id != 0
+        || h.fragment_index != 0
+        || h.payload_len != HEARTBEAT_PAYLOAD_LEN as u32
+        || h.logical_message_len != HEARTBEAT_PAYLOAD_LEN as u32
+        || frame.payload.len() != HEARTBEAT_PAYLOAD_LEN
+    {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    decode_heartbeat_payload(&frame.payload)
 }
 
 #[derive(Debug, Default)]
@@ -1724,5 +1863,220 @@ mod tests {
             bytes[79] = pct;
             assert_hb_reject(&bytes);
         }
+    }
+    #[test]
+    fn command_frame_encode_decode_round_trip() {
+        let payload = CommandPayload {
+            command_type: 1, // ACQUIRE
+            lease_present: 0,
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0x11; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let frame = build_command_frame(&payload, 0x0102_0304_0506_0708, 7).unwrap();
+        assert_eq!(frame.header.channel, Channel::Control);
+        assert_eq!(frame.header.message_type, ControlType::Command as u16);
+        assert_eq!(
+            frame.header.flags,
+            FLAG_START | FLAG_END | FLAG_ACK_REQUIRED
+        );
+        assert_eq!(frame.header.fragment_index, 0);
+        let bytes = encode(&frame).unwrap();
+        let parsed = parse_command_frame(&decode(&bytes).unwrap()).unwrap();
+        assert_eq!(parsed, payload);
+        let rebuilt =
+            build_command_frame(&parsed, frame.header.request_id, frame.header.sequence).unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), bytes);
+    }
+
+    #[test]
+    fn command_ack_frame_encode_decode_round_trip() {
+        let frame =
+            build_command_ack_frame(&valid_completed_ack(), 0x0102_0304_0506_0708, 3).unwrap();
+        assert_eq!(frame.header.channel, Channel::Control);
+        assert_eq!(frame.header.message_type, ControlType::CommandAck as u16);
+        assert_eq!(frame.header.flags, FLAG_START | FLAG_END);
+        let bytes = encode(&frame).unwrap();
+        let parsed = parse_command_ack_frame(&decode(&bytes).unwrap()).unwrap();
+        assert_eq!(parsed, valid_completed_ack());
+        let rebuilt =
+            build_command_ack_frame(&parsed, frame.header.request_id, frame.header.sequence)
+                .unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), bytes);
+    }
+
+    #[test]
+    fn heartbeat_frame_encode_decode_round_trip() {
+        let frame = build_heartbeat_frame(&valid_heartbeat(), 4).unwrap();
+        assert_eq!(frame.header.channel, Channel::Metrics);
+        assert_eq!(frame.header.message_type, 1);
+        assert_eq!(frame.header.request_id, 0);
+        assert_eq!(frame.header.flags, FLAG_START | FLAG_END);
+        let bytes = encode(&frame).unwrap();
+        let parsed = parse_heartbeat_frame(&decode(&bytes).unwrap()).unwrap();
+        assert_eq!(parsed, valid_heartbeat());
+        let rebuilt = build_heartbeat_frame(&parsed, frame.header.sequence).unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), bytes);
+    }
+
+    #[test]
+    fn command_frame_matches_locked_fixture_bytes() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-01-acquire-valid.bin"
+        );
+        let frame = decode(fixture).unwrap();
+        let payload = parse_command_frame(&frame).unwrap();
+        assert_eq!(payload.command_type, 1);
+        let rebuilt =
+            build_command_frame(&payload, frame.header.request_id, frame.header.sequence).unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), fixture);
+    }
+
+    #[test]
+    fn command_ack_frame_matches_locked_fixture_bytes() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-06-ack-acquire-completed.bin"
+        );
+        let frame = decode(fixture).unwrap();
+        let payload = parse_command_ack_frame(&frame).unwrap();
+        assert_eq!(payload.ack_state, 2);
+        let rebuilt =
+            build_command_ack_frame(&payload, frame.header.request_id, frame.header.sequence)
+                .unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), fixture);
+    }
+
+    #[test]
+    fn heartbeat_frame_matches_locked_fixture_bytes() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-01-no-lease.bin"
+        );
+        let frame = decode(fixture).unwrap();
+        let payload = parse_heartbeat_frame(&frame).unwrap();
+        assert_eq!(payload.thermal_status, 2);
+        let rebuilt = build_heartbeat_frame(&payload, frame.header.sequence).unwrap();
+        assert_eq!(encode(&rebuilt).unwrap(), fixture);
+    }
+    #[test]
+    fn command_frame_negative_profile() {
+        let payload = CommandPayload {
+            command_type: 1,
+            lease_present: 0,
+            lease_id: [0u8; 16],
+            command_seq: 0,
+            trace_id: [0x11; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        };
+        let base = build_command_frame(&payload, 0x0102_0304_0506_0708, 1).unwrap();
+        let reject = |frame: &Frame| {
+            let err = parse_command_frame(frame).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        };
+
+        let mut frame = base.clone();
+        frame.header.channel = Channel::Resource;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.message_type = ControlType::Pong as u16;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.flags = FLAG_START | FLAG_END; // missing ACK_REQUIRED
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.request_id = 0;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.payload_len = COMMAND_PAYLOAD_LEN as u32 + 1;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.logical_message_len = COMMAND_PAYLOAD_LEN as u32 + 1;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.fragment_index = 1;
+        reject(&frame);
+
+        // Wrong payload body length must also fail the profile pre-decoder.
+        let mut frame = base;
+        frame.payload.pop();
+        reject(&frame);
+
+        let err = build_command_frame(&payload, 0, 1).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+
+    #[test]
+    fn command_ack_frame_negative_profile() {
+        let base =
+            build_command_ack_frame(&valid_completed_ack(), 0x0102_0304_0506_0708, 1).unwrap();
+        let reject = |frame: &Frame| {
+            let err = parse_command_ack_frame(frame).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        };
+
+        let mut frame = base.clone();
+        frame.header.channel = Channel::Metrics;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.message_type = ControlType::Ping as u16;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.flags = FLAG_START | FLAG_END | FLAG_ACK_REQUIRED;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.request_id = 0;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.payload_len = ACK_PAYLOAD_LEN as u32 - 1;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.logical_message_len = ACK_PAYLOAD_LEN as u32 - 1;
+        reject(&frame);
+        let mut frame = base;
+        frame.header.fragment_index = 1;
+        reject(&frame);
+
+        let err = build_command_ack_frame(&valid_completed_ack(), 0, 1).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+
+    #[test]
+    fn heartbeat_frame_negative_profile() {
+        let base = build_heartbeat_frame(&valid_heartbeat(), 1).unwrap();
+        let reject = |frame: &Frame| {
+            let err = parse_heartbeat_frame(frame).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        };
+
+        let mut frame = base.clone();
+        frame.header.channel = Channel::Control;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.message_type = 2;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.flags = FLAG_START | FLAG_END | FLAG_ACK_REQUIRED;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.request_id = 1; // heartbeat must carry request_id = 0
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.payload_len = HEARTBEAT_PAYLOAD_LEN as u32 - 1;
+        reject(&frame);
+        let mut frame = base.clone();
+        frame.header.logical_message_len = HEARTBEAT_PAYLOAD_LEN as u32 - 1;
+        reject(&frame);
+        let mut frame = base;
+        frame.header.fragment_index = 2;
+        reject(&frame);
     }
 }
