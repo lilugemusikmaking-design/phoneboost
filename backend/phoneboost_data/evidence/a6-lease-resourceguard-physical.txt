@@ -1,0 +1,37 @@
+PhoneBoost A6 C07/C08 physical evidence
+
+A5 checkpoint SHA
+b0ff840c5fdca1a066d2f8e99f36303030555834
+
+Actor tests
+- C07 L-T01 through L-T15: PASS
+- C08 RG-T01 through RG-T18: PASS
+- Authority AUTH-T01 through AUTH-T04: PASS
+- Fake monotonic clock values only; no 30 s or 60 s unit-test sleeps
+- 32 concurrent 8 MiB attempts: accepted/committed total bounded to 128 MiB
+
+Physical health sampling
+- Android API 36, arm64-v8a
+- Foreground service connectedDevice: PASS
+- 7 local samples observed at approximately 2 s cadence
+- ResourceGuard consumed the latest Android-local sample
+- App and foreground service remained alive
+
+Real current observation bands
+- Safety: REFUSED_MEMORY_PRESSURE (recovery threshold not met at observation time)
+- Thermal: NONE
+- Battery: NOMINAL
+- Charging: true
+- Power save: false
+- lowMemory: false
+- Available memory: 859 MiB
+
+Remote authority state
+- Controller lease: NONE
+- Remote control: INACTIVE_FOR_REMOTE_CONTROL
+- Transport: NOT_CONFIGURED
+
+Artifact SHA-256
+- APK app-debug.apk: faf0cd8a849a2b44bdf5a647554228b8382d66f5ed5acfc8a9ca1a3fe82bd80f
+- APK embedded arm64-v8a libphoneboost_core_jni.so: 2d377e041f7c6698b0ba3d1fd0550dfc98c685ea12d08410709cf8b94616cd69
+- Product arm64-v8a libphoneboost_core_jni.so (no test feature): 570b076bfd9dd09322ab3a68c99293ff58bd58d157c095a2cb82c762da832dde
