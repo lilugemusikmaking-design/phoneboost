@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use pb_pbmux::{
     DispatchMode, Frame, Header, SequenceTracker, authorize_dispatch, decode, encode,
-    pair_confirm_frame, validate_pair_confirm,
+    pair_confirm_frame, parse_command_ack_frame, parse_command_frame, validate_pair_confirm,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -1048,6 +1048,12 @@ fn run_authenticated_loop(
                     }
                     outstanding = None;
                     runtime.heartbeat();
+                }
+                Ok(ControlType::Command) => {
+                    parse_command_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                }
+                Ok(ControlType::CommandAck) => {
+                    parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
                 }
                 Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
                 _ => return Err(RuntimeError::Pbmux),
