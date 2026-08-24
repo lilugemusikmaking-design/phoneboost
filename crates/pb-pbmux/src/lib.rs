@@ -93,7 +93,7 @@ impl PbmuxError {
         match self.kind {
             PbmuxErrorKind::FrameTooLarge => ReasonCode::FrameTooLarge,
             PbmuxErrorKind::UnsupportedMessage => ReasonCode::UnsupportedMessage,
-            PbmuxErrorKind::InvalidCommandPayload => ReasonCode::LocalBadRequest,
+            PbmuxErrorKind::InvalidCommandPayload => ReasonCode::UnsupportedMessage,
             PbmuxErrorKind::SequenceMismatch => ReasonCode::SequenceError,
             PbmuxErrorKind::PairingNotCommitted => ReasonCode::PairingNotCommitted,
             PbmuxErrorKind::PairConfirmUnexpected => ReasonCode::PairConfirmUnexpected,
