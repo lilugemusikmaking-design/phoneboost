@@ -46,6 +46,23 @@ fact must carry provenance LIVE / RECORDED EVIDENCE / ROADMAP; no silent fallbac
 - Frontend: 15/15 UI expectations verified end-to-end on public preview URL.
 - No fabricated LIVE data was observed anywhere.
 
+## Design pass — 2026-06 (UI/UX polish, design-only)
+- Dark tactical redesign: charcoal/graphite base (#0A0A0A/#111), restrained neon
+  green (#39FF14) reserved for RECORDED-EVIDENCE/verified accents, amber for warnings.
+- Fonts: Chivo (display), Inter (body), JetBrains Mono (technical) via Google Fonts.
+- Added sticky left side-rail nav (Overview, Local↔Link↔Remote, State Ladder,
+  Evidence, Roadmap) with IntersectionObserver scroll-spy active state.
+- Stronger hero identity + proposition + provenance chips; "Copy repo anchor"
+  buttons (sidebar + hero) — implements the P1 backlog item.
+- LOCAL↔SECURE LINK↔REMOTE rebuilt as one coherent 3-column topology with
+  connectors; host and remote domains kept visually distinct (never merged).
+- Five gates presented as independent numbered cards (no progress bar / no implied
+  sequence); all states remain honest UNAVAILABLE.
+- Premium evidence grid + slide-in drawer; roadmap color-coded (green/amber/neutral).
+- Truth model fully preserved: LIVE stays explicitly unavailable, no fabricated data.
+- Verified frontend E2E (see /app/test_reports/iteration_2.json): 8/8 flows pass.
+- Files: /app/frontend/src/pages/Dashboard.js (rewritten), src/index.css, tailwind.config.js, public/index.html. Backend unchanged.
+
 ## Backlog / next tasks
 - Native browser bridge: define a local presentation adapter that opens the
   private `phoneboostd` Unix socket via a signed native helper so LIVE mode
