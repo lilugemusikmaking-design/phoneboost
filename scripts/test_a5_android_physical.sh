@@ -2,7 +2,8 @@
 set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-adb="/home/mimir/phoneboost_ftest02_android_v1_work/.tooling/android-sdk/platform-tools/adb"
+shared_tooling="${PHONEBOOST_SHARED_TOOLING:-${workspace_root}/.tooling}"
+adb="${shared_tooling}/android-sdk/platform-tools/adb"
 apk="${workspace_root}/android/app/build/outputs/apk/debug/app-debug.apk"
 package="org.phoneboost.app"
 activity="${package}/.MainActivity"

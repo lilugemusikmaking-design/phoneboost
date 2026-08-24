@@ -2,7 +2,7 @@
 set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-shared_tooling="/home/mimir/phoneboost_ftest02_android_v1_work/.tooling"
+shared_tooling="${PHONEBOOST_SHARED_TOOLING:-${workspace_root}/.tooling}"
 android_sdk="${shared_tooling}/android-sdk"
 ndk_root="${android_sdk}/ndk/29.0.14206865"
 java_root="${shared_tooling}/java"
@@ -35,4 +35,3 @@ cp "${native_output}" "${jni_libs}/libphoneboost_core_jni.so"
 
 test -f "${workspace_root}/android/app/build/outputs/apk/debug/app-debug.apk"
 printf '%s\n' "A5 Android build PASS"
-

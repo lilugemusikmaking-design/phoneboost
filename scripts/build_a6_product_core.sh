@@ -2,7 +2,7 @@
 set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-shared_tooling="/home/mimir/phoneboost_ftest02_android_v1_work/.tooling"
+shared_tooling="${PHONEBOOST_SHARED_TOOLING:-${workspace_root}/.tooling}"
 android_sdk="${shared_tooling}/android-sdk"
 ndk_root="${android_sdk}/ndk/29.0.14206865"
 rust_toolchain="${shared_tooling}/rustup/toolchains/1.98.0-x86_64-unknown-linux-gnu"
