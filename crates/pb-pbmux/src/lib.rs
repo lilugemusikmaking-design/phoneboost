@@ -74,6 +74,22 @@ pub struct CommandPayload {
     pub payload_len: u16,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AckPayload {
+    pub ack_state: u8,
+    pub reason_code: u16,
+    pub command_seq: u64,
+    pub expected_present: u8,
+    pub expected: u64,
+    pub result_ref_present: u8,
+    pub lease_id: [u8; 16],
+    pub worker_incarnation: [u8; 16],
+    pub ttl_remaining_ms: u32,
+    pub next_command_seq: u64,
+    pub digest_present: u8,
+    pub digest: [u8; 32],
+}
+
 impl PbmuxError {
     const fn session(kind: PbmuxErrorKind) -> Self {
         Self {
@@ -283,6 +299,105 @@ fn decode_command_payload(bytes: &[u8]) -> Result<CommandPayload, PbmuxError> {
         provider_id,
         payload_len,
     })
+}
+
+const ACK_PAYLOAD_LEN: usize = 98;
+
+fn validate_ack_payload(ack: &AckPayload) -> Result<(), PbmuxError> {
+    if ack.expected_present > 1 || ack.result_ref_present > 1 || ack.digest_present > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if ack.expected_present == 0 && ack.expected != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if ack.result_ref_present == 0 {
+        let has_ref = ack.lease_id != [0u8; 16]
+            || ack.worker_incarnation != [0u8; 16]
+            || ack.ttl_remaining_ms != 0
+            || ack.next_command_seq != 0;
+        if has_ref {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    }
+    // V0.1 never carries a result digest: presence must be 0 and all digest bytes zero.
+    if ack.digest_present != 0 || ack.digest != [0u8; 32] {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if !matches!(ack.ack_state, 1 | 2 | 3) {
+        return Err(PbmuxError::logical(PbmuxErrorKind::UnsupportedMessage));
+    }
+    if ack.reason_code > 5 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::UnsupportedMessage));
+    }
+    if ack.ack_state == 1 {
+        if ack.reason_code != 0 || ack.expected_present != 0 || ack.result_ref_present != 0 {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    } else if ack.ack_state == 2 {
+        if ack.reason_code != 0 || ack.expected_present != 0 {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    } else {
+        // FAILED
+        if ack.reason_code == 0 || ack.result_ref_present != 0 {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+        if ack.reason_code == 3 {
+            if ack.expected_present != 1 {
+                return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+            }
+        } else if ack.expected_present != 0 {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    }
+    Ok(())
+}
+
+fn encode_ack_payload(payload: &AckPayload) -> Result<Vec<u8>, PbmuxError> {
+    validate_ack_payload(payload)?;
+    let mut buf = Vec::with_capacity(ACK_PAYLOAD_LEN);
+    buf.push(payload.ack_state);
+    buf.extend_from_slice(&payload.reason_code.to_be_bytes());
+    buf.extend_from_slice(&payload.command_seq.to_be_bytes());
+    buf.push(payload.expected_present);
+    buf.extend_from_slice(&payload.expected.to_be_bytes());
+    buf.push(payload.result_ref_present);
+    buf.extend_from_slice(&payload.lease_id);
+    buf.extend_from_slice(&payload.worker_incarnation);
+    buf.extend_from_slice(&payload.ttl_remaining_ms.to_be_bytes());
+    buf.extend_from_slice(&payload.next_command_seq.to_be_bytes());
+    buf.push(payload.digest_present);
+    buf.extend_from_slice(&payload.digest);
+    debug_assert_eq!(buf.len(), ACK_PAYLOAD_LEN);
+    Ok(buf)
+}
+
+fn decode_ack_payload(bytes: &[u8]) -> Result<AckPayload, PbmuxError> {
+    if bytes.len() != ACK_PAYLOAD_LEN {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    let mut lease_id = [0u8; 16];
+    lease_id.copy_from_slice(&bytes[21..37]);
+    let mut worker_incarnation = [0u8; 16];
+    worker_incarnation.copy_from_slice(&bytes[37..53]);
+    let mut digest = [0u8; 32];
+    digest.copy_from_slice(&bytes[66..98]);
+    let ack = AckPayload {
+        ack_state: bytes[0],
+        reason_code: read_u16(bytes, 1),
+        command_seq: read_u64(bytes, 3),
+        expected_present: bytes[11],
+        expected: read_u64(bytes, 12),
+        result_ref_present: bytes[20],
+        lease_id,
+        worker_incarnation,
+        ttl_remaining_ms: read_u32(bytes, 53),
+        next_command_seq: read_u64(bytes, 57),
+        digest_present: bytes[65],
+        digest,
+    };
+    validate_ack_payload(&ack)?;
+    Ok(ack)
 }
 
 fn validate_fragment_fields(header: &Header) -> Result<(), PbmuxError> {
@@ -950,5 +1065,255 @@ mod tests {
         let err = decode_command_payload(&bytes).unwrap_err();
         assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
         assert_eq!(err.scope, ErrorScope::LogicalMessage);
+    }
+    const fn valid_completed_ack() -> AckPayload {
+        AckPayload {
+            ack_state: 2,
+            reason_code: 0,
+            command_seq: 0,
+            expected_present: 0,
+            expected: 0,
+            result_ref_present: 0,
+            lease_id: [0u8; 16],
+            worker_incarnation: [0u8; 16],
+            ttl_remaining_ms: 0,
+            next_command_seq: 0,
+            digest_present: 0,
+            digest: [0u8; 32],
+        }
+    }
+
+    #[test]
+    fn gv_c07_06_ack_acquire_completed_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-06-ack-acquire-completed.bin"
+        );
+        assert_eq!(fixture.len(), PBMUX_HEADER_LEN + ACK_PAYLOAD_LEN);
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let ack = decode_ack_payload(payload).unwrap();
+        assert_eq!(ack.ack_state, 2);
+        assert_eq!(ack.reason_code, 0);
+        assert_eq!(ack.command_seq, 0);
+        assert_eq!(ack.expected_present, 0);
+        assert_eq!(ack.expected, 0);
+        assert_eq!(ack.result_ref_present, 1);
+        assert_eq!(
+            ack.lease_id,
+            [
+                0x00u8, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
+                0xdd, 0xee, 0xff
+            ]
+        );
+        assert_eq!(
+            ack.worker_incarnation,
+            [
+                0x10u8, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc,
+                0xed, 0xfe, 0x0f
+            ]
+        );
+        assert_eq!(ack.ttl_remaining_ms, 60_000);
+        assert_eq!(ack.next_command_seq, 0);
+        assert_eq!(ack.digest_present, 0);
+        assert_eq!(ack.digest, [0u8; 32]);
+        assert_eq!(encode_ack_payload(&ack).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_c07_07_ack_renew_completed_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-07-ack-renew-completed.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let ack = decode_ack_payload(payload).unwrap();
+        assert_eq!(ack.ack_state, 2);
+        assert_eq!(ack.reason_code, 0);
+        assert_eq!(ack.result_ref_present, 1);
+        assert_eq!(ack.ttl_remaining_ms, 60_000);
+        assert_eq!(ack.next_command_seq, 1);
+        assert_eq!(encode_ack_payload(&ack).unwrap(), payload);
+    }
+    #[test]
+    fn gv_c07_08_ack_release_completed_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-08-ack-release-completed.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let ack = decode_ack_payload(payload).unwrap();
+        assert_eq!(ack.ack_state, 2);
+        assert_eq!(ack.command_seq, 1);
+        assert_eq!(ack.result_ref_present, 0);
+        assert_eq!(ack.lease_id, [0u8; 16]);
+        assert_eq!(ack.worker_incarnation, [0u8; 16]);
+        assert_eq!(ack.ttl_remaining_ms, 0);
+        assert_eq!(ack.next_command_seq, 0);
+        assert_eq!(encode_ack_payload(&ack).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_c07_09_ack_out_of_order_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-09-ack-out-of-order.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let ack = decode_ack_payload(payload).unwrap();
+        assert_eq!(ack.ack_state, 3);
+        assert_eq!(ack.reason_code, 3);
+        assert_eq!(ack.command_seq, 7);
+        assert_eq!(ack.expected_present, 1);
+        assert_eq!(ack.expected, 1);
+        assert_eq!(ack.result_ref_present, 0);
+        assert_eq!(encode_ack_payload(&ack).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_c07_10_ack_invalid_missing_expected_rejected() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-C07-10-ack-invalid-missing-expected.bin"
+        );
+        let err = decode_ack_payload(&fixture[PBMUX_HEADER_LEN..]).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        assert_eq!(err.reason_code(), ReasonCode::UnsupportedMessage);
+    }
+
+    #[test]
+    fn ack_accepted_parser_compatible_form() {
+        let mut ack = valid_completed_ack();
+        ack.ack_state = 1;
+        let encoded = encode_ack_payload(&ack).unwrap();
+        let decoded = decode_ack_payload(&encoded).unwrap();
+        assert_eq!(decoded.ack_state, 1);
+        assert_eq!(decoded.reason_code, 0);
+        assert_eq!(decoded.expected_present, 0);
+        assert_eq!(decoded.result_ref_present, 0);
+        assert_eq!(decoded.digest_present, 0);
+    }
+
+    #[test]
+    fn ack_wrong_payload_length() {
+        for len_ in [ACK_PAYLOAD_LEN - 1, ACK_PAYLOAD_LEN + 1] {
+            let err = decode_ack_payload(&vec![0u8; len_]).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        }
+    }
+
+    #[test]
+    fn ack_invalid_ack_state() {
+        for state in [0u8, 4, 255u8] {
+            let mut payload = valid_completed_ack();
+            payload.ack_state = state;
+            let err = encode_ack_payload(&payload).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+            let mut bytes = [0u8; ACK_PAYLOAD_LEN];
+            bytes[0] = state;
+            let err = decode_ack_payload(&bytes).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        }
+    }
+    #[test]
+    fn ack_invalid_presence_byte() {
+        let mut payload = valid_completed_ack();
+        payload.expected_present = 2;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.result_ref_present = 2;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.digest_present = 2;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; ACK_PAYLOAD_LEN];
+        bytes[0] = 2;
+        bytes[11] = 2;
+        let err = decode_ack_payload(&bytes).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn ack_nonzero_absent_expected() {
+        let mut payload = valid_completed_ack();
+        payload.expected = 7;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; ACK_PAYLOAD_LEN];
+        bytes[2] = 2;
+        bytes[12] = 1;
+        let err = decode_ack_payload(&bytes).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn ack_nonzero_absent_result_ref_fields() {
+        let mut payload = valid_completed_ack();
+        payload.lease_id[0] = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.worker_incarnation[0] = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.ttl_remaining_ms = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.next_command_seq = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn ack_nonzero_absent_digest() {
+        let mut payload = valid_completed_ack();
+        payload.digest[0] = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.digest_present = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+
+    #[test]
+    fn ack_reason_unsupported() {
+        for reason in [6u16, 65535u16] {
+            let mut payload = valid_completed_ack();
+            payload.reason_code = reason;
+            let err = encode_ack_payload(&payload).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+            let mut bytes = [0u8; ACK_PAYLOAD_LEN];
+            bytes[0] = 3;
+            bytes[1..3].copy_from_slice(&reason.to_be_bytes());
+            let err = decode_ack_payload(&bytes).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::UnsupportedMessage);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        }
+    }
+
+    #[test]
+    fn ack_state_reason_combo_rules() {
+        let mut payload = valid_completed_ack();
+        payload.ack_state = 3;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.reason_code = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.ack_state = 3;
+        payload.reason_code = 3;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        payload = valid_completed_ack();
+        payload.ack_state = 1;
+        payload.reason_code = 1;
+        let err = encode_ack_payload(&payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
     }
 }
