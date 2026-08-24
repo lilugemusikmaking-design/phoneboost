@@ -90,6 +90,27 @@ pub struct AckPayload {
     pub digest: [u8; 32],
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HeartbeatPayload {
+    pub peer_id: [u8; 32],
+    pub worker_incarnation: [u8; 16],
+    pub lease_present: u8,
+    pub lease_id: [u8; 16],
+    pub monotonic_ms: u64,
+    pub thermal_status: u8,
+    pub headroom_present: u8,
+    pub headroom_f32_bits: u32,
+    pub battery_pct: u8,
+    pub charging: u8,
+    pub power_save: u8,
+    pub available_bytes: u64,
+    pub safe_budget_bytes: u64,
+    pub reserved_bytes: u64,
+    pub queue_depth: u16,
+    pub provider_count: u8,
+    pub transport_count: u8,
+}
+
 impl PbmuxError {
     const fn session(kind: PbmuxErrorKind) -> Self {
         Self {
@@ -398,6 +419,107 @@ fn decode_ack_payload(bytes: &[u8]) -> Result<AckPayload, PbmuxError> {
     };
     validate_ack_payload(&ack)?;
     Ok(ack)
+}
+
+const HEARTBEAT_PAYLOAD_LEN: usize = 110;
+
+/// Validate a locked V0.1 HEARTBEAT payload. Every violation is a malformed
+/// logical message (oracle verdict REJECT); HEARTBEAT has no unsupported-value
+/// classification in the locked addendum (§7.2, §7.3 "invalid logical message",
+/// §7.4 "rejected/noncanonical", §9 reject list).
+fn validate_heartbeat_payload(h: &HeartbeatPayload) -> Result<(), PbmuxError> {
+    if h.lease_present > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.lease_present == 0 && h.lease_id != [0u8; 16] {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.thermal_status > 6 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.headroom_present > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.headroom_present == 0 {
+        if h.headroom_f32_bits != 0 {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    } else {
+        // IEEE-754 binary32 big-endian values accepted only when finite and
+        // >= +0.0. Reject NaN (+/-inf) and the negative-zero/nonnegative sign
+        // patterns exactly as the locked oracle does.
+        let exponent = (h.headroom_f32_bits >> 23) & 0xFF;
+        if h.headroom_f32_bits & 0x8000_0000 != 0 || exponent == 0xFF {
+            return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+        }
+    }
+    if h.battery_pct > 100 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.charging > 1 || h.power_save > 1 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    if h.provider_count != 0 || h.transport_count != 0 {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    Ok(())
+}
+
+fn encode_heartbeat_payload(payload: &HeartbeatPayload) -> Result<Vec<u8>, PbmuxError> {
+    validate_heartbeat_payload(payload)?;
+    let mut buf = Vec::with_capacity(HEARTBEAT_PAYLOAD_LEN);
+    buf.extend_from_slice(&payload.peer_id);
+    buf.extend_from_slice(&payload.worker_incarnation);
+    buf.push(payload.lease_present);
+    buf.extend_from_slice(&payload.lease_id);
+    buf.extend_from_slice(&payload.monotonic_ms.to_be_bytes());
+    buf.push(payload.thermal_status);
+    buf.push(payload.headroom_present);
+    buf.extend_from_slice(&payload.headroom_f32_bits.to_be_bytes());
+    buf.push(payload.battery_pct);
+    buf.push(payload.charging);
+    buf.push(payload.power_save);
+    buf.extend_from_slice(&payload.available_bytes.to_be_bytes());
+    buf.extend_from_slice(&payload.safe_budget_bytes.to_be_bytes());
+    buf.extend_from_slice(&payload.reserved_bytes.to_be_bytes());
+    buf.extend_from_slice(&payload.queue_depth.to_be_bytes());
+    buf.push(payload.provider_count);
+    buf.push(payload.transport_count);
+    debug_assert_eq!(buf.len(), HEARTBEAT_PAYLOAD_LEN);
+    Ok(buf)
+}
+
+fn decode_heartbeat_payload(bytes: &[u8]) -> Result<HeartbeatPayload, PbmuxError> {
+    if bytes.len() != HEARTBEAT_PAYLOAD_LEN {
+        return Err(PbmuxError::logical(PbmuxErrorKind::InvalidCommandPayload));
+    }
+    let mut peer_id = [0u8; 32];
+    peer_id.copy_from_slice(&bytes[0..32]);
+    let mut worker_incarnation = [0u8; 16];
+    worker_incarnation.copy_from_slice(&bytes[32..48]);
+    let mut lease_id = [0u8; 16];
+    lease_id.copy_from_slice(&bytes[49..65]);
+    let hb = HeartbeatPayload {
+        peer_id,
+        worker_incarnation,
+        lease_present: bytes[48],
+        lease_id,
+        monotonic_ms: read_u64(bytes, 65),
+        thermal_status: bytes[73],
+        headroom_present: bytes[74],
+        headroom_f32_bits: read_u32(bytes, 75),
+        battery_pct: bytes[79],
+        charging: bytes[80],
+        power_save: bytes[81],
+        available_bytes: read_u64(bytes, 82),
+        safe_budget_bytes: read_u64(bytes, 90),
+        reserved_bytes: read_u64(bytes, 98),
+        queue_depth: read_u16(bytes, 106),
+        provider_count: bytes[108],
+        transport_count: bytes[109],
+    };
+    validate_heartbeat_payload(&hb)?;
+    Ok(hb)
 }
 
 fn validate_fragment_fields(header: &Header) -> Result<(), PbmuxError> {
@@ -1315,5 +1437,292 @@ mod tests {
         payload.reason_code = 1;
         let err = encode_ack_payload(&payload).unwrap_err();
         assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+    }
+    const fn valid_heartbeat() -> HeartbeatPayload {
+        HeartbeatPayload {
+            peer_id: [
+                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+                0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+                0x1c, 0x1d, 0x1e, 0x1f,
+            ],
+            worker_incarnation: [
+                0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed,
+                0xfe, 0x0f,
+            ],
+            lease_present: 0,
+            lease_id: [0u8; 16],
+            monotonic_ms: 1_000_000,
+            thermal_status: 2,
+            headroom_present: 1,
+            headroom_f32_bits: 0x3F00_0000,
+            battery_pct: 80,
+            charging: 1,
+            power_save: 0,
+            available_bytes: 0x4000_0000,
+            safe_budget_bytes: 0x0800_0000,
+            reserved_bytes: 0,
+            queue_depth: 3,
+            provider_count: 0,
+            transport_count: 0,
+        }
+    }
+
+    fn assert_hb_reject(payload: &[u8]) {
+        let err = decode_heartbeat_payload(payload).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        assert_eq!(err.reason_code(), ReasonCode::UnsupportedMessage);
+    }
+
+    #[test]
+    fn gv_hb_01_no_lease_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-01-no-lease.bin"
+        );
+        assert_eq!(fixture.len(), PBMUX_HEADER_LEN + HEARTBEAT_PAYLOAD_LEN);
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let hb = decode_heartbeat_payload(payload).unwrap();
+        assert_eq!(hb.lease_present, 0);
+        assert_eq!(hb.lease_id, [0u8; 16]);
+        assert_eq!(hb.peer_id[0], 0x00);
+        assert_eq!(hb.monotonic_ms, 1_000_000);
+        assert_eq!(hb.thermal_status, 2);
+        assert_eq!(hb.headroom_present, 1);
+        assert_eq!(hb.headroom_f32_bits, 0x3F00_0000);
+        assert_eq!(hb.battery_pct, 80);
+        assert_eq!(hb.charging, 1);
+        assert_eq!(hb.power_save, 0);
+        assert_eq!(hb.available_bytes, 0x4000_0000);
+        assert_eq!(hb.safe_budget_bytes, 0x0800_0000);
+        assert_eq!(hb.reserved_bytes, 0);
+        assert_eq!(hb.queue_depth, 3);
+        assert_eq!(hb.provider_count, 0);
+        assert_eq!(hb.transport_count, 0);
+        assert_eq!(encode_heartbeat_payload(&hb).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_hb_02_active_lease_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-02-active-lease.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let hb = decode_heartbeat_payload(payload).unwrap();
+        assert_eq!(hb.lease_present, 1);
+        assert_eq!(
+            hb.lease_id,
+            [
+                0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd,
+                0xee, 0xff
+            ]
+        );
+        assert_eq!(encode_heartbeat_payload(&hb).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_hb_03_headroom_absent_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-03-headroom-absent.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let hb = decode_heartbeat_payload(payload).unwrap();
+        assert_eq!(hb.headroom_present, 0);
+        assert_eq!(hb.headroom_f32_bits, 0);
+        assert_eq!(encode_heartbeat_payload(&hb).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_hb_04_headroom_present_fixture() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-04-headroom-present.bin"
+        );
+        let payload = &fixture[PBMUX_HEADER_LEN..];
+        let hb = decode_heartbeat_payload(payload).unwrap();
+        assert_eq!(hb.lease_present, 1);
+        assert_eq!(hb.headroom_present, 1);
+        assert_eq!(hb.headroom_f32_bits, 0x3E80_0000);
+        assert_eq!(encode_heartbeat_payload(&hb).unwrap(), payload);
+    }
+
+    #[test]
+    fn gv_hb_05_invalid_provider_count_rejected() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-05-invalid-provider-count.bin"
+        );
+        assert_hb_reject(&fixture[PBMUX_HEADER_LEN..]);
+    }
+
+    #[test]
+    fn gv_hb_06_invalid_transport_count_rejected() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-06-invalid-transport-count.bin"
+        );
+        assert_hb_reject(&fixture[PBMUX_HEADER_LEN..]);
+    }
+
+    #[test]
+    fn gv_hb_07_invalid_thermal_status_rejected() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-07-invalid-thermal-status.bin"
+        );
+        assert_hb_reject(&fixture[PBMUX_HEADER_LEN..]);
+    }
+
+    #[test]
+    fn gv_hb_08_invalid_negative_zero_headroom_rejected() {
+        let fixture = include_bytes!(
+            "../../../docs/protocol/c07_wire_v0_1_vectors_002/GV-HB-08-invalid-negative-zero-headroom.bin"
+        );
+        assert_hb_reject(&fixture[PBMUX_HEADER_LEN..]);
+    }
+    #[test]
+    fn hb_wrong_payload_length() {
+        for len_ in [HEARTBEAT_PAYLOAD_LEN - 1, HEARTBEAT_PAYLOAD_LEN + 1] {
+            let err = decode_heartbeat_payload(&vec![0u8; len_]).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            assert_eq!(err.scope, ErrorScope::LogicalMessage);
+        }
+    }
+
+    #[test]
+    fn hb_invalid_presence_byte() {
+        let mut hb = valid_heartbeat();
+        hb.lease_present = 2;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        hb = valid_heartbeat();
+        hb.headroom_present = 2;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[48] = 2;
+        assert_hb_reject(&bytes);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[74] = 2;
+        assert_hb_reject(&bytes);
+    }
+
+    #[test]
+    fn hb_nonzero_absent_lease() {
+        let mut hb = valid_heartbeat();
+        hb.lease_id[0] = 1;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[49] = 1;
+        assert_hb_reject(&bytes);
+    }
+
+    #[test]
+    fn hb_invalid_thermal_status() {
+        for status in [7u8, 255u8] {
+            let mut hb = valid_heartbeat();
+            hb.thermal_status = status;
+            let err = encode_heartbeat_payload(&hb).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[73] = status;
+            assert_hb_reject(&bytes);
+        }
+    }
+
+    #[test]
+    fn hb_headroom_absent_nonzero_bits() {
+        let mut hb = valid_heartbeat();
+        hb.headroom_present = 0;
+        hb.headroom_f32_bits = 1;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[75] = 1;
+        assert_hb_reject(&bytes);
+    }
+
+    #[test]
+    fn hb_headroom_rejects_nan_and_infinities() {
+        for bits in [0x7FC0_0000u32, 0x7F80_0000u32, 0xFF80_0000u32] {
+            let mut hb = valid_heartbeat();
+            hb.headroom_f32_bits = bits;
+            let err = encode_heartbeat_payload(&hb).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[75..79].copy_from_slice(&bits.to_be_bytes());
+            assert_hb_reject(&bytes);
+        }
+    }
+
+    #[test]
+    fn hb_headroom_rejects_negative_and_negative_zero() {
+        for bits in [0x8000_0000u32, 0xBF80_0000u32] {
+            let mut hb = valid_heartbeat();
+            hb.headroom_f32_bits = bits;
+            let err = encode_heartbeat_payload(&hb).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[75..79].copy_from_slice(&bits.to_be_bytes());
+            assert_hb_reject(&bytes);
+        }
+    }
+
+    #[test]
+    fn hb_headroom_accepts_positive_values() {
+        for bits in [0x0000_0000u32, 0x3F80_0000u32, 0x3E80_0000u32] {
+            let mut hb = valid_heartbeat();
+            hb.headroom_present = 1;
+            hb.headroom_f32_bits = bits;
+            encode_heartbeat_payload(&hb).unwrap();
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[74] = 1;
+            bytes[75..79].copy_from_slice(&bits.to_be_bytes());
+            decode_heartbeat_payload(&bytes).unwrap();
+        }
+    }
+
+    #[test]
+    fn hb_invalid_charging_power_save() {
+        let mut hb = valid_heartbeat();
+        hb.charging = 2;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        hb = valid_heartbeat();
+        hb.power_save = 2;
+        let err = encode_heartbeat_payload(&hb).unwrap_err();
+        assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[80] = 2;
+        assert_hb_reject(&bytes);
+        let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+        bytes[81] = 2;
+        assert_hb_reject(&bytes);
+    }
+
+    #[test]
+    fn hb_nonzero_counts_rejected() {
+        for (off, val) in [(108u32, 1u8), (109, 1)] {
+            let mut hb = valid_heartbeat();
+            if off == 108 {
+                hb.provider_count = val;
+            } else {
+                hb.transport_count = val;
+            }
+            let err = encode_heartbeat_payload(&hb).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[off as usize] = val;
+            assert_hb_reject(&bytes);
+        }
+    }
+
+    #[test]
+    fn hb_battery_out_of_range() {
+        for pct in [101u8, 255u8] {
+            let mut hb = valid_heartbeat();
+            hb.battery_pct = pct;
+            let err = encode_heartbeat_payload(&hb).unwrap_err();
+            assert_eq!(err.kind, PbmuxErrorKind::InvalidCommandPayload);
+            let mut bytes = [0u8; HEARTBEAT_PAYLOAD_LEN];
+            bytes[79] = pct;
+            assert_hb_reject(&bytes);
+        }
     }
 }
