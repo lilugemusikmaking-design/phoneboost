@@ -1034,29 +1034,36 @@ fn run_authenticated_loop(
                 .accept(frame.header.sequence)
                 .map_err(|_| RuntimeError::Pbmux)?;
             authorize_dispatch(&frame, DispatchMode::Committed).map_err(|_| RuntimeError::Pbmux)?;
-            match ControlType::try_from(frame.header.message_type) {
-                Ok(ControlType::Ping) if !initiator => {
-                    let pong =
-                        control_frame(ControlType::Pong, frame.header.request_id, send_sequence);
-                    send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
-                    send_frame(stream, &mut transport, &pong)?;
-                    runtime.heartbeat();
-                }
-                Ok(ControlType::Pong) if initiator => {
-                    if outstanding != Some(frame.header.request_id) {
-                        return Err(RuntimeError::Pbmux);
+            if frame.header.channel == Channel::Control {
+                match ControlType::try_from(frame.header.message_type) {
+                    Ok(ControlType::Ping) if !initiator => {
+                        let pong = control_frame(
+                            ControlType::Pong,
+                            frame.header.request_id,
+                            send_sequence,
+                        );
+                        send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                        send_frame(stream, &mut transport, &pong)?;
+                        runtime.heartbeat();
                     }
-                    outstanding = None;
-                    runtime.heartbeat();
+                    Ok(ControlType::Pong) if initiator => {
+                        if outstanding != Some(frame.header.request_id) {
+                            return Err(RuntimeError::Pbmux);
+                        }
+                        outstanding = None;
+                        runtime.heartbeat();
+                    }
+                    Ok(ControlType::Command) => {
+                        parse_command_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    }
+                    Ok(ControlType::CommandAck) => {
+                        parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    }
+                    Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
+                    _ => return Err(RuntimeError::Pbmux),
                 }
-                Ok(ControlType::Command) => {
-                    parse_command_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                }
-                Ok(ControlType::CommandAck) => {
-                    parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                }
-                Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
-                _ => return Err(RuntimeError::Pbmux),
+            } else {
+                return Err(RuntimeError::Pbmux);
             }
         }
         std::thread::sleep(SESSION_POLL);
