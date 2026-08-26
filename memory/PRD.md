@@ -46,6 +46,25 @@ fact must carry provenance LIVE / RECORDED EVIDENCE / ROADMAP; no silent fallbac
 - Frontend: 15/15 UI expectations verified end-to-end on public preview URL.
 - No fabricated LIVE data was observed anywhere.
 
+## Final product-first pass — 2026-06 (presentation-only, verified)
+- Reframed as a simple product: hero now "Your phone becomes a secure compute node
+  for your Linux PC. / Plug it in. PhoneBoost puts it to work." Technical clarifier
+  ("not RAM extension / swap / CPU illusion") moved into the secondary "How it works".
+- Added a truthful primary control: "Enable PhoneBoost" switch is DISABLED / Off ·
+  Unavailable with reason "Native runtime not reachable from this hosted browser" and
+  an expandable "Why can't I enable it?" (reuses /api/live/probe). It never fakes LIVE.
+- Simplified default viewport: "At a glance" cards (available? phone contributing?
+  trust state? evidence?), a vertical Linux PC ↕ Secure link ↕ Android phone topology
+  (phone reads as a distinct REMOTE NODE, never merged), and user-value capability
+  cards (Secure link / Remote capacity=ROADMAP / Remote compute=ROADMAP / Evidence).
+- Protocol-heavy detail (secure-link fields, host/worker endpoints, remote capability,
+  architecture layers, security mono detail) moved into collapsed "Technical details".
+- Preserved: five independent gates (no progress bar, no Connected/Ready collapse),
+  evidence grid+drawer, roadmap, repo anchor / native baseline / validation date.
+- Verified frontend E2E 100% (see /app/test_reports/iteration_3.json). No fabricated
+  LIVE/connected/ready data. Backend and native Rust/Android files untouched.
+- Preview left ready for review; NOT republished. Workspace is clean for GitHub export.
+
 ## Design pass — 2026-06 (UI/UX polish, design-only)
 - Dark tactical redesign: charcoal/graphite base (#0A0A0A/#111), restrained neon
   green (#39FF14) reserved for RECORDED-EVIDENCE/verified accents, amber for warnings.
