@@ -6,5 +6,6 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+pb-pbmux = { path = "../pb-pbmux" }
 pb-runtime-secure = { path = "../pb-runtime-secure" }
 pb-types = { path = "../pb-types" }

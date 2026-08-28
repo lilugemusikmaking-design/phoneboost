@@ -5,9 +5,10 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use pb_runtime_secure::{
-    AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, CommandPayload,
-    EndpointRole, PairingActionResult, RuntimeState, SecureRuntime, StateStore,
-    VerifiedPeerSession, run_responder_session_with_handler,
+    AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, BufferResult,
+    CommandPayload, EndpointRole, PairingActionResult, RemoteBufferRequest,
+    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult, RuntimeState,
+    SecureRuntime, StateStore, VerifiedPeerSession, run_responder_session_with_handler,
 };
 use pb_worker_core::{
     ControllerCommand, ControllerCommandError, ControllerCommandResult, ControllerFailureReason,
@@ -67,6 +68,36 @@ impl AuthenticatedCommandHandler for AndroidAuthenticatedCommandHandler {
                 })
         })?;
         Ok(controller_ack(result))
+    }
+
+    fn handle_authenticated_resource(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+        request_id: u64,
+        request: ResourceRequest,
+    ) -> Result<(ResourceResponseKind, ResourceResult), AuthenticatedCommandHandlerError> {
+        with_worker(|worker| {
+            Ok(worker.apply_resource_request(verified_session, request_id, request))
+        })
+    }
+
+    fn handle_authenticated_remote_buffer(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+        _request_id: u64,
+        request: RemoteBufferRequest,
+    ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError> {
+        with_worker(|worker| Ok(worker.apply_remote_buffer_request(verified_session, request)))
+    }
+
+    fn authenticated_session_ended(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+    ) -> Result<(), AuthenticatedCommandHandlerError> {
+        with_worker(|worker| {
+            worker.authenticated_session_ended(verified_session);
+            Ok(())
+        })
     }
 }
 
@@ -593,7 +624,12 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use curve25519_dalek::montgomery::MontgomeryPoint;
-    use pb_pbmux::{Frame, Header, build_command_frame, decode, encode, parse_command_ack_frame};
+    use pb_pbmux::{
+        AllocationFlags, BufferReason, BufferState, Frame, Header, RemoteBufferRequest,
+        ResourceRequest, WireReservationState, build_command_frame,
+        build_remote_buffer_request_frames, build_resource_request_frame, decode, encode,
+        parse_command_ack_frame, parse_remote_buffer_result_frame, parse_resource_result_frame,
+    };
     use pb_secure::{NOISE_IK_NAME, PROLOGUE};
     use pb_types::{Channel, ControlType, FLAG_END, FLAG_START};
     use snow::{Builder, TransportState, params::NoiseParams};
@@ -722,6 +758,124 @@ mod tests {
             pb_runtime_secure::RuntimeError::SessionLost
         );
         ack
+    }
+
+    struct ProductionClient {
+        stream: TcpStream,
+        transport: TransportState,
+        send_sequence: u64,
+    }
+
+    impl ProductionClient {
+        fn command(&mut self, request_id: u64, command: CommandPayload) -> AckPayload {
+            let frame = build_command_frame(&command, request_id, self.send_sequence).unwrap();
+            self.send_sequence += 1;
+            send_encrypted(&mut self.stream, &mut self.transport, &frame);
+            parse_command_ack_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
+                .unwrap()
+        }
+
+        fn resource(
+            &mut self,
+            request_id: u64,
+            request: ResourceRequest,
+        ) -> pb_pbmux::ResourceResult {
+            let frame =
+                build_resource_request_frame(&request, request_id, self.send_sequence).unwrap();
+            self.send_sequence += 1;
+            send_encrypted(&mut self.stream, &mut self.transport, &frame);
+            parse_resource_result_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
+                .unwrap()
+                .1
+        }
+
+        fn remote(
+            &mut self,
+            request_id: u64,
+            request: RemoteBufferRequest,
+        ) -> pb_pbmux::BufferResult {
+            let frames =
+                build_remote_buffer_request_frames(&request, request_id, self.send_sequence)
+                    .unwrap();
+            self.send_sequence += frames.len() as u64;
+            for frame in frames {
+                send_encrypted(&mut self.stream, &mut self.transport, &frame);
+            }
+            parse_remote_buffer_result_frame(&receive_encrypted(
+                &mut self.stream,
+                &mut self.transport,
+            ))
+            .unwrap()
+            .1
+        }
+    }
+
+    fn with_production_android_session<T>(
+        runtime: Arc<SecureRuntime>,
+        host_private: &[u8; 32],
+        android_public: &[u8; 32],
+        exchange: impl FnOnce(&mut ProductionClient) -> T,
+    ) -> T {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let responder_runtime = Arc::clone(&runtime);
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            run_responder_session_with_handler(
+                &mut stream,
+                &responder_runtime,
+                &[],
+                &ANDROID_AUTHENTICATED_COMMAND_HANDLER,
+            )
+            .unwrap_err()
+        });
+
+        let mut stream = TcpStream::connect(endpoint).unwrap();
+        let params: NoiseParams = NOISE_IK_NAME.parse().unwrap();
+        let mut handshake = Builder::new(params)
+            .local_private_key(host_private)
+            .remote_public_key(android_public)
+            .prologue(PROLOGUE)
+            .build_initiator()
+            .unwrap();
+        let mut handshake_message = vec![0; u16::MAX as usize];
+        let length = handshake
+            .write_message(&[], &mut handshake_message)
+            .unwrap();
+        write_record(&mut stream, &handshake_message[..length]);
+        let response = read_record(&mut stream);
+        handshake
+            .read_message(&response, &mut handshake_message)
+            .unwrap();
+        let mut transport = handshake.into_transport_mode().unwrap();
+        let ping = Frame {
+            header: Header {
+                channel: Channel::Control,
+                flags: FLAG_START | FLAG_END,
+                message_type: ControlType::Ping as u16,
+                request_id: 9,
+                sequence: 0,
+                fragment_index: 0,
+                payload_len: 0,
+                logical_message_len: 0,
+            },
+            payload: Vec::new(),
+        };
+        send_encrypted(&mut stream, &mut transport, &ping);
+        let pong = receive_encrypted(&mut stream, &mut transport);
+        assert_eq!(pong.header.message_type, ControlType::Pong as u16);
+        let mut client = ProductionClient {
+            stream,
+            transport,
+            send_sequence: 1,
+        };
+        let result = exchange(&mut client);
+        client.stream.shutdown(Shutdown::Both).unwrap();
+        assert_eq!(
+            responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        result
     }
 
     fn test_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -946,6 +1100,251 @@ mod tests {
         assert!(reconnected.ttl_remaining_ms <= first.ttl_remaining_ms);
         assert_eq!(reconnected.next_command_seq, 0);
         assert_eq!(authority_state(0), 1);
+        reset();
+    }
+
+    #[test]
+    fn e_gen_03_authenticated_c08_c09_end_to_end_and_loss_restart_fail_closed() {
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+        std::thread::sleep(std::time::Duration::from_millis(10_050));
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, 10_050),
+            RESULT_OK
+        );
+
+        let directory = TestDirectory::new();
+        let directory_fd: OwnedFd = fs::File::open(&directory.0).unwrap().into();
+        let store = StateStore::from_directory_fd(directory_fd).unwrap();
+        let android_identity = store.load_or_create_identity().unwrap();
+        let host_private = [0x4a; 32];
+        let host_public = MontgomeryPoint::mul_base_clamped(host_private).to_bytes();
+        store
+            .commit_peer(&pb_runtime_secure::PeerRecord::new(host_public, "host", 1))
+            .unwrap();
+        let runtime =
+            Arc::new(SecureRuntime::initialize(EndpointRole::AndroidResponder, store).unwrap());
+
+        let (lease_id, incarnation, lost_buffer_id) = with_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            android_identity.public(),
+            |client| {
+                let lease = client.command(
+                    100,
+                    CommandPayload {
+                        command_type: 1,
+                        lease_present: 0,
+                        lease_id: [0; 16],
+                        command_seq: 0,
+                        trace_id: [1; 16],
+                        provider_present: 0,
+                        provider_id: 0,
+                        payload_len: 0,
+                    },
+                );
+                assert_eq!(lease.ack_state, 2);
+                let reserve = client.resource(
+                    101,
+                    ResourceRequest::Reserve {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        requested_bytes: 8,
+                    },
+                );
+                assert!(reserve.state == pb_pbmux::ResourceResultState::Completed);
+                let reservation_id = reserve.reservation.unwrap().reservation_id;
+                let replay = client.resource(
+                    101,
+                    ResourceRequest::Reserve {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        requested_bytes: 8,
+                    },
+                );
+                assert_eq!(replay.reservation.unwrap().reservation_id, reservation_id);
+                let conflict = client.resource(
+                    101,
+                    ResourceRequest::Reserve {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        requested_bytes: 4,
+                    },
+                );
+                assert_eq!(conflict.reason, pb_pbmux::ResourceReason::RequestIdConflict);
+                let commit = client.resource(
+                    102,
+                    ResourceRequest::Commit {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        reservation_id,
+                    },
+                );
+                assert_eq!(
+                    commit.reservation.unwrap().state,
+                    WireReservationState::Committed
+                );
+                let alloc = client.remote(
+                    103,
+                    RemoteBufferRequest::Alloc {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        reservation_id,
+                        size_bytes: 8,
+                        allocation_flags: AllocationFlags::EVICTABLE,
+                    },
+                );
+                let buffer_id = alloc.buffer.unwrap().buffer_id;
+                let put = client.remote(
+                    104,
+                    RemoteBufferRequest::Put {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        buffer_id,
+                        offset: 0,
+                        data: b"PB-C0909".to_vec(),
+                    },
+                );
+                assert_eq!(put.buffer.unwrap().state, BufferState::Ready);
+                let get = client.remote(
+                    105,
+                    RemoteBufferRequest::Get {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        buffer_id,
+                        offset: 0,
+                        length: 8,
+                    },
+                );
+                assert_eq!(get.data, b"PB-C0909");
+                let stat = client.remote(
+                    106,
+                    RemoteBufferRequest::Stat {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        buffer_id,
+                    },
+                );
+                assert!(stat.completed);
+                assert!(stat.data.is_empty());
+                let touch = client.remote(
+                    107,
+                    RemoteBufferRequest::Touch {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        buffer_id,
+                    },
+                );
+                assert!(touch.completed);
+                let free = client.remote(
+                    108,
+                    RemoteBufferRequest::Free {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        buffer_id,
+                    },
+                );
+                assert_eq!(free.buffer.unwrap().state, BufferState::Freed);
+
+                let releasable = client.resource(
+                    109,
+                    ResourceRequest::Reserve {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        requested_bytes: 1,
+                    },
+                );
+                let release = client.resource(
+                    110,
+                    ResourceRequest::Release {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        reservation_id: releasable.reservation.unwrap().reservation_id,
+                    },
+                );
+                assert_eq!(
+                    release.reservation.unwrap().state,
+                    WireReservationState::Released
+                );
+                let reserve = client.resource(
+                    111,
+                    ResourceRequest::Reserve {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        requested_bytes: 4,
+                    },
+                );
+                let reservation_id = reserve.reservation.unwrap().reservation_id;
+                assert!(
+                    client
+                        .resource(
+                            112,
+                            ResourceRequest::Commit {
+                                lease_id: lease.lease_id,
+                                worker_incarnation_id: lease.worker_incarnation,
+                                reservation_id,
+                            },
+                        )
+                        .state
+                        == pb_pbmux::ResourceResultState::Completed
+                );
+                let lost = client.remote(
+                    113,
+                    RemoteBufferRequest::Alloc {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.worker_incarnation,
+                        reservation_id,
+                        size_bytes: 4,
+                        allocation_flags: AllocationFlags::NONE,
+                    },
+                );
+                (
+                    lease.lease_id,
+                    lease.worker_incarnation,
+                    lost.buffer.unwrap().buffer_id,
+                )
+            },
+        );
+
+        with_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            android_identity.public(),
+            |client| {
+                let lost = client.remote(
+                    200,
+                    RemoteBufferRequest::Stat {
+                        lease_id,
+                        worker_incarnation_id: incarnation,
+                        buffer_id: lost_buffer_id,
+                    },
+                );
+                assert_eq!(lost.reason, BufferReason::BufferLost);
+                assert_eq!(lost.buffer.unwrap().state, BufferState::Lost);
+            },
+        );
+
+        assert_eq!(stop_worker(), RESULT_OK);
+        assert_eq!(start_worker(), RESULT_OK);
+        with_production_android_session(
+            runtime,
+            &host_private,
+            android_identity.public(),
+            |client| {
+                let old = client.remote(
+                    300,
+                    RemoteBufferRequest::Stat {
+                        lease_id,
+                        worker_incarnation_id: incarnation,
+                        buffer_id: lost_buffer_id,
+                    },
+                );
+                assert_eq!(old.reason, BufferReason::BufferWrongIncarnation);
+                assert!(old.buffer.is_none());
+            },
+        );
         reset();
     }
 }

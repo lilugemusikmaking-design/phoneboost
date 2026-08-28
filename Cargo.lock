@@ -353,6 +353,7 @@ dependencies = [
 name = "pb-worker-core"
 version = "0.1.0"
 dependencies = [
+ "pb-pbmux",
  "pb-runtime-secure",
  "pb-types",
 ]

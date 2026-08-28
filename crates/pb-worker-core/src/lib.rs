@@ -4,15 +4,24 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::time::Instant;
 
+use pb_pbmux::{
+    BufferReason, BufferResult, RemoteBufferRequest, RemoteBufferResponseKind,
+    ReservationResultRef, ResourceReason, ResourceRequest, ResourceResponseKind, ResourceResult,
+    ResourceResultState,
+};
 use pb_runtime_secure::VerifiedPeerSession;
 
 mod lease;
+mod remote_buffer;
 mod resource_guard;
 
 pub use lease::{
     AuthenticatedSession, ControllerCommand, ControllerCommandError, ControllerCommandResult,
     ControllerFailureReason, ControllerLeaseManager, ControllerLeaseRef, LEASE_TTL_MS, LeaseId,
     LeaseState, RECOMMENDED_RENEWAL_MS,
+};
+pub use remote_buffer::{
+    DEFAULT_BUFFER_TTL_MS, MAX_BUFFER_LIFETIME_MS, MAX_BUFFERS_PER_LEASE, MAX_REMOTE_BUFFER_BYTES,
 };
 pub use resource_guard::{
     BatteryBand, CommitDecision, HEALTH_INTERVAL_MS, HEALTH_STALE_AFTER_MS, HealthSample,
@@ -110,7 +119,17 @@ pub struct WorkerCore {
     state: WorkerState,
     lease_manager: ControllerLeaseManager,
     resource_guard: ResourceGuard,
+    remote_buffers: remote_buffer::RemoteBufferStore,
+    resource_requests: std::collections::BTreeMap<(LeaseId, u64), ResourceRequestCacheEntry>,
     clock: Box<dyn WorkerMonotonicClock>,
+}
+
+#[derive(Clone)]
+struct ResourceRequestCacheEntry {
+    request: ResourceRequest,
+    kind: ResourceResponseKind,
+    result: ResourceResult,
+    terminal_at_ms: u64,
 }
 
 impl WorkerCore {
@@ -124,6 +143,8 @@ impl WorkerCore {
             state,
             lease_manager: ControllerLeaseManager::new(incarnation),
             resource_guard: ResourceGuard::new(),
+            remote_buffers: remote_buffer::RemoteBufferStore::new(),
+            resource_requests: std::collections::BTreeMap::new(),
             clock: Box::new(SystemWorkerClock::start()),
         })
     }
@@ -137,8 +158,15 @@ impl WorkerCore {
     }
 
     /// Accepts only Android-local observations. It grants no remote authority.
-    pub fn record_local_health(&mut self, sample: HealthSample) -> HealthStatus {
-        self.resource_guard.record_health(sample)
+    pub fn record_local_health(&mut self, mut sample: HealthSample) -> HealthStatus {
+        // Resource authority and provider TTLs share one worker-owned monotonic
+        // domain; JNI-supplied timestamps are observations, not clock authority.
+        let now_ms = self.clock.now_ms();
+        sample.monotonic_ms = now_ms;
+        let status = self.resource_guard.record_health(sample);
+        self.resource_guard.tick(now_ms);
+        self.remote_buffers.tick(&mut self.resource_guard, now_ms);
+        status
     }
 
     pub fn health_status(&self, now_ms: u64) -> HealthStatus {
@@ -187,6 +215,434 @@ impl WorkerCore {
         let session = AuthenticatedSession::from_verified(verified_session);
         self.lease_manager
             .apply_controller_command(&session, command, self.clock.now_ms())
+    }
+
+    /// Production C08 authority entry point. Authentication proof, active C07
+    /// lease, and the request's current incarnation are all required.
+    pub fn apply_resource_request(
+        &mut self,
+        verified_session: &VerifiedPeerSession<'_>,
+        request_id: u64,
+        request: ResourceRequest,
+    ) -> (ResourceResponseKind, ResourceResult) {
+        let now_ms = self.clock.now_ms();
+        let kind = resource_response_kind(&request);
+        let lease_id = LeaseId::from_bytes(*request.lease_id());
+        let wire_lease_id = *request.lease_id();
+        let session = AuthenticatedSession::from_verified(verified_session);
+        let proof = if request_id == 0
+            || request.worker_incarnation_id() != &self.incarnation.into_bytes()
+        {
+            None
+        } else {
+            self.lease_manager.validate(&session, lease_id, now_ms).ok()
+        };
+        let Some(proof) = proof else {
+            return (
+                kind,
+                resource_failure(
+                    wire_lease_id,
+                    self.incarnation,
+                    ResourceReason::StaleControllerLease,
+                ),
+            );
+        };
+        self.resource_requests.retain(|(cached_lease, _), entry| {
+            *cached_lease == lease_id
+                && now_ms.saturating_sub(entry.terminal_at_ms) <= TERMINAL_RETENTION_MS
+        });
+        let key = (lease_id, request_id);
+        if let Some(entry) = self.resource_requests.get(&key) {
+            return if entry.request == request {
+                (entry.kind, entry.result)
+            } else {
+                (
+                    kind,
+                    resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::RequestIdConflict,
+                    ),
+                )
+            };
+        }
+        if self
+            .resource_requests
+            .keys()
+            .filter(|(cached_lease, _)| *cached_lease == lease_id)
+            .count()
+            >= 1_024
+        {
+            return (
+                kind,
+                resource_failure(
+                    wire_lease_id,
+                    self.incarnation,
+                    ResourceReason::IdempotenceTableFull,
+                ),
+            );
+        }
+        let result = match request.clone() {
+            ResourceRequest::Reserve {
+                requested_bytes, ..
+            } => {
+                let decision = self.resource_guard.reserve(
+                    &mut self.lease_manager,
+                    &session,
+                    lease_id,
+                    ReserveRequest {
+                        request_id: RequestId::from_u64(request_id),
+                        class: ResourceClass::Poc,
+                        bytes: requested_bytes,
+                    },
+                    now_ms,
+                );
+                match decision {
+                    ReservationDecision::Reserved { reservation_id } => resource_success(
+                        wire_lease_id,
+                        self.incarnation,
+                        match self.resource_guard.reservation_snapshot(
+                            proof,
+                            reservation_id,
+                            now_ms,
+                        ) {
+                            Some(snapshot) => snapshot,
+                            None => {
+                                return (
+                                    kind,
+                                    resource_failure(
+                                        wire_lease_id,
+                                        self.incarnation,
+                                        ResourceReason::InternalError,
+                                    ),
+                                );
+                            }
+                        },
+                    ),
+                    ReservationDecision::RefusedSafety => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        if self.resource_guard.health_status(now_ms).safety
+                            == SafetyBand::RefusedStaleState
+                        {
+                            ResourceReason::RefusedStaleState
+                        } else {
+                            ResourceReason::ResourceExhausted
+                        },
+                    ),
+                    ReservationDecision::RefusedBudget => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::ResourceExhausted,
+                    ),
+                    ReservationDecision::UnknownResourceClass => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::UnsupportedMessage,
+                    ),
+                    ReservationDecision::StaleLease => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::StaleControllerLease,
+                    ),
+                    ReservationDecision::IdempotenceConflict => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::RequestIdConflict,
+                    ),
+                    ReservationDecision::IdempotenceTableFull => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::IdempotenceTableFull,
+                    ),
+                    ReservationDecision::EntropyUnavailable => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::InternalError,
+                    ),
+                }
+            }
+            ResourceRequest::Commit { reservation_id, .. } => {
+                let reservation_id = ReservationId::from_bytes(reservation_id);
+                let decision = self.resource_guard.commit(
+                    &mut self.lease_manager,
+                    &session,
+                    lease_id,
+                    reservation_id,
+                    now_ms,
+                );
+                let snapshot =
+                    self.resource_guard
+                        .reservation_snapshot(proof, reservation_id, now_ms);
+                match decision {
+                    CommitDecision::Committed => match snapshot {
+                        Some(snapshot) => {
+                            resource_success(wire_lease_id, self.incarnation, snapshot)
+                        }
+                        None => resource_failure(
+                            wire_lease_id,
+                            self.incarnation,
+                            ResourceReason::InternalError,
+                        ),
+                    },
+                    CommitDecision::RefusedSafety => resource_failure_with_snapshot(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::CommitRefusedSafety,
+                        snapshot,
+                    ),
+                    CommitDecision::StaleLease => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::StaleControllerLease,
+                    ),
+                    CommitDecision::UnknownOrExpiredReservation => {
+                        let reason = snapshot.map_or(
+                            ResourceReason::ReservationNotFound,
+                            |value| match value.wire_state() {
+                                pb_pbmux::WireReservationState::Expired => {
+                                    ResourceReason::ReservationExpired
+                                }
+                                pb_pbmux::WireReservationState::Consumed
+                                | pb_pbmux::WireReservationState::ConsumedReleased => {
+                                    ResourceReason::ReservationAlreadyConsumed
+                                }
+                                _ => ResourceReason::ReservationNotCommitted,
+                            },
+                        );
+                        resource_failure_with_snapshot(
+                            wire_lease_id,
+                            self.incarnation,
+                            reason,
+                            snapshot,
+                        )
+                    }
+                }
+            }
+            ResourceRequest::Release { reservation_id, .. } => {
+                let reservation_id = ReservationId::from_bytes(reservation_id);
+                let decision = self.resource_guard.release(
+                    &mut self.lease_manager,
+                    &session,
+                    lease_id,
+                    reservation_id,
+                    now_ms,
+                );
+                let snapshot =
+                    self.resource_guard
+                        .reservation_snapshot(proof, reservation_id, now_ms);
+                match decision {
+                    ReleaseDecision::Released => match snapshot {
+                        Some(snapshot) => {
+                            resource_success(wire_lease_id, self.incarnation, snapshot)
+                        }
+                        None => resource_failure(
+                            wire_lease_id,
+                            self.incarnation,
+                            ResourceReason::InternalError,
+                        ),
+                    },
+                    ReleaseDecision::AlreadyTerminal => {
+                        let Some(snapshot) = snapshot else {
+                            return (
+                                kind,
+                                resource_failure(
+                                    wire_lease_id,
+                                    self.incarnation,
+                                    ResourceReason::ReservationNotFound,
+                                ),
+                            );
+                        };
+                        match snapshot.wire_state() {
+                            pb_pbmux::WireReservationState::Released => {
+                                resource_success(wire_lease_id, self.incarnation, snapshot)
+                            }
+                            pb_pbmux::WireReservationState::Consumed
+                            | pb_pbmux::WireReservationState::ConsumedReleased => {
+                                resource_failure_with_snapshot(
+                                    wire_lease_id,
+                                    self.incarnation,
+                                    ResourceReason::ReservationAlreadyConsumed,
+                                    Some(snapshot),
+                                )
+                            }
+                            pb_pbmux::WireReservationState::Expired => {
+                                resource_failure_with_snapshot(
+                                    wire_lease_id,
+                                    self.incarnation,
+                                    ResourceReason::ReservationExpired,
+                                    Some(snapshot),
+                                )
+                            }
+                            _ => resource_failure_with_snapshot(
+                                wire_lease_id,
+                                self.incarnation,
+                                ResourceReason::ReservationNotCommitted,
+                                Some(snapshot),
+                            ),
+                        }
+                    }
+                    ReleaseDecision::StaleLease => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::StaleControllerLease,
+                    ),
+                    ReleaseDecision::UnknownReservation => resource_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        ResourceReason::ReservationNotFound,
+                    ),
+                }
+            }
+        };
+        self.resource_requests.insert(
+            key,
+            ResourceRequestCacheEntry {
+                request,
+                kind,
+                result,
+                terminal_at_ms: now_ms,
+            },
+        );
+        (kind, result)
+    }
+
+    /// Production C09 authority entry point. Bare peer IDs, handles, and
+    /// authentication booleans cannot call into the store.
+    pub fn apply_remote_buffer_request(
+        &mut self,
+        verified_session: &VerifiedPeerSession<'_>,
+        request: RemoteBufferRequest,
+    ) -> (RemoteBufferResponseKind, BufferResult) {
+        let now_ms = self.clock.now_ms();
+        let kind = remote_buffer_response_kind(&request);
+        let wire_lease_id = *request.lease_id();
+        if request.worker_incarnation_id() != &self.incarnation.into_bytes() {
+            return (
+                kind,
+                remote_buffer_failure(
+                    wire_lease_id,
+                    self.incarnation,
+                    BufferReason::BufferWrongIncarnation,
+                ),
+            );
+        }
+        let lease_id = LeaseId::from_bytes(wire_lease_id);
+        let session = AuthenticatedSession::from_verified(verified_session);
+        let proof = match self.lease_manager.validate(&session, lease_id, now_ms) {
+            Ok(proof) => proof,
+            Err(_) => {
+                return (
+                    kind,
+                    remote_buffer_failure(
+                        wire_lease_id,
+                        self.incarnation,
+                        BufferReason::StaleControllerLease,
+                    ),
+                );
+            }
+        };
+        self.remote_buffers.apply(
+            &mut self.resource_guard,
+            proof,
+            remote_buffer::SessionBinding::from_verified(verified_session.session_id()),
+            request,
+            now_ms,
+        )
+    }
+
+    /// Terminalizes only buffers created by this exact authenticated session.
+    /// The C07 controller lease is intentionally left untouched.
+    pub fn authenticated_session_ended(&mut self, verified_session: &VerifiedPeerSession<'_>) {
+        self.remote_buffers.session_lost(
+            &mut self.resource_guard,
+            remote_buffer::SessionBinding::from_verified(verified_session.session_id()),
+            self.clock.now_ms(),
+        );
+    }
+}
+
+fn resource_response_kind(request: &ResourceRequest) -> ResourceResponseKind {
+    match request {
+        ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
+        ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
+        ResourceRequest::Release { .. } => ResourceResponseKind::Release,
+    }
+}
+
+fn resource_success(
+    lease_id: [u8; 16],
+    incarnation: WorkerIncarnationId,
+    snapshot: resource_guard::ReservationSnapshot,
+) -> ResourceResult {
+    ResourceResult {
+        state: ResourceResultState::Completed,
+        reason: ResourceReason::None,
+        lease_id,
+        worker_incarnation_id: incarnation.into_bytes(),
+        reservation: Some(ReservationResultRef {
+            reservation_id: snapshot.reservation_id.into_bytes(),
+            state: snapshot.wire_state(),
+            granted_bytes: snapshot.bytes,
+            ttl_remaining_ms: snapshot.ttl_remaining_ms,
+        }),
+    }
+}
+
+fn resource_failure(
+    lease_id: [u8; 16],
+    incarnation: WorkerIncarnationId,
+    reason: ResourceReason,
+) -> ResourceResult {
+    resource_failure_with_snapshot(lease_id, incarnation, reason, None)
+}
+
+fn resource_failure_with_snapshot(
+    lease_id: [u8; 16],
+    incarnation: WorkerIncarnationId,
+    reason: ResourceReason,
+    snapshot: Option<resource_guard::ReservationSnapshot>,
+) -> ResourceResult {
+    ResourceResult {
+        state: ResourceResultState::Failed,
+        reason,
+        lease_id,
+        worker_incarnation_id: incarnation.into_bytes(),
+        reservation: snapshot.map(|snapshot| ReservationResultRef {
+            reservation_id: snapshot.reservation_id.into_bytes(),
+            state: snapshot.wire_state(),
+            granted_bytes: snapshot.bytes,
+            ttl_remaining_ms: snapshot.ttl_remaining_ms,
+        }),
+    }
+}
+
+fn remote_buffer_response_kind(request: &RemoteBufferRequest) -> RemoteBufferResponseKind {
+    match request {
+        RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
+        RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
+        RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
+        RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
+        RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
+        RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+    }
+}
+
+fn remote_buffer_failure(
+    lease_id: [u8; 16],
+    incarnation: WorkerIncarnationId,
+    reason: BufferReason,
+) -> BufferResult {
+    BufferResult {
+        completed: false,
+        reason,
+        lease_id,
+        worker_incarnation_id: incarnation.into_bytes(),
+        buffer: None,
+        reservation_id: None,
+        offset: 0,
+        data_len: 0,
+        data: Vec::new(),
     }
 }
 

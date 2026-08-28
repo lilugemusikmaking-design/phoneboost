@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::lease::{AuthenticatedSession, ControllerLeaseManager, LeaseId};
+use crate::lease::{AuthenticatedSession, ControllerLeaseManager, LeaseId, LeaseProof};
 use crate::{WorkerIncarnationId, random_nonzero_128};
+use pb_types::PeerId;
 
 pub const POC_CAP_BYTES: u64 = 128 * 1024 * 1024;
 pub const MIN_AVAILABLE_BYTES: u64 = 768 * 1024 * 1024;
@@ -136,22 +137,30 @@ pub enum ResourceGuardState {
 pub struct ReservationId([u8; 16]);
 
 impl ReservationId {
+    pub const fn from_bytes(bytes: [u8; 16]) -> Self {
+        Self(bytes)
+    }
+
+    pub const fn into_bytes(self) -> [u8; 16] {
+        self.0
+    }
+
     pub fn is_nonzero(self) -> bool {
         self.0.iter().any(|byte| *byte != 0)
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct RequestId([u8; 16]);
+pub struct RequestId(u64);
 
 impl RequestId {
-    pub const fn from_bytes(bytes: [u8; 16]) -> Self {
-        Self(bytes)
+    pub const fn from_u64(value: u64) -> Self {
+        Self(value)
     }
 
     #[cfg(test)]
     pub(crate) const fn test_only(value: u128) -> Self {
-        Self(value.to_be_bytes())
+        Self(value as u64)
     }
 }
 
@@ -203,10 +212,13 @@ enum ReservationState {
     Released,
     Expired,
     RefusedSafety,
+    Consumed,
+    ConsumedReleased,
 }
 
 #[derive(Clone, Copy)]
 struct Reservation {
+    peer_id: PeerId,
     lease_id: LeaseId,
     incarnation: WorkerIncarnationId,
     request_id: RequestId,
@@ -326,7 +338,7 @@ impl ResourceGuard {
         }
     }
 
-    pub fn reserve(
+    pub(crate) fn reserve(
         &mut self,
         leases: &mut ControllerLeaseManager,
         session: &AuthenticatedSession,
@@ -368,6 +380,7 @@ impl ResourceGuard {
                         self.reservations.insert(
                             reservation_id,
                             Reservation {
+                                peer_id: proof.peer_id,
                                 lease_id: proof.lease_id,
                                 incarnation: proof.incarnation,
                                 request_id: request.request_id,
@@ -401,7 +414,7 @@ impl ResourceGuard {
         decision
     }
 
-    pub fn commit(
+    pub(crate) fn commit(
         &mut self,
         leases: &mut ControllerLeaseManager,
         session: &AuthenticatedSession,
@@ -425,7 +438,9 @@ impl ResourceGuard {
             ReservationState::Reserved => {}
             ReservationState::Released
             | ReservationState::Expired
-            | ReservationState::RefusedSafety => {
+            | ReservationState::RefusedSafety
+            | ReservationState::Consumed
+            | ReservationState::ConsumedReleased => {
                 return CommitDecision::UnknownOrExpiredReservation;
             }
         }
@@ -444,7 +459,7 @@ impl ResourceGuard {
         CommitDecision::Committed
     }
 
-    pub fn release(
+    pub(crate) fn release(
         &mut self,
         leases: &mut ControllerLeaseManager,
         session: &AuthenticatedSession,
@@ -475,8 +490,109 @@ impl ResourceGuard {
             }
             ReservationState::Released
             | ReservationState::Expired
-            | ReservationState::RefusedSafety => ReleaseDecision::AlreadyTerminal,
+            | ReservationState::RefusedSafety
+            | ReservationState::Consumed
+            | ReservationState::ConsumedReleased => ReleaseDecision::AlreadyTerminal,
         }
+    }
+
+    pub(crate) fn reservation_snapshot(
+        &mut self,
+        proof: LeaseProof,
+        reservation_id: ReservationId,
+        now_ms: u64,
+    ) -> Option<ReservationSnapshot> {
+        self.expire_and_purge(now_ms, proof.lease_id, proof.incarnation);
+        let reservation = self.reservations.get(&reservation_id)?;
+        if reservation.peer_id != proof.peer_id
+            || reservation.lease_id != proof.lease_id
+            || reservation.incarnation != proof.incarnation
+        {
+            return None;
+        }
+        Some(ReservationSnapshot {
+            reservation_id,
+            bytes: reservation.bytes,
+            state: reservation.state,
+            ttl_remaining_ms: if reservation.state == ReservationState::Reserved {
+                reservation
+                    .expires_at_ms
+                    .saturating_sub(now_ms)
+                    .min(u32::MAX as u64) as u32
+            } else {
+                0
+            },
+        })
+    }
+
+    pub(crate) fn consume_for_buffer(
+        &mut self,
+        proof: LeaseProof,
+        reservation_id: ReservationId,
+        size_bytes: u64,
+        now_ms: u64,
+    ) -> Result<(), ReservationConsumeError> {
+        self.expire_and_purge(now_ms, proof.lease_id, proof.incarnation);
+        let Some(reservation) = self.reservations.get_mut(&reservation_id) else {
+            return Err(ReservationConsumeError::NotFound);
+        };
+        if reservation.peer_id != proof.peer_id
+            || reservation.lease_id != proof.lease_id
+            || reservation.incarnation != proof.incarnation
+            || reservation.bytes != size_bytes
+        {
+            return Err(ReservationConsumeError::InvalidOwnershipOrSize);
+        }
+        match reservation.state {
+            ReservationState::Committed => {
+                reservation.state = ReservationState::Consumed;
+                Ok(())
+            }
+            ReservationState::Reserved => Err(ReservationConsumeError::NotCommitted),
+            ReservationState::Expired => Err(ReservationConsumeError::Expired),
+            ReservationState::Consumed | ReservationState::ConsumedReleased => {
+                Err(ReservationConsumeError::AlreadyConsumed)
+            }
+            ReservationState::Released | ReservationState::RefusedSafety => {
+                Err(ReservationConsumeError::InvalidState)
+            }
+        }
+    }
+
+    pub(crate) fn release_consumed_buffer(
+        &mut self,
+        reservation_id: ReservationId,
+        bytes: u64,
+        now_ms: u64,
+    ) {
+        let Some(reservation) = self.reservations.get_mut(&reservation_id) else {
+            return;
+        };
+        if reservation.state != ReservationState::Consumed || reservation.bytes != bytes {
+            return;
+        }
+        reservation.state = ReservationState::ConsumedReleased;
+        reservation.terminal_at_ms = Some(now_ms);
+        self.release_allocation(bytes);
+    }
+
+    pub(crate) fn tick(&mut self, now_ms: u64) {
+        self.expire_reserved(now_ms);
+        self.idempotence.retain(|_, entry| {
+            entry
+                .terminal_at_ms
+                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS)
+        });
+        self.reservations.retain(|_, reservation| {
+            reservation
+                .terminal_at_ms
+                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS)
+        });
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn held_bytes(&self) -> u64 {
+        self.allocated_bytes
     }
 
     fn update_memory(&mut self, sample: HealthSample) {
@@ -579,8 +695,10 @@ impl ResourceGuard {
             .reservations
             .iter()
             .filter_map(|(id, reservation)| {
-                (reservation.lease_id != active_lease
-                    || reservation.incarnation != active_incarnation)
+                (reservation.state != ReservationState::Consumed
+                    && reservation.state != ReservationState::ConsumedReleased
+                    && (reservation.lease_id != active_lease
+                        || reservation.incarnation != active_incarnation))
                     .then_some((*id, reservation.bytes, reservation.state))
             })
             .collect();
@@ -593,6 +711,23 @@ impl ResourceGuard {
             }
             self.reservations.remove(&id);
         }
+        self.expire_reserved(now_ms);
+        self.idempotence.retain(|_, entry| {
+            let belongs_to_active =
+                entry.lease_id == active_lease && entry.incarnation == active_incarnation;
+            let retained_terminal = entry
+                .terminal_at_ms
+                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS);
+            belongs_to_active && retained_terminal
+        });
+        self.reservations.retain(|_, reservation| {
+            reservation
+                .terminal_at_ms
+                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS)
+        });
+    }
+
+    fn expire_reserved(&mut self, now_ms: u64) {
         let expired: Vec<_> = self
             .reservations
             .iter()
@@ -610,19 +745,6 @@ impl ResourceGuard {
             }
             self.mark_idempotence_terminal(request_id, now_ms);
         }
-        self.idempotence.retain(|_, entry| {
-            let belongs_to_active =
-                entry.lease_id == active_lease && entry.incarnation == active_incarnation;
-            let retained_terminal = entry
-                .terminal_at_ms
-                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS);
-            belongs_to_active && retained_terminal
-        });
-        self.reservations.retain(|_, reservation| {
-            reservation
-                .terminal_at_ms
-                .is_none_or(|terminal| now_ms.saturating_sub(terminal) <= TERMINAL_RETENTION_MS)
-        });
     }
 
     fn mark_idempotence_terminal(&mut self, request_id: RequestId, now_ms: u64) {
@@ -634,6 +756,38 @@ impl ResourceGuard {
     fn release_allocation(&mut self, bytes: u64) {
         self.allocated_bytes = self.allocated_bytes.saturating_sub(bytes);
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ReservationSnapshot {
+    pub(crate) reservation_id: ReservationId,
+    pub(crate) bytes: u64,
+    state: ReservationState,
+    pub(crate) ttl_remaining_ms: u32,
+}
+
+impl ReservationSnapshot {
+    pub(crate) const fn wire_state(self) -> pb_pbmux::WireReservationState {
+        match self.state {
+            ReservationState::Reserved => pb_pbmux::WireReservationState::Reserved,
+            ReservationState::Committed => pb_pbmux::WireReservationState::Committed,
+            ReservationState::Released => pb_pbmux::WireReservationState::Released,
+            ReservationState::Expired => pb_pbmux::WireReservationState::Expired,
+            ReservationState::RefusedSafety => pb_pbmux::WireReservationState::RefusedSafety,
+            ReservationState::Consumed => pb_pbmux::WireReservationState::Consumed,
+            ReservationState::ConsumedReleased => pb_pbmux::WireReservationState::ConsumedReleased,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ReservationConsumeError {
+    NotFound,
+    InvalidOwnershipOrSize,
+    NotCommitted,
+    Expired,
+    AlreadyConsumed,
+    InvalidState,
 }
 
 impl Default for ResourceGuard {

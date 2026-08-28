@@ -5,9 +5,13 @@ use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use pb_pbmux::{
-    AckPayload, CommandPayload, DispatchMode, Frame, Header, PbmuxErrorKind, SequenceTracker,
-    authorize_dispatch, build_command_ack_frame, decode, encode, pair_confirm_frame,
-    parse_command_ack_frame, parse_command_frame, parse_heartbeat_frame, validate_pair_confirm,
+    AckPayload, BufferResult, CommandPayload, DispatchMode, Frame, Header, PbmuxErrorKind,
+    Reassembler, RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest,
+    ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
+    build_command_ack_frame, build_remote_buffer_result_frames, build_resource_result_frame,
+    decode, encode, pair_confirm_frame, parse_command_ack_frame, parse_command_frame,
+    parse_heartbeat_frame, parse_remote_buffer_request_payload, parse_resource_request_frame,
+    validate_pair_confirm, validate_remote_buffer_request_fragment,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -60,8 +64,23 @@ struct SessionScope;
 /// ```
 pub struct VerifiedPeerSession<'session> {
     peer_id: PeerId,
+    session_id: VerifiedSessionId,
     _scope: std::marker::PhantomData<&'session SessionScope>,
 }
+
+/// Opaque identity of one authenticated SecureSession lifetime.
+///
+/// This value is not authentication proof. Production authority APIs continue
+/// to require `VerifiedPeerSession`; the identifier exists only to bind
+/// volatile provider records to the exact session that created them.
+///
+/// ```compile_fail
+/// use pb_runtime_secure::VerifiedSessionId;
+///
+/// let _forged = VerifiedSessionId([0; 16]);
+/// ```
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+pub struct VerifiedSessionId([u8; 16]);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuthenticatedCommandHandlerError {
@@ -76,6 +95,31 @@ pub trait AuthenticatedCommandHandler: Send + Sync {
         request_id: u64,
         command: CommandPayload,
     ) -> Result<AckPayload, AuthenticatedCommandHandlerError>;
+
+    fn handle_authenticated_resource(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+        _request_id: u64,
+        _request: ResourceRequest,
+    ) -> Result<(ResourceResponseKind, ResourceResult), AuthenticatedCommandHandlerError> {
+        Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+
+    fn handle_authenticated_remote_buffer(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+        _request_id: u64,
+        _request: RemoteBufferRequest,
+    ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError> {
+        Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+
+    fn authenticated_session_ended(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+    ) -> Result<(), AuthenticatedCommandHandlerError> {
+        Ok(())
+    }
 }
 
 struct NoAuthenticatedCommandHandler;
@@ -97,6 +141,10 @@ static NO_AUTHENTICATED_COMMAND_HANDLER: NoAuthenticatedCommandHandler =
 impl VerifiedPeerSession<'_> {
     pub const fn peer_id(&self) -> &PeerId {
         &self.peer_id
+    }
+
+    pub const fn session_id(&self) -> VerifiedSessionId {
+        self.session_id
     }
 }
 
@@ -626,6 +674,7 @@ impl SecureRuntime {
         inner.mismatch_count = guard.mismatch_count;
         let verified = VerifiedPeerSession {
             peer_id: PeerId::from_static_public_key(remote),
+            session_id: VerifiedSessionId(random_nonzero_128()?),
             _scope: std::marker::PhantomData,
         };
         #[cfg(test)]
@@ -1155,16 +1204,20 @@ fn enter_authenticated_loop(
     let scope = SessionScope;
     let verified_peer = runtime.mark_authenticated(&remote, &scope)?;
     runtime.heartbeat();
-    run_authenticated_loop(
+    let result = run_authenticated_loop(
         stream,
         runtime,
         command_handler,
         transport,
-        verified_peer,
+        &verified_peer,
         send_sequence,
         receive_sequence,
         initiator,
-    )
+    );
+    command_handler
+        .authenticated_session_ended(&verified_peer)
+        .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+    result
 }
 
 fn run_authenticated_loop(
@@ -1172,13 +1225,14 @@ fn run_authenticated_loop(
     runtime: &SecureRuntime,
     command_handler: &dyn AuthenticatedCommandHandler,
     mut transport: TransportState,
-    verified_peer: VerifiedPeerSession<'_>,
+    verified_peer: &VerifiedPeerSession<'_>,
     mut send_sequence: u64,
     mut receive_sequence: SequenceTracker,
     initiator: bool,
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
     let mut outstanding = None;
+    let mut reassembler = Reassembler::default();
     loop {
         if initiator && Instant::now() >= next_heartbeat && outstanding.is_none() {
             let request = random_nonzero_u64()?;
@@ -1219,7 +1273,7 @@ fn run_authenticated_loop(
                         let command = parse_authenticated_command(&frame)?;
                         let ack = command_handler
                             .handle_authenticated_command(
-                                &verified_peer,
+                                verified_peer,
                                 frame.header.request_id,
                                 command,
                             )
@@ -1247,6 +1301,60 @@ fn run_authenticated_loop(
                     Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
                     _ => return Err(RuntimeError::Pbmux),
                 }
+            } else if frame.header.channel == Channel::Resource {
+                let request =
+                    parse_resource_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                let expected_kind = match &request {
+                    ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
+                    ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
+                    ResourceRequest::Release { .. } => ResourceResponseKind::Release,
+                };
+                let (kind, result) = command_handler
+                    .handle_authenticated_resource(verified_peer, frame.header.request_id, request)
+                    .map_err(handler_runtime_error)?;
+                if kind != expected_kind {
+                    return Err(RuntimeError::CommandHandlerFailed);
+                }
+                let response = build_resource_result_frame(
+                    kind,
+                    &result,
+                    frame.header.request_id,
+                    send_sequence,
+                )
+                .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                send_frame(stream, &mut transport, &response)?;
+            } else if frame.header.channel == Channel::RemoteBuffer {
+                validate_remote_buffer_request_fragment(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                let message_type = frame.header.message_type;
+                let request_id = frame.header.request_id;
+                if let Some(payload) = reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)? {
+                    let request = parse_remote_buffer_request_payload(message_type, &payload)
+                        .map_err(|_| RuntimeError::Pbmux)?;
+                    let expected_kind = match &request {
+                        RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
+                        RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
+                        RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
+                        RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
+                        RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
+                        RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+                    };
+                    let (kind, result) = command_handler
+                        .handle_authenticated_remote_buffer(verified_peer, request_id, request)
+                        .map_err(handler_runtime_error)?;
+                    if kind != expected_kind {
+                        return Err(RuntimeError::CommandHandlerFailed);
+                    }
+                    let responses =
+                        build_remote_buffer_result_frames(kind, &result, request_id, send_sequence)
+                            .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                    send_sequence = send_sequence
+                        .checked_add(responses.len() as u64)
+                        .ok_or(RuntimeError::Pbmux)?;
+                    for response in responses {
+                        send_frame(stream, &mut transport, &response)?;
+                    }
+                }
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
                     parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
@@ -1258,6 +1366,13 @@ fn run_authenticated_loop(
             }
         }
         std::thread::sleep(SESSION_POLL);
+    }
+}
+
+fn handler_runtime_error(error: AuthenticatedCommandHandlerError) -> RuntimeError {
+    match error {
+        AuthenticatedCommandHandlerError::Unavailable => RuntimeError::CommandHandlerUnavailable,
+        AuthenticatedCommandHandlerError::Failed => RuntimeError::CommandHandlerFailed,
     }
 }
 
@@ -1366,6 +1481,19 @@ fn random_nonzero_u64() -> Result<u64, RuntimeError> {
         let value = u64::from_be_bytes(bytes);
         if value != 0 {
             return Ok(value);
+        }
+    }
+    Err(RuntimeError::PairPersistFailed)
+}
+
+fn random_nonzero_128() -> Result<[u8; 16], RuntimeError> {
+    for _ in 0..4 {
+        let mut bytes = [0_u8; 16];
+        File::open("/dev/urandom")
+            .and_then(|mut random| random.read_exact(&mut bytes))
+            .map_err(|_| RuntimeError::PairPersistFailed)?;
+        if bytes != [0; 16] {
+            return Ok(bytes);
         }
     }
     Err(RuntimeError::PairPersistFailed)
@@ -1609,6 +1737,25 @@ mod tests {
     #[test]
     fn pairing_timeout_is_exactly_120_seconds() {
         assert_eq!(PAIRING_TIMEOUT_MS, 120_000);
+    }
+
+    #[test]
+    fn reconnect_mints_a_fresh_opaque_session_id_for_the_same_peer() {
+        let directory = TestDirectory::new("session-generation");
+        let store = open_store(&directory.0);
+        let runtime = SecureRuntime::initialize(EndpointRole::AndroidResponder, store).unwrap();
+        let remote = [0x55; 32];
+        let first_scope = SessionScope;
+        let first = runtime
+            .mark_authenticated(&remote, &first_scope)
+            .unwrap()
+            .session_id();
+        let second_scope = SessionScope;
+        let second = runtime
+            .mark_authenticated(&remote, &second_scope)
+            .unwrap()
+            .session_id();
+        assert!(first != second);
     }
 
     #[test]

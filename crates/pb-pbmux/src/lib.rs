@@ -10,6 +10,24 @@ use pb_types::{
     PBMUX_MAGIC, PBMUX_VERSION, ReasonCode, is_known_message_type,
 };
 
+mod remote_buffer;
+mod resource;
+
+pub use remote_buffer::{
+    AllocationFlags, BufferReason, BufferResult, BufferResultRef, BufferState, MAX_DATA_BODY,
+    MAX_PUT_BODY, RemoteBufferRequest, RemoteBufferResponseKind,
+    build_remote_buffer_request_frames, build_remote_buffer_result_frames,
+    parse_remote_buffer_request_frame, parse_remote_buffer_request_payload,
+    parse_remote_buffer_result_frame, parse_remote_buffer_result_payload,
+    validate_remote_buffer_request_fragment, validate_remote_buffer_result_fragment,
+};
+pub use resource::{
+    ExpireNotification, ReservationResultRef, ReservationState as WireReservationState,
+    ResourceReason, ResourceRequest, ResourceResponseKind, ResourceResult, ResourceResultState,
+    build_expire_notification_frame, build_resource_request_frame, build_resource_result_frame,
+    parse_expire_notification_frame, parse_resource_request_frame, parse_resource_result_frame,
+};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Header {
     pub channel: Channel,
@@ -47,6 +65,8 @@ pub enum PbmuxErrorKind {
     ReassemblyMissing,
     PairingNotCommitted,
     PairConfirmUnexpected,
+    InvalidResourcePayload,
+    InvalidRemoteBufferPayload,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -131,6 +151,9 @@ impl PbmuxError {
             PbmuxErrorKind::FrameTooLarge => ReasonCode::FrameTooLarge,
             PbmuxErrorKind::UnsupportedMessage => ReasonCode::UnsupportedMessage,
             PbmuxErrorKind::InvalidCommandPayload => ReasonCode::UnsupportedMessage,
+            PbmuxErrorKind::InvalidResourcePayload | PbmuxErrorKind::InvalidRemoteBufferPayload => {
+                ReasonCode::UnsupportedMessage
+            }
             PbmuxErrorKind::SequenceMismatch => ReasonCode::SequenceError,
             PbmuxErrorKind::PairingNotCommitted => ReasonCode::PairingNotCommitted,
             PbmuxErrorKind::PairConfirmUnexpected => ReasonCode::PairConfirmUnexpected,
@@ -931,6 +954,8 @@ impl ReassemblyAccounting {
 #[derive(Debug)]
 struct PartialMessage {
     ticket: AdmissionTicket,
+    message_type: u16,
+    ack_required: bool,
     expected_fragment: u32,
     expected_len: usize,
     payload: Vec<u8>,
@@ -978,6 +1003,8 @@ impl Reassembler {
                 key,
                 PartialMessage {
                     ticket,
+                    message_type: frame.header.message_type,
+                    ack_required: frame.header.flags & FLAG_ACK_REQUIRED != 0,
                     expected_fragment: 1,
                     expected_len,
                     payload,
@@ -989,7 +1016,10 @@ impl Reassembler {
         let Some(partial) = self.partial.get(&key) else {
             return Err(PbmuxError::logical(PbmuxErrorKind::ReassemblyMissing));
         };
-        if frame.header.fragment_index != partial.expected_fragment
+        if frame.header.message_type != partial.message_type
+            || frame.header.flags & FLAG_ACK_REQUIRED
+                != u16::from(partial.ack_required) * FLAG_ACK_REQUIRED
+            || frame.header.fragment_index != partial.expected_fragment
             || partial.payload.len() + frame.payload.len() > partial.expected_len
         {
             return Err(self.abort_partial(key, PbmuxErrorKind::FragmentInvalid));
