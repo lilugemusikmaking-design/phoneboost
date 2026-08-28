@@ -353,6 +353,7 @@ dependencies = [
 name = "pb-worker-core"
 version = "0.1.0"
 dependencies = [
+ "pb-runtime-secure",
  "pb-types",
 ]
 
@@ -360,8 +361,13 @@ dependencies = [
 name = "phoneboost-core-jni"
 version = "0.1.0"
 dependencies = [
+ "curve25519-dalek",
+ "pb-pbmux",
  "pb-runtime-secure",
+ "pb-secure",
+ "pb-types",
  "pb-worker-core",
+ "snow",
 ]
 
 [[package]]

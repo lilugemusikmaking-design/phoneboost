@@ -5,9 +5,9 @@ use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use pb_pbmux::{
-    DispatchMode, Frame, Header, SequenceTracker, authorize_dispatch, decode, encode,
-    pair_confirm_frame, parse_command_ack_frame, parse_command_frame, parse_heartbeat_frame,
-    validate_pair_confirm,
+    AckPayload, CommandPayload, DispatchMode, Frame, Header, PbmuxErrorKind, SequenceTracker,
+    authorize_dispatch, build_command_ack_frame, decode, encode, pair_confirm_frame,
+    parse_command_ack_frame, parse_command_frame, parse_heartbeat_frame, validate_pair_confirm,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -62,6 +62,37 @@ pub struct VerifiedPeerSession<'session> {
     peer_id: PeerId,
     _scope: std::marker::PhantomData<&'session SessionScope>,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AuthenticatedCommandHandlerError {
+    Unavailable,
+    Failed,
+}
+
+pub trait AuthenticatedCommandHandler: Send + Sync {
+    fn handle_authenticated_command(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+        request_id: u64,
+        command: CommandPayload,
+    ) -> Result<AckPayload, AuthenticatedCommandHandlerError>;
+}
+
+struct NoAuthenticatedCommandHandler;
+
+impl AuthenticatedCommandHandler for NoAuthenticatedCommandHandler {
+    fn handle_authenticated_command(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+        _request_id: u64,
+        _command: CommandPayload,
+    ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+        Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+}
+
+static NO_AUTHENTICATED_COMMAND_HANDLER: NoAuthenticatedCommandHandler =
+    NoAuthenticatedCommandHandler;
 
 impl VerifiedPeerSession<'_> {
     pub const fn peer_id(&self) -> &PeerId {
@@ -166,6 +197,8 @@ pub enum RuntimeError {
     SessionLost,
     SessionBusy,
     NoConnectedTransport,
+    CommandHandlerUnavailable,
+    CommandHandlerFailed,
 }
 
 impl RuntimeError {
@@ -187,6 +220,8 @@ impl RuntimeError {
             Self::Pbmux => "PAIRING_NOT_COMMITTED",
             Self::SessionBusy => "CONTROLLER_BUSY",
             Self::NoConnectedTransport => "DEVICE_LOST",
+            Self::CommandHandlerUnavailable => "COMMAND_HANDLER_UNAVAILABLE",
+            Self::CommandHandlerFailed => "COMMAND_HANDLER_FAILED",
         }
     }
 }
@@ -689,11 +724,25 @@ pub fn run_initiator_session(
     match committed {
         Some(peer) => {
             let (transport, remote) = initiator_ik(stream, runtime.identity.private(), &peer)?;
-            run_committed_loop(stream, runtime, transport, remote, true)
+            run_committed_loop(
+                stream,
+                runtime,
+                &NO_AUTHENTICATED_COMMAND_HANDLER,
+                transport,
+                remote,
+                true,
+            )
         }
         None => {
             let (transport, remote) = initiator_xx(stream, runtime)?;
-            run_pairing_loop(stream, runtime, transport, remote, true)
+            run_pairing_loop(
+                stream,
+                runtime,
+                &NO_AUTHENTICATED_COMMAND_HANDLER,
+                transport,
+                remote,
+                true,
+            )
         }
     }
 }
@@ -702,6 +751,15 @@ pub fn run_responder_session(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
     prefix: &[u8],
+) -> Result<SessionOutcome, RuntimeError> {
+    run_responder_session_with_handler(stream, runtime, prefix, &NO_AUTHENTICATED_COMMAND_HANDLER)
+}
+
+pub fn run_responder_session_with_handler(
+    stream: &mut TcpStream,
+    runtime: &SecureRuntime,
+    prefix: &[u8],
+    command_handler: &dyn AuthenticatedCommandHandler,
 ) -> Result<SessionOutcome, RuntimeError> {
     configure_handshake_stream(stream)?;
     let first = read_record_prefixed(stream, prefix)?;
@@ -713,10 +771,10 @@ pub fn run_responder_session(
     let _session = SessionGuard { runtime };
     if xx {
         let (transport, remote) = responder_xx(stream, runtime, &first)?;
-        run_pairing_loop(stream, runtime, transport, remote, false)
+        run_pairing_loop(stream, runtime, command_handler, transport, remote, false)
     } else {
         let (transport, remote) = responder_ik(stream, runtime, &first)?;
-        run_committed_loop(stream, runtime, transport, remote, false)
+        run_committed_loop(stream, runtime, command_handler, transport, remote, false)
     }
 }
 
@@ -902,6 +960,7 @@ fn read_record_prefixed(stream: &mut TcpStream, prefix: &[u8]) -> Result<Vec<u8>
 fn run_pairing_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
+    command_handler: &dyn AuthenticatedCommandHandler,
     mut transport: TransportState,
     remote: [u8; 32],
     initiator: bool,
@@ -959,6 +1018,7 @@ fn run_pairing_loop(
                     return enter_authenticated_loop(
                         stream,
                         runtime,
+                        command_handler,
                         transport,
                         remote,
                         send_sequence,
@@ -973,6 +1033,7 @@ fn run_pairing_loop(
                     return enter_authenticated_loop(
                         stream,
                         runtime,
+                        command_handler,
                         transport,
                         remote,
                         send_sequence,
@@ -1015,6 +1076,7 @@ fn run_pairing_loop(
 fn run_committed_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
+    command_handler: &dyn AuthenticatedCommandHandler,
     mut transport: TransportState,
     remote: [u8; 32],
     initiator: bool,
@@ -1041,6 +1103,7 @@ fn run_committed_loop(
                     return enter_authenticated_loop(
                         stream,
                         runtime,
+                        command_handler,
                         transport,
                         remote,
                         send_sequence,
@@ -1067,6 +1130,7 @@ fn run_committed_loop(
             return enter_authenticated_loop(
                 stream,
                 runtime,
+                command_handler,
                 transport,
                 remote,
                 send_sequence,
@@ -1081,6 +1145,7 @@ fn run_committed_loop(
 fn enter_authenticated_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
+    command_handler: &dyn AuthenticatedCommandHandler,
     transport: TransportState,
     remote: [u8; 32],
     send_sequence: u64,
@@ -1093,6 +1158,7 @@ fn enter_authenticated_loop(
     run_authenticated_loop(
         stream,
         runtime,
+        command_handler,
         transport,
         verified_peer,
         send_sequence,
@@ -1104,8 +1170,9 @@ fn enter_authenticated_loop(
 fn run_authenticated_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
+    command_handler: &dyn AuthenticatedCommandHandler,
     mut transport: TransportState,
-    _verified_peer: VerifiedPeerSession<'_>,
+    verified_peer: VerifiedPeerSession<'_>,
     mut send_sequence: u64,
     mut receive_sequence: SequenceTracker,
     initiator: bool,
@@ -1149,7 +1216,30 @@ fn run_authenticated_loop(
                         runtime.heartbeat();
                     }
                     Ok(ControlType::Command) => {
-                        parse_command_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                        let command = parse_authenticated_command(&frame)?;
+                        let ack = command_handler
+                            .handle_authenticated_command(
+                                &verified_peer,
+                                frame.header.request_id,
+                                command,
+                            )
+                            .map_err(|error| match error {
+                                AuthenticatedCommandHandlerError::Unavailable => {
+                                    RuntimeError::CommandHandlerUnavailable
+                                }
+                                AuthenticatedCommandHandlerError::Failed => {
+                                    RuntimeError::CommandHandlerFailed
+                                }
+                            })?;
+                        if ack.command_seq != command.command_seq || !matches!(ack.ack_state, 2 | 3)
+                        {
+                            return Err(RuntimeError::CommandHandlerFailed);
+                        }
+                        let ack_frame =
+                            build_command_ack_frame(&ack, frame.header.request_id, send_sequence)
+                                .map_err(|_| RuntimeError::Pbmux)?;
+                        send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                        send_frame(stream, &mut transport, &ack_frame)?;
                     }
                     Ok(ControlType::CommandAck) => {
                         parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
@@ -1168,6 +1258,38 @@ fn run_authenticated_loop(
             }
         }
         std::thread::sleep(SESSION_POLL);
+    }
+}
+
+fn parse_authenticated_command(frame: &Frame) -> Result<CommandPayload, RuntimeError> {
+    match parse_command_frame(frame) {
+        Ok(command) => Ok(command),
+        Err(error) if error.kind == PbmuxErrorKind::UnsupportedMessage => {
+            let bytes = frame
+                .payload
+                .as_slice()
+                .try_into()
+                .map_err(|_| RuntimeError::Pbmux)?;
+            Ok(decode_unsupported_command_envelope(bytes))
+        }
+        Err(_) => Err(RuntimeError::Pbmux),
+    }
+}
+
+fn decode_unsupported_command_envelope(bytes: &[u8; 46]) -> CommandPayload {
+    CommandPayload {
+        command_type: bytes[0],
+        lease_present: bytes[1],
+        lease_id: bytes[2..18].try_into().expect("fixed command lease id"),
+        command_seq: u64::from_be_bytes(bytes[18..26].try_into().expect("fixed command sequence")),
+        trace_id: bytes[26..42].try_into().expect("fixed command trace id"),
+        provider_present: bytes[42],
+        provider_id: bytes[43],
+        payload_len: u16::from_be_bytes(
+            bytes[44..46]
+                .try_into()
+                .expect("fixed command payload length"),
+        ),
     }
 }
 
@@ -1258,7 +1380,7 @@ mod tests {
     use std::os::unix::fs::DirBuilderExt;
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
     static TEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
@@ -1319,16 +1441,162 @@ mod tests {
             .verified_session_mints
     }
 
+    #[derive(Clone, Copy)]
+    struct ObservedCommand {
+        peer_id: PeerId,
+        request_id: u64,
+        command: CommandPayload,
+    }
+
+    struct RecordingCommandHandler {
+        calls: AtomicUsize,
+        observed: Mutex<Option<ObservedCommand>>,
+        response: Result<AckPayload, AuthenticatedCommandHandlerError>,
+    }
+
+    impl RecordingCommandHandler {
+        fn responding(response: AckPayload) -> Self {
+            Self {
+                calls: AtomicUsize::new(0),
+                observed: Mutex::new(None),
+                response: Ok(response),
+            }
+        }
+
+        fn failing(error: AuthenticatedCommandHandlerError) -> Self {
+            Self {
+                calls: AtomicUsize::new(0),
+                observed: Mutex::new(None),
+                response: Err(error),
+            }
+        }
+    }
+
+    impl AuthenticatedCommandHandler for RecordingCommandHandler {
+        fn handle_authenticated_command(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            command: CommandPayload,
+        ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            *self
+                .observed
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(ObservedCommand {
+                peer_id: *verified_session.peer_id(),
+                request_id,
+                command,
+            });
+            self.response
+        }
+    }
+
+    fn acquire_command() -> CommandPayload {
+        CommandPayload {
+            command_type: 1,
+            lease_present: 0,
+            lease_id: [0; 16],
+            command_seq: 0,
+            trace_id: [3; 16],
+            provider_present: 0,
+            provider_id: 0,
+            payload_len: 0,
+        }
+    }
+
+    fn receive_test_frame(
+        stream: &mut TcpStream,
+        transport: &mut TransportState,
+    ) -> Result<Frame, RuntimeError> {
+        for _ in 0..250 {
+            if let Some(frame) = receive_frame_if_available(stream, transport)? {
+                return Ok(frame);
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        Err(RuntimeError::SessionLost)
+    }
+
+    fn run_committed_ik_command(
+        handler: Option<Arc<dyn AuthenticatedCommandHandler>>,
+        command: CommandPayload,
+    ) -> (Result<Frame, RuntimeError>, RuntimeError, PeerId) {
+        let host_dir = TestDirectory::new("command-host");
+        let android_dir = TestDirectory::new("command-android");
+        let host_store = open_store(&host_dir.0);
+        let android_store = open_store(&android_dir.0);
+        let host_identity = host_store.load_or_create_identity().unwrap();
+        let android_identity = android_store.load_or_create_identity().unwrap();
+        let android_peer = PeerRecord::new(*android_identity.public(), "Android", 1);
+        android_store
+            .commit_peer(&PeerRecord::new(*host_identity.public(), "host", 1))
+            .unwrap();
+        let expected_peer_id = PeerId::from_static_public_key(host_identity.public());
+        let android = Arc::new(
+            SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap(),
+        );
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let android_runtime = Arc::clone(&android);
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            match handler {
+                Some(handler) => run_responder_session_with_handler(
+                    &mut stream,
+                    &android_runtime,
+                    &[],
+                    handler.as_ref(),
+                ),
+                None => run_responder_session(&mut stream, &android_runtime, &[]),
+            }
+            .unwrap_err()
+        });
+
+        let mut stream = TcpStream::connect(endpoint).unwrap();
+        configure_handshake_stream(&stream).unwrap();
+        let (mut transport, _) =
+            initiator_ik(&mut stream, host_identity.private(), &android_peer).unwrap();
+        configure_session_stream(&stream).unwrap();
+        send_frame(
+            &mut stream,
+            &mut transport,
+            &control_frame(ControlType::Ping, 9, 0),
+        )
+        .unwrap();
+        let pong = receive_test_frame(&mut stream, &mut transport).unwrap();
+        assert_eq!(pong.header.message_type, ControlType::Pong as u16);
+        assert_eq!(pong.header.request_id, 9);
+
+        let command = pb_pbmux::build_command_frame(&command, 44, 1).unwrap();
+        send_frame(&mut stream, &mut transport, &command).unwrap();
+        let response = receive_test_frame(&mut stream, &mut transport);
+        let _ = stream.shutdown(Shutdown::Both);
+        let responder_error = responder.join().unwrap();
+        (response, responder_error, expected_peer_id)
+    }
+
     fn run_ik_failure(
         host: Arc<SecureRuntime>,
         android: Arc<SecureRuntime>,
+        handler: Option<Arc<dyn AuthenticatedCommandHandler>>,
     ) -> (RuntimeError, RuntimeError) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let endpoint = listener.local_addr().unwrap();
         let android_runtime = Arc::clone(&android);
         let responder = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            run_responder_session(&mut stream, &android_runtime, &[]).unwrap_err()
+            match handler {
+                Some(handler) => run_responder_session_with_handler(
+                    &mut stream,
+                    &android_runtime,
+                    &[],
+                    handler.as_ref(),
+                ),
+                None => run_responder_session(&mut stream, &android_runtime, &[]),
+            }
+            .unwrap_err()
         });
         let host_runtime = Arc::clone(&host);
         let initiator = std::thread::spawn(move || {
@@ -1379,6 +1647,87 @@ mod tests {
             };
             assert!(authorize_dispatch(&frame, DispatchMode::PairingControlOnly).is_err());
         }
+    }
+
+    #[test]
+    fn unsupported_command_envelope_remains_typed_for_failed_ack_dispatch() {
+        let mut frame = pb_pbmux::build_command_frame(&acquire_command(), 1, 0).unwrap();
+        frame.payload[0] = 99;
+        let parsed = parse_authenticated_command(&frame).unwrap();
+        assert_eq!(parsed.command_type, 99);
+        assert_eq!(parsed.command_seq, 0);
+        assert_eq!(parsed.trace_id, [3; 16]);
+    }
+
+    #[test]
+    fn authenticated_command_handler_receives_verified_peer_and_emits_exact_ack() {
+        let expected_ack = AckPayload {
+            ack_state: 3,
+            reason_code: 5,
+            command_seq: 0,
+            expected_present: 0,
+            expected: 0,
+            result_ref_present: 0,
+            lease_id: [0; 16],
+            worker_incarnation: [0; 16],
+            ttl_remaining_ms: 0,
+            next_command_seq: 0,
+            digest_present: 0,
+            digest: [0; 32],
+        };
+        let handler = Arc::new(RecordingCommandHandler::responding(expected_ack));
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (response, responder_error, expected_peer_id) =
+            run_committed_ik_command(Some(trait_handler), acquire_command());
+        let response = response.unwrap();
+        assert_eq!(response.header.message_type, ControlType::CommandAck as u16);
+        assert_eq!(response.header.request_id, 44);
+        assert_eq!(response.payload.len(), 98);
+        assert_eq!(parse_command_ack_frame(&response).unwrap(), expected_ack);
+        assert_eq!(handler.calls.load(Ordering::Relaxed), 1);
+        let observed = handler.observed.lock().unwrap().unwrap();
+        assert_eq!(observed.peer_id, expected_peer_id);
+        assert_eq!(observed.request_id, 44);
+        assert_eq!(observed.command, acquire_command());
+        assert_eq!(responder_error, RuntimeError::SessionLost);
+    }
+
+    #[test]
+    fn missing_or_failed_authenticated_handler_never_emits_success() {
+        let (missing_response, missing_error, _) =
+            run_committed_ik_command(None, acquire_command());
+        assert!(missing_response.is_err());
+        assert_eq!(missing_error, RuntimeError::CommandHandlerUnavailable);
+
+        let handler = Arc::new(RecordingCommandHandler::failing(
+            AuthenticatedCommandHandlerError::Failed,
+        ));
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (failed_response, failed_error, _) =
+            run_committed_ik_command(Some(trait_handler), acquire_command());
+        assert!(failed_response.is_err());
+        assert_eq!(failed_error, RuntimeError::CommandHandlerFailed);
+        assert_eq!(handler.calls.load(Ordering::Relaxed), 1);
+
+        let accepted_handler = Arc::new(RecordingCommandHandler::responding(AckPayload {
+            ack_state: 1,
+            reason_code: 0,
+            command_seq: 0,
+            expected_present: 0,
+            expected: 0,
+            result_ref_present: 0,
+            lease_id: [0; 16],
+            worker_incarnation: [0; 16],
+            ttl_remaining_ms: 0,
+            next_command_seq: 0,
+            digest_present: 0,
+            digest: [0; 32],
+        }));
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = accepted_handler;
+        let (accepted_response, accepted_error, _) =
+            run_committed_ik_command(Some(trait_handler), acquire_command());
+        assert!(accepted_response.is_err());
+        assert_eq!(accepted_error, RuntimeError::CommandHandlerFailed);
     }
 
     #[test]
@@ -1536,8 +1885,24 @@ mod tests {
         );
         let observed_host = Arc::clone(&host);
         let observed_android = Arc::clone(&android);
-        let (host_error, _) = run_ik_failure(host, android);
+        let handler = Arc::new(RecordingCommandHandler::responding(AckPayload {
+            ack_state: 3,
+            reason_code: 5,
+            command_seq: 0,
+            expected_present: 0,
+            expected: 0,
+            result_ref_present: 0,
+            lease_id: [0; 16],
+            worker_incarnation: [0; 16],
+            ttl_remaining_ms: 0,
+            next_command_seq: 0,
+            digest_present: 0,
+            digest: [0; 32],
+        }));
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (host_error, _) = run_ik_failure(host, android, Some(trait_handler));
         assert_eq!(host_error, RuntimeError::PeerKeyMismatch);
+        assert_eq!(handler.calls.load(Ordering::Relaxed), 0);
         assert_eq!(verified_session_mints(&observed_host), 0);
         assert_eq!(verified_session_mints(&observed_android), 0);
         assert_eq!(verified_peer_id(&observed_host), None);
@@ -1562,8 +1927,24 @@ mod tests {
         );
         let observed_host = Arc::clone(&host);
         let observed_android = Arc::clone(&android);
-        let (_, android_error) = run_ik_failure(host, android);
+        let handler = Arc::new(RecordingCommandHandler::responding(AckPayload {
+            ack_state: 3,
+            reason_code: 5,
+            command_seq: 0,
+            expected_present: 0,
+            expected: 0,
+            result_ref_present: 0,
+            lease_id: [0; 16],
+            worker_incarnation: [0; 16],
+            ttl_remaining_ms: 0,
+            next_command_seq: 0,
+            digest_present: 0,
+            digest: [0; 32],
+        }));
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (_, android_error) = run_ik_failure(host, android, Some(trait_handler));
         assert_eq!(android_error, RuntimeError::UnknownInitiatorIkRejected);
+        assert_eq!(handler.calls.load(Ordering::Relaxed), 0);
         assert_eq!(verified_session_mints(&observed_host), 0);
         assert_eq!(verified_session_mints(&observed_android), 0);
         assert_eq!(verified_peer_id(&observed_host), None);

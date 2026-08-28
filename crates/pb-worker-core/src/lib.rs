@@ -2,13 +2,17 @@
 
 use std::fs::File;
 use std::io::{self, Read};
+use std::time::Instant;
+
+use pb_runtime_secure::VerifiedPeerSession;
 
 mod lease;
 mod resource_guard;
 
 pub use lease::{
-    AuthenticatedSession, CommandAdmission, ControllerLeaseManager, LEASE_TTL_MS, LeaseError,
-    LeaseId, LeaseState, RECOMMENDED_RENEWAL_MS, TerminalCode,
+    AuthenticatedSession, ControllerCommand, ControllerCommandError, ControllerCommandResult,
+    ControllerFailureReason, ControllerLeaseManager, ControllerLeaseRef, LEASE_TTL_MS, LeaseId,
+    LeaseState, RECOMMENDED_RENEWAL_MS,
 };
 pub use resource_guard::{
     BatteryBand, CommitDecision, HEALTH_INTERVAL_MS, HEALTH_STALE_AFTER_MS, HealthSample,
@@ -21,9 +25,8 @@ pub use resource_guard::{
 const RANDOM_ID_BYTES: usize = 16;
 const MAX_ZERO_RETRIES: usize = 8;
 
-/// A5 implements no trust, lease, resource, buffer, or compute authority.
+/// Later RemoteBuffer and compute domains remain deferred by build order.
 pub const DEFERRED_BY_BUILD_ORDER: &str = "DEFERRED_BY_BUILD_ORDER";
-pub const REMOTE_CONTROL_STATUS: &str = "INACTIVE_FOR_REMOTE_CONTROL";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
@@ -54,6 +57,36 @@ impl WorkerIncarnationId {
     pub fn is_nonzero(self) -> bool {
         self.0.iter().any(|byte| *byte != 0)
     }
+
+    pub const fn into_bytes(self) -> [u8; RANDOM_ID_BYTES] {
+        self.0
+    }
+}
+
+trait WorkerMonotonicClock: Send + Sync {
+    fn now_ms(&self) -> u64;
+}
+
+struct SystemWorkerClock {
+    origin: Instant,
+}
+
+impl SystemWorkerClock {
+    fn start() -> Self {
+        Self {
+            origin: Instant::now(),
+        }
+    }
+}
+
+impl WorkerMonotonicClock for SystemWorkerClock {
+    fn now_ms(&self) -> u64 {
+        self.origin
+            .elapsed()
+            .as_millis()
+            .try_into()
+            .unwrap_or(u64::MAX)
+    }
 }
 
 #[derive(Debug)]
@@ -77,6 +110,7 @@ pub struct WorkerCore {
     state: WorkerState,
     lease_manager: ControllerLeaseManager,
     resource_guard: ResourceGuard,
+    clock: Box<dyn WorkerMonotonicClock>,
 }
 
 impl WorkerCore {
@@ -90,6 +124,7 @@ impl WorkerCore {
             state,
             lease_manager: ControllerLeaseManager::new(incarnation),
             resource_guard: ResourceGuard::new(),
+            clock: Box::new(SystemWorkerClock::start()),
         })
     }
 
@@ -120,6 +155,38 @@ impl WorkerCore {
 
     pub const fn resource_guard_state(&self) -> ResourceGuardState {
         self.resource_guard.state()
+    }
+
+    /// The sole production C07 lease-mutation entry point.
+    ///
+    /// A bare peer identifier cannot be substituted for authenticated proof:
+    ///
+    /// ```compile_fail
+    /// use pb_types::PeerId;
+    /// use pb_worker_core::{ControllerCommand, WorkerCore};
+    ///
+    /// let mut worker = WorkerCore::cold_start().unwrap();
+    /// let peer_id = PeerId::from_sha256_digest([7; 32]);
+    /// let _ = worker.apply_controller_command(&peer_id, ControllerCommand::Acquire);
+    /// ```
+    ///
+    /// A status boolean cannot be substituted either:
+    ///
+    /// ```compile_fail
+    /// use pb_worker_core::{ControllerCommand, WorkerCore};
+    ///
+    /// let mut worker = WorkerCore::cold_start().unwrap();
+    /// let authenticated = true;
+    /// let _ = worker.apply_controller_command(&authenticated, ControllerCommand::Acquire);
+    /// ```
+    pub fn apply_controller_command(
+        &mut self,
+        verified_session: &VerifiedPeerSession<'_>,
+        command: ControllerCommand,
+    ) -> Result<ControllerCommandResult, ControllerCommandError> {
+        let session = AuthenticatedSession::from_verified(verified_session);
+        self.lease_manager
+            .apply_controller_command(&session, command, self.clock.now_ms())
     }
 }
 
@@ -170,7 +237,7 @@ mod tests {
     }
 
     #[test]
-    fn no_a6_b1_b2_authority_is_exposed() {
+    fn later_remote_buffer_and_compute_authority_remain_deferred() {
         assert_eq!(DEFERRED_BY_BUILD_ORDER, "DEFERRED_BY_BUILD_ORDER");
     }
 }

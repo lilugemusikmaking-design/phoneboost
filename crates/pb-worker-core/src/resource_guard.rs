@@ -1054,14 +1054,8 @@ mod tests {
     }
 
     #[test]
-    fn auth_t01_to_t04_no_auth_no_lease_wrong_peer_and_expiry_fail_closed() {
+    fn auth_t02_to_t04_no_lease_wrong_peer_and_expiry_fail_closed() {
         let mut leases = ControllerLeaseManager::new(incarnation());
-        let unauth =
-            AuthenticatedSession::test_unauthenticated(PeerId::from_sha256_digest([7; 32]));
-        assert_eq!(
-            leases.acquire(&unauth, 0),
-            Err(crate::LeaseError::Unauthenticated)
-        );
         let session = AuthenticatedSession::test_only(PeerId::from_sha256_digest([7; 32]));
         let lease = leases.acquire(&session, 0).expect("lease");
         let other = AuthenticatedSession::test_only(PeerId::from_sha256_digest([8; 32]));
