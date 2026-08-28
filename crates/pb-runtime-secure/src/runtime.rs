@@ -5,13 +5,14 @@ use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use pb_pbmux::{
-    AckPayload, BufferResult, CommandPayload, DispatchMode, Frame, Header, PbmuxErrorKind,
-    Reassembler, RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest,
-    ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
-    build_command_ack_frame, build_remote_buffer_result_frames, build_resource_result_frame,
-    decode, encode, pair_confirm_frame, parse_command_ack_frame, parse_command_frame,
-    parse_heartbeat_frame, parse_remote_buffer_request_payload, parse_resource_request_frame,
-    validate_pair_confirm, validate_remote_buffer_request_fragment,
+    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, DispatchMode, Frame,
+    Header, PbmuxErrorKind, Reassembler, RemoteBufferRequest, RemoteBufferResponseKind,
+    ResourceRequest, ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
+    build_command_ack_frame, build_compute_response_frame, build_remote_buffer_result_frames,
+    build_resource_result_frame, decode, encode, pair_confirm_frame, parse_command_ack_frame,
+    parse_command_frame, parse_compute_request_frame, parse_heartbeat_frame,
+    parse_remote_buffer_request_payload, parse_resource_request_frame, validate_pair_confirm,
+    validate_remote_buffer_request_fragment,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -111,6 +112,15 @@ pub trait AuthenticatedCommandHandler: Send + Sync {
         _request_id: u64,
         _request: RemoteBufferRequest,
     ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError> {
+        Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+
+    fn handle_authenticated_compute(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+        _request_id: u64,
+        _request: ComputeRequest,
+    ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
         Err(AuthenticatedCommandHandlerError::Unavailable)
     }
 
@@ -1117,8 +1127,9 @@ fn run_pairing_loop(
                     commit_ping_request = Some(request);
                 }
             }
+        } else {
+            std::thread::sleep(SESSION_POLL);
         }
-        std::thread::sleep(SESSION_POLL);
     }
 }
 
@@ -1355,6 +1366,28 @@ fn run_authenticated_loop(
                         send_frame(stream, &mut transport, &response)?;
                     }
                 }
+            } else if frame.header.channel == Channel::Compute {
+                let request =
+                    parse_compute_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                let response = command_handler
+                    .handle_authenticated_compute(verified_peer, frame.header.request_id, request)
+                    .map_err(handler_runtime_error)?;
+                let valid_response_kind = matches!(
+                    (&request, &response),
+                    (ComputeRequest::Submit(_), ComputeResponse::Status(_))
+                        | (ComputeRequest::Submit(_), ComputeResponse::Result(_))
+                        | (ComputeRequest::Status(_), ComputeResponse::Status(_))
+                        | (ComputeRequest::Status(_), ComputeResponse::Result(_))
+                        | (ComputeRequest::Cancel(_), ComputeResponse::Cancel(_))
+                );
+                if !valid_response_kind {
+                    return Err(RuntimeError::CommandHandlerFailed);
+                }
+                let response =
+                    build_compute_response_frame(&response, frame.header.request_id, send_sequence)
+                        .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                send_frame(stream, &mut transport, &response)?;
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
                     parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
@@ -1419,8 +1452,8 @@ fn receive_frame_if_available(
     stream: &mut TcpStream,
     transport: &mut TransportState,
 ) -> Result<Option<Frame>, RuntimeError> {
-    let mut available = vec![0_u8; u16::MAX as usize + 2];
-    let count = match stream.peek(&mut available) {
+    let mut prefix = [0_u8; 2];
+    let count = match stream.peek(&mut prefix) {
         Ok(0) => return Err(RuntimeError::SessionLost),
         Ok(count) => count,
         Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(None),
@@ -1429,16 +1462,14 @@ fn receive_frame_if_available(
     if count < 2 {
         return Ok(None);
     }
-    let length = usize::from(u16::from_be_bytes([available[0], available[1]]));
-    if length == 0 || count < length + 2 {
-        return Ok(None);
-    }
     stream
         .set_nonblocking(false)
+        .and_then(|()| stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT)))
         .map_err(|_| RuntimeError::SessionLost)?;
     let plaintext = read_encrypted(stream, transport);
     stream
-        .set_nonblocking(true)
+        .set_read_timeout(None)
+        .and_then(|()| stream.set_nonblocking(true))
         .map_err(|_| RuntimeError::SessionLost)?;
     let plaintext = plaintext?;
     decode(&plaintext)

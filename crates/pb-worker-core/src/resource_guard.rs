@@ -166,8 +166,19 @@ impl RequestId {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ResourceClass {
-    Poc,
+    RemoteBufferBytes,
+    NativeOpScratchBytes,
     Unknown,
+}
+
+impl ResourceClass {
+    const fn max_request_bytes(self) -> u64 {
+        match self {
+            Self::RemoteBufferBytes => POC_CAP_BYTES,
+            Self::NativeOpScratchBytes => pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES,
+            Self::Unknown => 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -222,6 +233,7 @@ struct Reservation {
     lease_id: LeaseId,
     incarnation: WorkerIncarnationId,
     request_id: RequestId,
+    class: ResourceClass,
     bytes: u64,
     expires_at_ms: u64,
     state: ReservationState,
@@ -257,7 +269,7 @@ pub struct ResourceGuard {
     battery_recovery: Option<Recovery<BatteryBand>>,
     allocated_bytes: u64,
     reservations: BTreeMap<ReservationId, Reservation>,
-    idempotence: BTreeMap<RequestId, IdempotenceEntry>,
+    idempotence: BTreeMap<(LeaseId, RequestId), IdempotenceEntry>,
 }
 
 impl ResourceGuard {
@@ -351,7 +363,8 @@ impl ResourceGuard {
             Err(_) => return ReservationDecision::StaleLease,
         };
         self.expire_and_purge(now_ms, lease_id, proof.incarnation);
-        if let Some(existing) = self.idempotence.get(&request.request_id) {
+        let idempotence_key = (proof.lease_id, request.request_id);
+        if let Some(existing) = self.idempotence.get(&idempotence_key) {
             if existing.lease_id != proof.lease_id || existing.incarnation != proof.incarnation {
                 return ReservationDecision::IdempotenceConflict;
             }
@@ -366,6 +379,8 @@ impl ResourceGuard {
         let health = self.health_status(now_ms);
         let decision = if request.class == ResourceClass::Unknown {
             ReservationDecision::UnknownResourceClass
+        } else if request.bytes == 0 || request.bytes > request.class.max_request_bytes() {
+            ReservationDecision::RefusedBudget
         } else if health.safety.is_refused() {
             ReservationDecision::RefusedSafety
         } else {
@@ -384,6 +399,7 @@ impl ResourceGuard {
                                 lease_id: proof.lease_id,
                                 incarnation: proof.incarnation,
                                 request_id: request.request_id,
+                                class: request.class,
                                 bytes: request.bytes,
                                 expires_at_ms: now_ms.saturating_add(RESERVATION_TTL_MS),
                                 state: ReservationState::Reserved,
@@ -401,7 +417,7 @@ impl ResourceGuard {
             _ => Some(now_ms),
         };
         self.idempotence.insert(
-            request.request_id,
+            idempotence_key,
             IdempotenceEntry {
                 lease_id: proof.lease_id,
                 incarnation: proof.incarnation,
@@ -450,7 +466,7 @@ impl ResourceGuard {
                 entry.state = ReservationState::RefusedSafety;
                 entry.terminal_at_ms = Some(now_ms);
             }
-            self.mark_idempotence_terminal(reservation.request_id, now_ms);
+            self.mark_idempotence_terminal(reservation.lease_id, reservation.request_id, now_ms);
             return CommitDecision::RefusedSafety;
         }
         if let Some(entry) = self.reservations.get_mut(&reservation_id) {
@@ -485,7 +501,11 @@ impl ResourceGuard {
                     entry.state = ReservationState::Released;
                     entry.terminal_at_ms = Some(now_ms);
                 }
-                self.mark_idempotence_terminal(reservation.request_id, now_ms);
+                self.mark_idempotence_terminal(
+                    reservation.lease_id,
+                    reservation.request_id,
+                    now_ms,
+                );
                 ReleaseDecision::Released
             }
             ReservationState::Released
@@ -512,6 +532,7 @@ impl ResourceGuard {
         }
         Some(ReservationSnapshot {
             reservation_id,
+            class: reservation.class,
             bytes: reservation.bytes,
             state: reservation.state,
             ttl_remaining_ms: if reservation.state == ReservationState::Reserved {
@@ -533,13 +554,52 @@ impl ResourceGuard {
         now_ms: u64,
     ) -> Result<(), ReservationConsumeError> {
         self.expire_and_purge(now_ms, proof.lease_id, proof.incarnation);
+        self.consume(
+            proof,
+            reservation_id,
+            ResourceClass::RemoteBufferBytes,
+            Some(size_bytes),
+            now_ms,
+        )
+    }
+
+    pub(crate) fn consume_for_compute(
+        &mut self,
+        proof: LeaseProof,
+        reservation_id: ReservationId,
+        now_ms: u64,
+    ) -> Result<u64, ReservationConsumeError> {
+        self.consume(
+            proof,
+            reservation_id,
+            ResourceClass::NativeOpScratchBytes,
+            None,
+            now_ms,
+        )?;
+        Ok(self
+            .reservations
+            .get(&reservation_id)
+            .expect("consumed reservation remains present")
+            .bytes)
+    }
+
+    fn consume(
+        &mut self,
+        proof: LeaseProof,
+        reservation_id: ReservationId,
+        class: ResourceClass,
+        exact_bytes: Option<u64>,
+        now_ms: u64,
+    ) -> Result<(), ReservationConsumeError> {
+        self.expire_and_purge(now_ms, proof.lease_id, proof.incarnation);
         let Some(reservation) = self.reservations.get_mut(&reservation_id) else {
             return Err(ReservationConsumeError::NotFound);
         };
         if reservation.peer_id != proof.peer_id
             || reservation.lease_id != proof.lease_id
             || reservation.incarnation != proof.incarnation
-            || reservation.bytes != size_bytes
+            || reservation.class != class
+            || exact_bytes.is_some_and(|bytes| reservation.bytes != bytes)
         {
             return Err(ReservationConsumeError::InvalidOwnershipOrSize);
         }
@@ -565,10 +625,42 @@ impl ResourceGuard {
         bytes: u64,
         now_ms: u64,
     ) {
+        self.release_consumed(
+            reservation_id,
+            ResourceClass::RemoteBufferBytes,
+            bytes,
+            now_ms,
+        );
+    }
+
+    pub(crate) fn release_consumed_compute(
+        &mut self,
+        reservation_id: ReservationId,
+        bytes: u64,
+        now_ms: u64,
+    ) {
+        self.release_consumed(
+            reservation_id,
+            ResourceClass::NativeOpScratchBytes,
+            bytes,
+            now_ms,
+        );
+    }
+
+    fn release_consumed(
+        &mut self,
+        reservation_id: ReservationId,
+        class: ResourceClass,
+        bytes: u64,
+        now_ms: u64,
+    ) {
         let Some(reservation) = self.reservations.get_mut(&reservation_id) else {
             return;
         };
-        if reservation.state != ReservationState::Consumed || reservation.bytes != bytes {
+        if reservation.state != ReservationState::Consumed
+            || reservation.class != class
+            || reservation.bytes != bytes
+        {
             return;
         }
         reservation.state = ReservationState::ConsumedReleased;
@@ -734,21 +826,26 @@ impl ResourceGuard {
             .filter_map(|(id, reservation)| {
                 (reservation.state == ReservationState::Reserved
                     && now_ms >= reservation.expires_at_ms)
-                    .then_some((*id, reservation.bytes, reservation.request_id))
+                    .then_some((
+                        *id,
+                        reservation.bytes,
+                        reservation.lease_id,
+                        reservation.request_id,
+                    ))
             })
             .collect();
-        for (id, bytes, request_id) in expired {
+        for (id, bytes, lease_id, request_id) in expired {
             self.release_allocation(bytes);
             if let Some(reservation) = self.reservations.get_mut(&id) {
                 reservation.state = ReservationState::Expired;
                 reservation.terminal_at_ms = Some(now_ms);
             }
-            self.mark_idempotence_terminal(request_id, now_ms);
+            self.mark_idempotence_terminal(lease_id, request_id, now_ms);
         }
     }
 
-    fn mark_idempotence_terminal(&mut self, request_id: RequestId, now_ms: u64) {
-        if let Some(entry) = self.idempotence.get_mut(&request_id) {
+    fn mark_idempotence_terminal(&mut self, lease_id: LeaseId, request_id: RequestId, now_ms: u64) {
+        if let Some(entry) = self.idempotence.get_mut(&(lease_id, request_id)) {
             entry.terminal_at_ms = Some(now_ms);
         }
     }
@@ -761,6 +858,7 @@ impl ResourceGuard {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ReservationSnapshot {
     pub(crate) reservation_id: ReservationId,
+    pub(crate) class: ResourceClass,
     pub(crate) bytes: u64,
     state: ReservationState,
     pub(crate) ttl_remaining_ms: u32,
@@ -859,7 +957,7 @@ mod tests {
     fn request(id: u128, bytes: u64) -> ReserveRequest {
         ReserveRequest {
             request_id: RequestId::test_only(id),
-            class: ResourceClass::Poc,
+            class: ResourceClass::RemoteBufferBytes,
             bytes,
         }
     }
@@ -1234,6 +1332,73 @@ mod tests {
             guard.reserve(&mut leases, &session, lease, unknown, 10_001),
             ReservationDecision::UnknownResourceClass
         );
+    }
+
+    #[test]
+    fn native_scratch_class_cap_separation_consume_and_release_are_exact() {
+        let now_ms = 10_000;
+        let (mut leases, session, lease) = authority(now_ms);
+        let proof = leases.validate(&session, lease, now_ms).unwrap();
+        let mut guard = ready_guard(now_ms);
+        let native = |id, bytes| ReserveRequest {
+            request_id: RequestId::test_only(id),
+            class: ResourceClass::NativeOpScratchBytes,
+            bytes,
+        };
+        assert_eq!(
+            guard.reserve(&mut leases, &session, lease, native(1, 0), now_ms),
+            ReservationDecision::RefusedBudget
+        );
+        assert_eq!(
+            guard.reserve(
+                &mut leases,
+                &session,
+                lease,
+                native(2, pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES + 1),
+                now_ms,
+            ),
+            ReservationDecision::RefusedBudget
+        );
+        let reservation_id = reservation_id(guard.reserve(
+            &mut leases,
+            &session,
+            lease,
+            native(3, pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES),
+            now_ms,
+        ));
+        assert_eq!(
+            guard.commit(&mut leases, &session, lease, reservation_id, now_ms),
+            CommitDecision::Committed
+        );
+        assert_eq!(
+            guard.consume_for_buffer(
+                proof,
+                reservation_id,
+                pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES,
+                now_ms,
+            ),
+            Err(ReservationConsumeError::InvalidOwnershipOrSize)
+        );
+        assert_eq!(
+            guard.consume_for_compute(proof, reservation_id, now_ms),
+            Ok(pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES)
+        );
+        assert_eq!(
+            guard.consume_for_compute(proof, reservation_id, now_ms),
+            Err(ReservationConsumeError::AlreadyConsumed)
+        );
+        assert_eq!(guard.held_bytes(), pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES);
+        guard.release_consumed_compute(
+            reservation_id,
+            pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES,
+            now_ms,
+        );
+        guard.release_consumed_compute(
+            reservation_id,
+            pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES,
+            now_ms,
+        );
+        assert_eq!(guard.held_bytes(), 0);
     }
 
     #[test]

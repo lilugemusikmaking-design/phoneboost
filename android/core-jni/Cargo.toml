@@ -17,6 +17,7 @@ pb-runtime-secure = { path = "../../crates/pb-runtime-secure" }
 pb-worker-core = { path = "../../crates/pb-worker-core" }
 
 [dev-dependencies]
+blake3.workspace = true
 curve25519-dalek.workspace = true
 pb-pbmux = { path = "../../crates/pb-pbmux" }
 pb-secure = { path = "../../crates/pb-secure" }

@@ -5,8 +5,8 @@ mod storage;
 mod wire;
 
 pub use pb_pbmux::{
-    AckPayload, BufferResult, CommandPayload, RemoteBufferRequest, RemoteBufferResponseKind,
-    ResourceRequest, ResourceResponseKind, ResourceResult,
+    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, RemoteBufferRequest,
+    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult,
 };
 pub use runtime::{
     AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, EndpointRole,

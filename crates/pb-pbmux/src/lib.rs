@@ -10,8 +10,16 @@ use pb_types::{
     PBMUX_MAGIC, PBMUX_VERSION, ReasonCode, is_known_message_type,
 };
 
+mod compute;
 mod remote_buffer;
 mod resource;
+
+pub use compute::{
+    BLAKE3_PROVIDER_ID, BLAKE3_PROVIDER_VERSION, ComputeJobRef, ComputeJobRequest, ComputeJobState,
+    ComputeReason, ComputeRequest, ComputeResponse, ComputeResult, ComputeStatus, ComputeSubmit,
+    MAX_COMPUTE_INPUT_BYTES, REMOTE_BUFFER_INPUT_KIND, build_compute_request_frame,
+    build_compute_response_frame, parse_compute_request_frame, parse_compute_response_frame,
+};
 
 pub use remote_buffer::{
     AllocationFlags, BufferReason, BufferResult, BufferResultRef, BufferState, MAX_DATA_BODY,
@@ -22,8 +30,9 @@ pub use remote_buffer::{
     validate_remote_buffer_request_fragment, validate_remote_buffer_result_fragment,
 };
 pub use resource::{
-    ExpireNotification, ReservationResultRef, ReservationState as WireReservationState,
-    ResourceReason, ResourceRequest, ResourceResponseKind, ResourceResult, ResourceResultState,
+    ExpireNotification, NATIVE_OP_SCRATCH_MAX_BYTES, ReservationResultRef,
+    ReservationState as WireReservationState, ResourceClass as WireResourceClass, ResourceReason,
+    ResourceRequest, ResourceResponseKind, ResourceResult, ResourceResultState,
     build_expire_notification_frame, build_resource_request_frame, build_resource_result_frame,
     parse_expire_notification_frame, parse_resource_request_frame, parse_resource_result_frame,
 };
@@ -67,6 +76,7 @@ pub enum PbmuxErrorKind {
     PairConfirmUnexpected,
     InvalidResourcePayload,
     InvalidRemoteBufferPayload,
+    InvalidComputePayload,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -151,9 +161,9 @@ impl PbmuxError {
             PbmuxErrorKind::FrameTooLarge => ReasonCode::FrameTooLarge,
             PbmuxErrorKind::UnsupportedMessage => ReasonCode::UnsupportedMessage,
             PbmuxErrorKind::InvalidCommandPayload => ReasonCode::UnsupportedMessage,
-            PbmuxErrorKind::InvalidResourcePayload | PbmuxErrorKind::InvalidRemoteBufferPayload => {
-                ReasonCode::UnsupportedMessage
-            }
+            PbmuxErrorKind::InvalidResourcePayload
+            | PbmuxErrorKind::InvalidRemoteBufferPayload
+            | PbmuxErrorKind::InvalidComputePayload => ReasonCode::UnsupportedMessage,
             PbmuxErrorKind::SequenceMismatch => ReasonCode::SequenceError,
             PbmuxErrorKind::PairingNotCommitted => ReasonCode::PairingNotCommitted,
             PbmuxErrorKind::PairConfirmUnexpected => ReasonCode::PairConfirmUnexpected,

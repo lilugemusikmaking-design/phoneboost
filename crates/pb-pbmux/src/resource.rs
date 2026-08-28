@@ -7,12 +7,42 @@ pub const RESOURCE_RESULT_LEN: usize = 72;
 pub const RESOURCE_EXPIRE_NOTIFY_LEN: usize = 64;
 pub const RESOURCE_RESERVATION_TTL_MS: u32 = 30_000;
 pub const RESOURCE_MAX_BYTES: u64 = 128 * 1024 * 1024;
+pub const NATIVE_OP_SCRATCH_MAX_BYTES: u64 = 8 * 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum ResourceClass {
+    RemoteBufferBytes = 1,
+    NativeOpScratchBytes = 2,
+}
+
+impl ResourceClass {
+    pub const fn max_bytes(self) -> u64 {
+        match self {
+            Self::RemoteBufferBytes => RESOURCE_MAX_BYTES,
+            Self::NativeOpScratchBytes => NATIVE_OP_SCRATCH_MAX_BYTES,
+        }
+    }
+}
+
+impl TryFrom<u8> for ResourceClass {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::RemoteBufferBytes),
+            2 => Ok(Self::NativeOpScratchBytes),
+            _ => Err(()),
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ResourceRequest {
     Reserve {
         lease_id: [u8; 16],
         worker_incarnation_id: [u8; 16],
+        resource_class: ResourceClass,
         requested_bytes: u64,
     },
     Commit {
@@ -135,6 +165,7 @@ impl TryFrom<u8> for ReservationState {
 pub struct ReservationResultRef {
     pub reservation_id: [u8; 16],
     pub state: ReservationState,
+    pub resource_class: ResourceClass,
     pub granted_bytes: u64,
     pub ttl_remaining_ms: u32,
 }
@@ -160,6 +191,7 @@ pub struct ExpireNotification {
     pub lease_id: [u8; 16],
     pub worker_incarnation_id: [u8; 16],
     pub reservation_id: [u8; 16],
+    pub resource_class: ResourceClass,
     pub granted_bytes: u64,
 }
 
@@ -205,15 +237,16 @@ pub fn build_resource_request_frame(
         ResourceRequest::Reserve {
             lease_id,
             worker_incarnation_id,
+            resource_class,
             requested_bytes,
         } => {
-            if *requested_bytes == 0 || *requested_bytes > RESOURCE_MAX_BYTES {
+            if *requested_bytes == 0 || *requested_bytes > resource_class.max_bytes() {
                 return Err(invalid());
             }
             let mut payload = Vec::with_capacity(RESOURCE_REQUEST_LEN);
             payload.extend_from_slice(lease_id);
             payload.extend_from_slice(worker_incarnation_id);
-            payload.push(1);
+            payload.push(*resource_class as u8);
             payload.extend_from_slice(&[0; 3]);
             payload.extend_from_slice(&requested_bytes.to_be_bytes());
             payload.extend_from_slice(&RESOURCE_RESERVATION_TTL_MS.to_be_bytes());
@@ -271,19 +304,20 @@ pub fn parse_resource_request_frame(frame: &Frame) -> Result<ResourceRequest, Pb
     }
     match frame.header.message_type {
         1 => {
-            if payload[32] != 1
-                || payload[33..36] != [0; 3]
+            let resource_class = ResourceClass::try_from(payload[32]).map_err(|()| invalid())?;
+            if payload[33..36] != [0; 3]
                 || payload[44..48] != RESOURCE_RESERVATION_TTL_MS.to_be_bytes()
             {
                 return Err(invalid());
             }
             let requested_bytes = read_u64(payload, 36);
-            if requested_bytes == 0 || requested_bytes > RESOURCE_MAX_BYTES {
+            if requested_bytes == 0 || requested_bytes > resource_class.max_bytes() {
                 return Err(invalid());
             }
             Ok(ResourceRequest::Reserve {
                 lease_id,
                 worker_incarnation_id,
+                resource_class,
                 requested_bytes,
             })
         }
@@ -318,6 +352,7 @@ pub fn build_expire_notification_frame(
         || !nonzero(&notification.worker_incarnation_id)
         || !nonzero(&notification.reservation_id)
         || notification.granted_bytes == 0
+        || notification.granted_bytes > notification.resource_class.max_bytes()
     {
         return Err(invalid());
     }
@@ -325,7 +360,7 @@ pub fn build_expire_notification_frame(
     payload.extend_from_slice(&notification.lease_id);
     payload.extend_from_slice(&notification.worker_incarnation_id);
     payload.extend_from_slice(&notification.reservation_id);
-    payload.push(1);
+    payload.push(notification.resource_class as u8);
     payload.push(ReservationState::Expired as u8);
     payload.extend_from_slice(&(ResourceReason::ReservationExpired as u16).to_be_bytes());
     payload.extend_from_slice(&notification.granted_bytes.to_be_bytes());
@@ -362,16 +397,17 @@ pub fn parse_expire_notification_frame(frame: &Frame) -> Result<ExpireNotificati
         lease_id: bytes[0..16].try_into().expect("fixed lease id"),
         worker_incarnation_id: bytes[16..32].try_into().expect("fixed incarnation id"),
         reservation_id: bytes[32..48].try_into().expect("fixed reservation id"),
+        resource_class: ResourceClass::try_from(bytes[48]).map_err(|()| invalid())?,
         granted_bytes: read_u64(bytes, 52),
     };
-    if bytes[48] != 1
-        || bytes[49] != ReservationState::Expired as u8
+    if bytes[49] != ReservationState::Expired as u8
         || read_u16(bytes, 50) != ResourceReason::ReservationExpired as u16
         || bytes[60..64] != [0; 4]
         || !nonzero(&notification.lease_id)
         || !nonzero(&notification.worker_incarnation_id)
         || !nonzero(&notification.reservation_id)
         || notification.granted_bytes == 0
+        || notification.granted_bytes > notification.resource_class.max_bytes()
     {
         return Err(invalid());
     }
@@ -386,7 +422,10 @@ fn validate_result(kind: ResourceResponseKind, result: &ResourceResult) -> Resul
         return Err(invalid());
     }
     if let Some(reservation) = result.reservation {
-        if !nonzero(&reservation.reservation_id) || reservation.granted_bytes == 0 {
+        if !nonzero(&reservation.reservation_id)
+            || reservation.granted_bytes == 0
+            || reservation.granted_bytes > reservation.resource_class.max_bytes()
+        {
             return Err(invalid());
         }
         let ttl_valid = match reservation.state {
@@ -426,7 +465,7 @@ fn encode_result(
     if let Some(reservation) = result.reservation {
         bytes.extend_from_slice(&reservation.reservation_id);
         bytes.push(reservation.state as u8);
-        bytes.push(1);
+        bytes.push(reservation.resource_class as u8);
         bytes.extend_from_slice(&[0; 2]);
         bytes.extend_from_slice(&reservation.granted_bytes.to_be_bytes());
         bytes.extend_from_slice(&reservation.ttl_remaining_ms.to_be_bytes());
@@ -501,12 +540,10 @@ pub fn parse_resource_result_frame(
         None
     } else {
         let reservation_id = bytes[36..52].try_into().expect("fixed reservation id");
-        if bytes[53] != 1 {
-            return Err(invalid());
-        }
         Some(ReservationResultRef {
             reservation_id,
             state: ReservationState::try_from(bytes[52]).map_err(|()| invalid())?,
+            resource_class: ResourceClass::try_from(bytes[53]).map_err(|()| invalid())?,
             granted_bytes: read_u64(bytes, 56),
             ttl_remaining_ms: read_u32(bytes, 64),
         })
@@ -546,6 +583,8 @@ mod tests {
             ("GV-C08-06-release-request.bin", false),
             ("GV-C08-07-release-result.bin", true),
             ("GV-C08-10-request-id-conflict.bin", false),
+            ("GV-C08-11-native-scratch-reserve-request.bin", false),
+            ("GV-C08-12-native-scratch-reserve-success.bin", true),
         ] {
             let bytes = fixture(name);
             let frame = decode(&bytes).unwrap();
@@ -574,5 +613,24 @@ mod tests {
                 .unwrap(),
             expire
         );
+    }
+
+    #[test]
+    fn native_scratch_zero_and_over_eight_mib_are_rejected_by_the_wire_profile() {
+        let canonical = decode(&fixture("GV-C08-11-native-scratch-reserve-request.bin")).unwrap();
+        let request = parse_resource_request_frame(&canonical).unwrap();
+        assert!(matches!(
+            request,
+            ResourceRequest::Reserve {
+                resource_class: ResourceClass::NativeOpScratchBytes,
+                requested_bytes: NATIVE_OP_SCRATCH_MAX_BYTES,
+                ..
+            }
+        ));
+        for bytes in [0, NATIVE_OP_SCRATCH_MAX_BYTES + 1] {
+            let mut malformed = canonical.clone();
+            malformed.payload[36..44].copy_from_slice(&bytes.to_be_bytes());
+            assert!(parse_resource_request_frame(&malformed).is_err());
+        }
     }
 }

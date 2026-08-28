@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use pb_pbmux::{
-    AllocationFlags, BufferReason, BufferResult, BufferResultRef, BufferState, MAX_DATA_BODY,
-    RemoteBufferRequest, RemoteBufferResponseKind,
+    AllocationFlags, BufferReason, BufferResult, BufferResultRef, BufferState, ComputeReason,
+    MAX_COMPUTE_INPUT_BYTES, MAX_DATA_BODY, RemoteBufferRequest, RemoteBufferResponseKind,
 };
 use pb_runtime_secure::VerifiedSessionId;
 use pb_types::PeerId;
@@ -30,7 +30,7 @@ impl SessionBinding {
     }
 
     #[cfg(test)]
-    const fn test_only(value: u64) -> Self {
+    pub(crate) const fn test_only(value: u64) -> Self {
         Self::Test(value)
     }
 }
@@ -69,6 +69,78 @@ impl RemoteBufferStore {
         Self {
             buffers: BTreeMap::new(),
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn validate_compute_input(
+        &mut self,
+        guard: &mut ResourceGuard,
+        proof: LeaseProof,
+        session_id: SessionBinding,
+        buffer_id: [u8; 16],
+        offset: u64,
+        length: u64,
+        now_ms: u64,
+    ) -> Result<(), ComputeReason> {
+        self.expire_and_purge(guard, now_ms);
+        let Some(record) = self.buffers.get_mut(&buffer_id) else {
+            return Err(ComputeReason::BufferNotFound);
+        };
+        if record.owner_peer_id != proof.peer_id
+            || record.owner_controller_lease_id != proof.lease_id
+        {
+            return Err(ComputeReason::BufferNotOwned);
+        }
+        if record.worker_incarnation_id != proof.incarnation {
+            return Err(ComputeReason::BufferWrongIncarnation);
+        }
+        if record.session_id != session_id {
+            if !record.state.is_terminal() {
+                Self::terminalize(record, guard, BufferState::Lost, now_ms);
+            }
+            return Err(ComputeReason::BufferLost);
+        }
+        match record.state {
+            BufferState::Ready => {}
+            BufferState::Lost => return Err(ComputeReason::BufferLost),
+            BufferState::Freed => return Err(ComputeReason::BufferFreed),
+            BufferState::Evicted => return Err(ComputeReason::BufferEvicted),
+            BufferState::Allocated | BufferState::InUse => {
+                return Err(ComputeReason::BufferInvalidState);
+            }
+        }
+        if length > MAX_COMPUTE_INPUT_BYTES {
+            return Err(ComputeReason::InputTooLarge);
+        }
+        let Some(end) = offset.checked_add(length) else {
+            return Err(ComputeReason::InvalidInput);
+        };
+        if end > record.size_bytes {
+            return Err(ComputeReason::InvalidInput);
+        }
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn with_compute_input<T>(
+        &self,
+        proof: LeaseProof,
+        session_id: SessionBinding,
+        buffer_id: [u8; 16],
+        offset: u64,
+        length: u64,
+        apply: impl FnOnce(&[u8]) -> T,
+    ) -> Option<T> {
+        let record = self.buffers.get(&buffer_id)?;
+        if !Self::owns(record, proof, session_id) || record.state != BufferState::Ready {
+            return None;
+        }
+        let end = offset.checked_add(length)?;
+        if end > record.size_bytes {
+            return None;
+        }
+        let backing = record.backing.as_ref()?;
+        Some(apply(&backing[offset as usize..end as usize]))
     }
 
     pub(crate) fn apply(
@@ -192,7 +264,8 @@ impl RemoteBufferStore {
         let Some(snapshot) = guard.reservation_snapshot(proof, reservation_id, now_ms) else {
             return failed(BufferReason::ReservationInvalid);
         };
-        if snapshot.bytes != size_bytes
+        if snapshot.class != crate::ResourceClass::RemoteBufferBytes
+            || snapshot.bytes != size_bytes
             || snapshot.wire_state() != pb_pbmux::WireReservationState::Committed
         {
             return failed(BufferReason::ReservationInvalid);
@@ -829,7 +902,7 @@ mod tests {
             proof.lease_id,
             ReserveRequest {
                 request_id: RequestId::from_u64(request_id),
-                class: ResourceClass::Poc,
+                class: ResourceClass::RemoteBufferBytes,
                 bytes: size,
             },
             now_ms,
@@ -1072,7 +1145,7 @@ mod tests {
             proof.lease_id,
             ReserveRequest {
                 request_id: RequestId::from_u64(50),
-                class: ResourceClass::Poc,
+                class: ResourceClass::RemoteBufferBytes,
                 bytes: 1,
             },
             now,

@@ -6,9 +6,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use pb_runtime_secure::{
     AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, BufferResult,
-    CommandPayload, EndpointRole, PairingActionResult, RemoteBufferRequest,
-    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult, RuntimeState,
-    SecureRuntime, StateStore, VerifiedPeerSession, run_responder_session_with_handler,
+    CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, PairingActionResult,
+    RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind,
+    ResourceResult, RuntimeState, SecureRuntime, StateStore, VerifiedPeerSession,
+    run_responder_session_with_handler,
 };
 use pb_worker_core::{
     ControllerCommand, ControllerCommandError, ControllerCommandResult, ControllerFailureReason,
@@ -88,6 +89,17 @@ impl AuthenticatedCommandHandler for AndroidAuthenticatedCommandHandler {
         request: RemoteBufferRequest,
     ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError> {
         with_worker(|worker| Ok(worker.apply_remote_buffer_request(verified_session, request)))
+    }
+
+    fn handle_authenticated_compute(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+        request_id: u64,
+        request: ComputeRequest,
+    ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
+        with_worker(|worker| {
+            Ok(worker.apply_compute_request(verified_session, request_id, request))
+        })
     }
 
     fn authenticated_session_ended(
@@ -625,10 +637,13 @@ mod tests {
 
     use curve25519_dalek::montgomery::MontgomeryPoint;
     use pb_pbmux::{
-        AllocationFlags, BufferReason, BufferState, Frame, Header, RemoteBufferRequest,
-        ResourceRequest, WireReservationState, build_command_frame,
-        build_remote_buffer_request_frames, build_resource_request_frame, decode, encode,
-        parse_command_ack_frame, parse_remote_buffer_result_frame, parse_resource_result_frame,
+        AllocationFlags, BufferReason, BufferState, ComputeJobRequest, ComputeJobState,
+        ComputeReason, ComputeRequest, ComputeResponse, ComputeSubmit, Frame, Header, MAX_PUT_BODY,
+        RemoteBufferRequest, ResourceRequest, WireReservationState, WireResourceClass,
+        build_command_frame, build_compute_request_frame, build_remote_buffer_request_frames,
+        build_resource_request_frame, decode, encode, parse_command_ack_frame,
+        parse_compute_response_frame, parse_remote_buffer_result_frame,
+        parse_resource_result_frame,
     };
     use pb_secure::{NOISE_IK_NAME, PROLOGUE};
     use pb_types::{Channel, ControlType, FLAG_END, FLAG_START};
@@ -808,6 +823,15 @@ mod tests {
             .unwrap()
             .1
         }
+
+        fn compute(&mut self, request_id: u64, request: ComputeRequest) -> ComputeResponse {
+            let frame =
+                build_compute_request_frame(&request, request_id, self.send_sequence).unwrap();
+            self.send_sequence += 1;
+            send_encrypted(&mut self.stream, &mut self.transport, &frame);
+            parse_compute_response_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
+                .unwrap()
+        }
     }
 
     fn with_production_android_session<T>(
@@ -876,6 +900,61 @@ mod tests {
             pb_runtime_secure::RuntimeError::SessionLost
         );
         result
+    }
+
+    fn reserve_and_commit(
+        client: &mut ProductionClient,
+        next_request_id: &mut u64,
+        lease_id: [u8; 16],
+        incarnation: [u8; 16],
+        resource_class: WireResourceClass,
+        bytes: u64,
+    ) -> [u8; 16] {
+        let reserve = client.resource(
+            *next_request_id,
+            ResourceRequest::Reserve {
+                lease_id,
+                worker_incarnation_id: incarnation,
+                resource_class,
+                requested_bytes: bytes,
+            },
+        );
+        *next_request_id += 1;
+        assert_eq!(
+            reserve.state,
+            pb_pbmux::ResourceResultState::Completed,
+            "reserve request={} class={resource_class:?} bytes={bytes} reason={:?}",
+            *next_request_id - 1,
+            reserve.reason
+        );
+        let reservation = reserve.reservation.unwrap();
+        assert_eq!(reservation.resource_class, resource_class);
+        assert_eq!(reservation.granted_bytes, bytes);
+        let reservation_id = reservation.reservation_id;
+        let commit = client.resource(
+            *next_request_id,
+            ResourceRequest::Commit {
+                lease_id,
+                worker_incarnation_id: incarnation,
+                reservation_id,
+            },
+        );
+        *next_request_id += 1;
+        assert_eq!(commit.state, pb_pbmux::ResourceResultState::Completed);
+        assert_eq!(
+            commit.reservation.unwrap().state,
+            WireReservationState::Committed
+        );
+        reservation_id
+    }
+
+    fn completed_digest(response: ComputeResponse) -> ([u8; 16], [u8; 32]) {
+        let ComputeResponse::Result(result) = response else {
+            panic!("synchronous BLAKE3 must return RESULT");
+        };
+        assert_eq!(result.state, ComputeJobState::Completed);
+        assert_eq!(result.reason, ComputeReason::None);
+        (result.job.unwrap().job_id, result.digest.unwrap())
     }
 
     fn test_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -1114,7 +1193,6 @@ mod tests {
             update_health(2_147_483_648, 0, 0, 80, 0, 0, 10_050),
             RESULT_OK
         );
-
         let directory = TestDirectory::new();
         let directory_fd: OwnedFd = fs::File::open(&directory.0).unwrap().into();
         let store = StateStore::from_directory_fd(directory_fd).unwrap();
@@ -1151,6 +1229,7 @@ mod tests {
                     ResourceRequest::Reserve {
                         lease_id: lease.lease_id,
                         worker_incarnation_id: lease.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
                         requested_bytes: 8,
                     },
                 );
@@ -1161,6 +1240,7 @@ mod tests {
                     ResourceRequest::Reserve {
                         lease_id: lease.lease_id,
                         worker_incarnation_id: lease.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
                         requested_bytes: 8,
                     },
                 );
@@ -1170,6 +1250,7 @@ mod tests {
                     ResourceRequest::Reserve {
                         lease_id: lease.lease_id,
                         worker_incarnation_id: lease.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
                         requested_bytes: 4,
                     },
                 );
@@ -1253,6 +1334,7 @@ mod tests {
                     ResourceRequest::Reserve {
                         lease_id: lease.lease_id,
                         worker_incarnation_id: lease.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
                         requested_bytes: 1,
                     },
                 );
@@ -1273,6 +1355,7 @@ mod tests {
                     ResourceRequest::Reserve {
                         lease_id: lease.lease_id,
                         worker_incarnation_id: lease.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
                         requested_bytes: 4,
                     },
                 );
@@ -1343,6 +1426,545 @@ mod tests {
                 );
                 assert_eq!(old.reason, BufferReason::BufferWrongIncarnation);
                 assert!(old.buffer.is_none());
+            },
+        );
+        reset();
+    }
+
+    #[test]
+    fn e_gen_04_authenticated_remote_blake3_64_mib_repeats_and_failures() {
+        const INPUT_BYTES: usize = 64 * 1024 * 1024;
+        const SCRATCH_BYTES: u64 = 1024 * 1024;
+
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+        std::thread::sleep(std::time::Duration::from_millis(10_050));
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, 10_050),
+            RESULT_OK
+        );
+        let directory = TestDirectory::new();
+        let directory_fd: OwnedFd = fs::File::open(&directory.0).unwrap().into();
+        let store = StateStore::from_directory_fd(directory_fd).unwrap();
+        let android_identity = store.load_or_create_identity().unwrap();
+        let host_private = [0x5b; 32];
+        let host_public = MontgomeryPoint::mul_base_clamped(host_private).to_bytes();
+        store
+            .commit_peer(&pb_runtime_secure::PeerRecord::new(host_public, "host", 1))
+            .unwrap();
+        let runtime =
+            Arc::new(SecureRuntime::initialize(EndpointRole::AndroidResponder, store).unwrap());
+        let input: Vec<u8> = (0..INPUT_BYTES)
+            .map(|index| (index as u8).wrapping_mul(31).wrapping_add(7))
+            .collect();
+        let oracle = *blake3::hash(&input).as_bytes();
+        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+        let oracle_hex: String = oracle.iter().map(|byte| format!("{byte:02x}")).collect();
+        eprintln!("E-GEN-04 oracle ready digest={oracle_hex}");
+
+        let (lease_id, incarnation, buffer_id, first_job_id, single_elapsed, repeated_elapsed) =
+            with_production_android_session(
+                Arc::clone(&runtime),
+                &host_private,
+                android_identity.public(),
+                |client| {
+                    let lease = client.command(
+                        1_000,
+                        CommandPayload {
+                            command_type: 1,
+                            lease_present: 0,
+                            lease_id: [0; 16],
+                            command_seq: 0,
+                            trace_id: [4; 16],
+                            provider_present: 0,
+                            provider_id: 0,
+                            payload_len: 0,
+                        },
+                    );
+                    assert_eq!(lease.ack_state, 2);
+                    let ComputeResponse::Status(wrong_incarnation) = client.compute(
+                        4_900,
+                        ComputeRequest::Status(ComputeJobRequest {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: [0x55; 16],
+                            job_id: [0x66; 16],
+                        }),
+                    ) else {
+                        panic!("wrong-incarnation lookup must be STATUS failure");
+                    };
+                    assert_eq!(
+                        wrong_incarnation.reason,
+                        ComputeReason::WrongWorkerIncarnation
+                    );
+                    let ComputeResponse::Status(stale_lease) = client.compute(
+                        4_901,
+                        ComputeRequest::Status(ComputeJobRequest {
+                            lease_id: [0x77; 16],
+                            worker_incarnation_id: lease.worker_incarnation,
+                            job_id: [0x66; 16],
+                        }),
+                    ) else {
+                        panic!("wrong-lease lookup must be STATUS failure");
+                    };
+                    assert_eq!(stale_lease.reason, ComputeReason::StaleControllerLease);
+                    let mut resource_request_id = 1_001;
+                    let storage_reservation = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        INPUT_BYTES as u64,
+                    );
+                    let alloc = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Alloc {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: storage_reservation,
+                            size_bytes: INPUT_BYTES as u64,
+                            allocation_flags: AllocationFlags::EVICTABLE,
+                        },
+                    );
+                    resource_request_id += 1;
+                    let buffer_id = alloc.buffer.unwrap().buffer_id;
+                    eprintln!("E-GEN-04 RemoteBuffer allocated");
+                    let mut renewal_sequence = 0_u64;
+                    for (index, chunk) in input.chunks(MAX_PUT_BODY).enumerate() {
+                        let put = client.remote(
+                            resource_request_id,
+                            RemoteBufferRequest::Put {
+                                lease_id: lease.lease_id,
+                                worker_incarnation_id: lease.worker_incarnation,
+                                buffer_id,
+                                offset: (index * MAX_PUT_BODY) as u64,
+                                data: chunk.to_vec(),
+                            },
+                        );
+                        resource_request_id += 1;
+                        assert!(
+                            put.completed,
+                            "PUT chunk {} failed: {:?}",
+                            index + 1,
+                            put.reason
+                        );
+                        eprintln!("E-GEN-04 uploaded chunk {}", index + 1);
+                        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+                        if (index + 1) % 4 == 0 {
+                            let renewed = client.command(
+                                4_000 + renewal_sequence,
+                                CommandPayload {
+                                    command_type: 2,
+                                    lease_present: 1,
+                                    lease_id: lease.lease_id,
+                                    command_seq: renewal_sequence,
+                                    trace_id: [5; 16],
+                                    provider_present: 0,
+                                    provider_id: 0,
+                                    payload_len: 0,
+                                },
+                            );
+                            assert_eq!(renewed.ack_state, 2);
+                            renewal_sequence += 1;
+                        }
+                    }
+                    let stat = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Stat {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            buffer_id,
+                        },
+                    );
+                    resource_request_id += 1;
+                    assert_eq!(stat.buffer.unwrap().state, BufferState::Ready);
+                    eprintln!("E-GEN-04 RemoteBuffer READY");
+
+                    let not_ready_storage = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        1,
+                    );
+                    let not_ready = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Alloc {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: not_ready_storage,
+                            size_bytes: 1,
+                            allocation_flags: AllocationFlags::NONE,
+                        },
+                    );
+                    resource_request_id += 1;
+                    let not_ready_id = not_ready.buffer.unwrap().buffer_id;
+                    let first_scratch = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::NativeOpScratchBytes,
+                        SCRATCH_BYTES,
+                    );
+                    let not_ready_failure = client.compute(
+                        5_000,
+                        ComputeRequest::Submit(ComputeSubmit {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: first_scratch,
+                            provider_id: 1,
+                            provider_version: 1,
+                            input_kind: 1,
+                            buffer_id: not_ready_id,
+                            input_offset: 0,
+                            input_length: 1,
+                        }),
+                    );
+                    let ComputeResponse::Result(not_ready_failure) = not_ready_failure else {
+                        panic!("not-READY refusal must be RESULT");
+                    };
+                    assert_eq!(not_ready_failure.reason, ComputeReason::BufferInvalidState);
+                    assert!(not_ready_failure.job.is_none());
+                    let ComputeResponse::Result(too_large) = client.compute(
+                        5_002,
+                        ComputeRequest::Submit(ComputeSubmit {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: first_scratch,
+                            provider_id: 1,
+                            provider_version: 1,
+                            input_kind: 1,
+                            buffer_id,
+                            input_offset: 0,
+                            input_length: 128 * 1024 * 1024 + 1,
+                        }),
+                    ) else {
+                        panic!(">128 MiB refusal must be RESULT");
+                    };
+                    assert_eq!(too_large.reason, ComputeReason::InputTooLarge);
+                    let freed_not_ready = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Free {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            buffer_id: not_ready_id,
+                        },
+                    );
+                    resource_request_id += 1;
+                    assert_eq!(freed_not_ready.buffer.unwrap().state, BufferState::Freed);
+
+                    let freed_storage = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        1,
+                    );
+                    let freed = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Alloc {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: freed_storage,
+                            size_bytes: 1,
+                            allocation_flags: AllocationFlags::NONE,
+                        },
+                    );
+                    resource_request_id += 1;
+                    let freed_id = freed.buffer.unwrap().buffer_id;
+                    assert!(
+                        client
+                            .remote(
+                                resource_request_id,
+                                RemoteBufferRequest::Put {
+                                    lease_id: lease.lease_id,
+                                    worker_incarnation_id: lease.worker_incarnation,
+                                    buffer_id: freed_id,
+                                    offset: 0,
+                                    data: vec![9],
+                                },
+                            )
+                            .completed
+                    );
+                    resource_request_id += 1;
+                    assert!(
+                        client
+                            .remote(
+                                resource_request_id,
+                                RemoteBufferRequest::Free {
+                                    lease_id: lease.lease_id,
+                                    worker_incarnation_id: lease.worker_incarnation,
+                                    buffer_id: freed_id,
+                                },
+                            )
+                            .completed
+                    );
+                    resource_request_id += 1;
+                    let freed_scratch = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::NativeOpScratchBytes,
+                        SCRATCH_BYTES,
+                    );
+                    let ComputeResponse::Result(freed_failure) = client.compute(
+                        5_001,
+                        ComputeRequest::Submit(ComputeSubmit {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: freed_scratch,
+                            provider_id: 1,
+                            provider_version: 1,
+                            input_kind: 1,
+                            buffer_id: freed_id,
+                            input_offset: 0,
+                            input_length: 1,
+                        }),
+                    ) else {
+                        panic!("FREED refusal must be RESULT");
+                    };
+                    assert_eq!(freed_failure.reason, ComputeReason::BufferFreed);
+                    let ComputeResponse::Result(unsupported) = client.compute(
+                        5_003,
+                        ComputeRequest::Submit(ComputeSubmit {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id: freed_scratch,
+                            provider_id: 2,
+                            provider_version: 1,
+                            input_kind: 1,
+                            buffer_id,
+                            input_offset: 0,
+                            input_length: INPUT_BYTES as u64,
+                        }),
+                    ) else {
+                        panic!("unsupported provider must be RESULT");
+                    };
+                    assert_eq!(unsupported.reason, ComputeReason::UnsupportedProvider);
+                    assert_eq!(
+                        client
+                            .resource(
+                                resource_request_id,
+                                ResourceRequest::Release {
+                                    lease_id: lease.lease_id,
+                                    worker_incarnation_id: lease.worker_incarnation,
+                                    reservation_id: freed_scratch,
+                                },
+                            )
+                            .reservation
+                            .unwrap()
+                            .state,
+                        WireReservationState::Released
+                    );
+                    resource_request_id += 1;
+
+                    let submit = |reservation_id| {
+                        ComputeRequest::Submit(ComputeSubmit {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            reservation_id,
+                            provider_id: 1,
+                            provider_version: 1,
+                            input_kind: 1,
+                            buffer_id,
+                            input_offset: 0,
+                            input_length: INPUT_BYTES as u64,
+                        })
+                    };
+                    let first_started = std::time::Instant::now();
+                    let first_response = client.compute(5_100, submit(first_scratch));
+                    let single_elapsed = first_started.elapsed();
+                    let (first_job_id, first_digest) = completed_digest(first_response);
+                    assert_eq!(first_digest, oracle);
+                    eprintln!("E-GEN-04 first compute complete");
+                    assert_eq!(client.compute(5_100, submit(first_scratch)), first_response);
+                    let ComputeResponse::Result(conflict) = client.compute(
+                        5_100,
+                        ComputeRequest::Submit(ComputeSubmit {
+                            input_length: INPUT_BYTES as u64 - 1,
+                            ..match submit(first_scratch) {
+                                ComputeRequest::Submit(submit) => submit,
+                                _ => unreachable!(),
+                            }
+                        }),
+                    ) else {
+                        panic!("conflict must be RESULT");
+                    };
+                    assert_eq!(conflict.reason, ComputeReason::RequestIdConflict);
+                    let ComputeResponse::Result(reuse) =
+                        client.compute(5_101, submit(first_scratch))
+                    else {
+                        panic!("reservation reuse must be RESULT");
+                    };
+                    assert_eq!(reuse.reason, ComputeReason::ReservationInvalid);
+                    assert!(reuse.job.is_none());
+
+                    let terminal_status = client.compute(
+                        5_102,
+                        ComputeRequest::Status(ComputeJobRequest {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            job_id: first_job_id,
+                        }),
+                    );
+                    assert_eq!(terminal_status, first_response);
+                    let ComputeResponse::Cancel(cancel) = client.compute(
+                        5_103,
+                        ComputeRequest::Cancel(ComputeJobRequest {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            job_id: first_job_id,
+                        }),
+                    ) else {
+                        panic!("terminal cancellation must use CANCEL response");
+                    };
+                    assert_eq!(cancel.state, ComputeJobState::Completed);
+                    assert_eq!(cancel.reason, ComputeReason::JobNotCancellable);
+                    assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+
+                    let repeated_started = std::time::Instant::now();
+                    for index in 1..10_u64 {
+                        let scratch = reserve_and_commit(
+                            client,
+                            &mut resource_request_id,
+                            lease.lease_id,
+                            lease.worker_incarnation,
+                            WireResourceClass::NativeOpScratchBytes,
+                            SCRATCH_BYTES,
+                        );
+                        let (_, digest) =
+                            completed_digest(client.compute(5_100 + index + 10, submit(scratch)));
+                        assert_eq!(digest, oracle, "repeat {index}");
+                        eprintln!("E-GEN-04 compute {} complete", index + 1);
+                        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+                    }
+                    let repeated_elapsed = repeated_started.elapsed();
+
+                    let post_hash = client.remote(
+                        resource_request_id,
+                        RemoteBufferRequest::Get {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.worker_incarnation,
+                            buffer_id,
+                            offset: 0,
+                            length: 1024,
+                        },
+                    );
+                    resource_request_id += 1;
+                    assert_eq!(post_hash.data, input[..1024]);
+
+                    let leak_probe = reserve_and_commit(
+                        client,
+                        &mut resource_request_id,
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        INPUT_BYTES as u64,
+                    );
+                    assert_eq!(
+                        client
+                            .resource(
+                                resource_request_id,
+                                ResourceRequest::Release {
+                                    lease_id: lease.lease_id,
+                                    worker_incarnation_id: lease.worker_incarnation,
+                                    reservation_id: leak_probe,
+                                },
+                            )
+                            .reservation
+                            .unwrap()
+                            .state,
+                        WireReservationState::Released,
+                        "ten compute jobs leave no scratch accounting leak"
+                    );
+
+                    (
+                        lease.lease_id,
+                        lease.worker_incarnation,
+                        buffer_id,
+                        first_job_id,
+                        single_elapsed,
+                        repeated_elapsed,
+                    )
+                },
+            );
+
+        let mib = INPUT_BYTES as f64 / (1024.0 * 1024.0);
+        let ten_job_elapsed = single_elapsed + repeated_elapsed;
+        eprintln!(
+            "E-GEN-04 64 MiB single={:.3}s throughput={:.1} MiB/s; ten-total={:.3}s per-job={:.3}s throughput={:.1} MiB/s",
+            single_elapsed.as_secs_f64(),
+            mib / single_elapsed.as_secs_f64(),
+            ten_job_elapsed.as_secs_f64(),
+            ten_job_elapsed.as_secs_f64() / 10.0,
+            mib * 10.0 / ten_job_elapsed.as_secs_f64(),
+        );
+
+        with_production_android_session(
+            runtime,
+            &host_private,
+            android_identity.public(),
+            |client| {
+                let mut request_id = 8_000;
+                let scratch = reserve_and_commit(
+                    client,
+                    &mut request_id,
+                    lease_id,
+                    incarnation,
+                    WireResourceClass::NativeOpScratchBytes,
+                    SCRATCH_BYTES,
+                );
+                let ComputeResponse::Result(lost) = client.compute(
+                    8_100,
+                    ComputeRequest::Submit(ComputeSubmit {
+                        lease_id,
+                        worker_incarnation_id: incarnation,
+                        reservation_id: scratch,
+                        provider_id: 1,
+                        provider_version: 1,
+                        input_kind: 1,
+                        buffer_id,
+                        input_offset: 0,
+                        input_length: INPUT_BYTES as u64,
+                    }),
+                ) else {
+                    panic!("LOST input must be RESULT");
+                };
+                assert_eq!(lost.reason, ComputeReason::BufferLost);
+                assert_eq!(
+                    client
+                        .resource(
+                            request_id,
+                            ResourceRequest::Release {
+                                lease_id,
+                                worker_incarnation_id: incarnation,
+                                reservation_id: scratch,
+                            },
+                        )
+                        .reservation
+                        .unwrap()
+                        .state,
+                    WireReservationState::Released,
+                    "failed LOST admission leaves scratch committed"
+                );
+                let ComputeResponse::Status(old_job) = client.compute(
+                    8_101,
+                    ComputeRequest::Status(ComputeJobRequest {
+                        lease_id,
+                        worker_incarnation_id: incarnation,
+                        job_id: first_job_id,
+                    }),
+                ) else {
+                    panic!("fresh-session lookup must use STATUS failure");
+                };
+                assert_eq!(old_job.reason, ComputeReason::JobNotOwned);
+                assert!(old_job.job.is_none());
             },
         );
         reset();
