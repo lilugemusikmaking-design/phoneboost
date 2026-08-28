@@ -138,7 +138,7 @@ pub fn is_known_message_type(channel: Channel, message_type: u16) -> bool {
     match channel {
         Channel::Control => ControlType::try_from(message_type).is_ok(),
         Channel::Resource => (1..=5).contains(&message_type),
-        Channel::RemoteBuffer => (1..=7).contains(&message_type),
+        Channel::RemoteBuffer => (1..=8).contains(&message_type),
         Channel::Compute => (1..=4).contains(&message_type),
         Channel::AiRpc => (1..=4).contains(&message_type),
         Channel::Metrics => (1..=2).contains(&message_type),
@@ -289,6 +289,7 @@ mod tests {
         assert!(is_known_message_type(Channel::Control, 8));
         assert!(!is_known_message_type(Channel::Control, 9));
         assert!(is_known_message_type(Channel::RemoteBuffer, 7));
-        assert!(!is_known_message_type(Channel::RemoteBuffer, 8));
+        assert!(is_known_message_type(Channel::RemoteBuffer, 8));
+        assert!(!is_known_message_type(Channel::RemoteBuffer, 9));
     }
 }
