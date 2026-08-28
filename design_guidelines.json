@@ -1,0 +1,141 @@
+{
+  "theme": "dark",
+  "typography": {
+    "fonts": [
+      {
+        "role": "Headings",
+        "family": "Chivo, sans-serif",
+        "fallback": "sans-serif",
+        "description": "Clean grotesque sans substituting Space Grotesk due to dashboard constraints"
+      },
+      {
+        "role": "Body",
+        "family": "Inter, sans-serif",
+        "fallback": "sans-serif"
+      },
+      {
+        "role": "Technical/Mono",
+        "family": "'JetBrains Mono', monospace",
+        "fallback": "monospace"
+      }
+    ],
+    "hierarchy": {
+      "H1": "text-4xl sm:text-5xl tracking-tighter font-black text-white",
+      "H2": "text-2xl sm:text-3xl tracking-tight font-bold text-white",
+      "H3": "text-xl sm:text-2xl tracking-tight font-semibold text-gray-200",
+      "Body": "text-base leading-relaxed text-gray-400",
+      "Mono_Small": "text-xs font-mono tracking-widest uppercase",
+      "Mono_Base": "text-sm font-mono"
+    }
+  },
+  "colors": {
+    "background": "#0A0A0A",
+    "surface": "#121212",
+    "surface_elevated": "#1A1A1A",
+    "border": "#262626",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A3A3A3",
+    "accent_neon_green": "#39FF14",
+    "accent_warning_amber": "#FFB020",
+    "unavailable_neutral": "#404040",
+    "css_variables": {
+      "--background": "0 0% 4%",
+      "--foreground": "0 0% 100%",
+      "--card": "0 0% 7%",
+      "--card-foreground": "0 0% 100%",
+      "--popover": "0 0% 7%",
+      "--popover-foreground": "0 0% 100%",
+      "--primary": "111 100% 54%",
+      "--primary-foreground": "0 0% 0%",
+      "--secondary": "0 0% 10%",
+      "--secondary-foreground": "0 0% 100%",
+      "--muted": "0 0% 15%",
+      "--muted-foreground": "0 0% 64%",
+      "--accent": "0 0% 15%",
+      "--accent-foreground": "0 0% 100%",
+      "--destructive": "0 62.8% 30.6%",
+      "--destructive-foreground": "0 0% 100%",
+      "--border": "0 0% 15%",
+      "--input": "0 0% 15%",
+      "--ring": "111 100% 54%",
+      "--radius": "0.3rem",
+      "--warning": "41 100% 56%",
+      "--unavailable": "0 0% 25%"
+    }
+  },
+  "visual_enhancers": {
+    "textures": "CSS-based subtle noise overlay on the background to eliminate digital flatness.",
+    "borders": "1px solid border-border (e.g. #262626) on all cards, panels, and side-rails.",
+    "shadows": "Minimal. Avoid soft shadows. Use sharp 1px inner glows or stark borders.",
+    "glows": "Subtle inset drop shadow or text-shadow for neon green elements (only on verified/evidence states)."
+  },
+  "component_name": [
+    "Card",
+    "Badge",
+    "Button",
+    "Sheet",
+    "Tabs",
+    "Separator",
+    "Toggle"
+  ],
+  "grids": {
+    "topology_grid": "grid-cols-1 lg:grid-cols-3 gap-6. 3 strict columns representing LOCAL, SECURE LINK, REMOTE. Do not merge.",
+    "evidence_grid": "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6. Bento-style grid for ~10 recorded evidence cards.",
+    "roadmap_grid": "grid-cols-1 md:grid-cols-3 gap-6. 3 columns: Working, Next, Future."
+  },
+  "layouts": {
+    "overall": "Sticky side-rail navigation layout. Left aside (e.g., w-64) with main content area on the right.",
+    "header": "Top identity/hero header spanning main content. Strong proposition, release provenance, mode toggle.",
+    "spacing": "Generous. p-6 or p-8 inside cards. gap-8 between major sections. mb-12 for section separation."
+  },
+  "motion": {
+    "hover": "Subtle background lighten (bg-white/5), 1px border color shift.",
+    "entrance": "Soft entrance fades. opacity 0 -> 1 over 0.3s. No bouncy translations.",
+    "drawer": "Smooth slide-in from the right for evidence details."
+  },
+  "accessibility": {
+    "contrast": "Strict APCA/WCAG adherence. Text on unavailable states must remain readable.",
+    "focus": "Clear focus rings (focus:ring-2 focus:ring-primary focus:outline-none) on all interactive elements.",
+    "test_ids": "All interactive elements MUST include data-testid (e.g., data-testid='mode-toggle')."
+  },
+  "media": {
+    "icons": "lucide-react. Minimalist, stroke-width 1.5 or 2."
+  },
+  "3d_libraries": {
+    "usage": "None. Strict 2D technical layout to preserve credibility and sober tactical feel."
+  },
+  "image_urls": {
+    "background": {
+      "url": "",
+      "description": "No external images. Use pure CSS noise/grain if needed.",
+      "category": "background"
+    }
+  },
+  "component_path": {
+    "ui": "/app/frontend/src/components/ui"
+  },
+  "instructions_to_main_agent": [
+    "Set up a sticky compact side-rail navigation on the left (Overview, Architecture, State Ladder, Evidence, Roadmap).",
+    "Build the Top Identity Header: Needs PhoneBoost proposition ('Use the power already in your pocket'), release tag, HEAD, validation date.",
+    "Implement the Global Mode Toggle (LIVE vs RECORDED EVIDENCE). When LIVE is selected, show a clear 'unavailable' curtain state over the dashboard, as no real data is fabricated.",
+    "Build the Topology panel (LOCAL <-> SECURE LINK <-> REMOTE): Use a 3-column grid. Ensure visually distinct boundaries. Use '--unavailable' styling for hosted components.",
+    "Build the Five-gate state ladder: Stacked list/cards. Use neutral/unavailable styling. Do not show progress bars to avoid implying sequential success.",
+    "Build the Security Callout: Plain language summary + technical details. Use JetBrains Mono for peer IDs and technical terms.",
+    "Build the Evidence Grid: ~10 cards. Use muted green accents to denote RECORDED EVIDENCE. Clicking a card opens a Sheet (side drawer) with source path and raw checked-in text.",
+    "Build the Roadmap: 3 columns (Working/Demonstrated now, Next, Future).",
+    "Ensure the entire app feels like a premium, sober, tactical competition dashboard. No flashy gradients.",
+    "Apply `data-testid` to every interactive element (buttons, tabs, toggles, cards that open drawers)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Do NOT use Space Grotesk (forbidden for dashboards). Use Chivo or Cabinet Grotesk for headings instead.",
+    "Use JetBrains Mono for all technical data, logs, and evidence text.",
+    "Strictly separate LOCAL, SECURE LINK, and REMOTE resources.",
+    "Never fabricate data. If it's not live, style it as unavailable/neutral.",
+    "Use 1px sharp borders instead of soft shadows to maintain the tactical lab feel.",
+    "Do not use dark colors as gradients. Stick to solid charcoal/graphite.",
+    "Left-align dense content and text. Do not center-align the app.",
+    "Apply data-testid to all interactive components.",
+    "No emojis for icons. Use lucide-react.",
+    "Use 2-3x more spacing (p-6, p-8) than standard to give a premium feel."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "summary": "First-pass smoke: PhoneBoost Control Center backend and frontend verified end-to-end against the deployed public URL. All 8 required backend endpoints return the exact repo-anchored numbers with correct provenance, and all 14 UI expectations (recorded mode default, tag/date header, 5 UNAVAILABLE gates, 10 evidence cards, drawer contents for C07 and A6, live-curtain with 3 requirements + switch-back, roadmap 12/3/4) render as specified. No fabricated LIVE data observed.",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "GET /api/system/snapshot -> provenance=RECORDED_EVIDENCE, live_available=false, 5 gates all UNAVAILABLE with correct ids (paired, authenticated, controller_lease, resource_admissible, provider_ready), computer/phone/secure_link/remote_capability sections present with only non-live states",
+    "GET /api/live/probe -> reachable=false, truthful reason, requirements list of 3 items",
+    "GET /api/evidence/index -> exactly 10 items, all provenance=RECORDED_EVIDENCE",
+    "GET /api/evidence/c07-checker -> detail={final_verdict:'C07_WIRE_CHECK PASS', command_ack_vectors:10, heartbeat_vectors:8, oracle_mutations:5, expected_verdicts:'all matched'}",
+    "GET /api/evidence/a6-lease-resourceguard -> raw text present, contains 'C07 L-T01 through L-T15: PASS'",
+    "GET /api/fixtures/manifest -> file_count=31",
+    "GET /api/roadmap -> working_now=12, next=3, future=4",
+    "GET /api/architecture -> 6 layers, 5 gates",
+    "Frontend loads in Recorded Evidence mode; mode-badge='Recorded evidence'; header shows tag 'competition-rc-20260824' and validated '2026-08-24'",
+    "All 5 gate rows render with UNAVAILABLE badges (gate-paired, gate-authenticated, gate-controller_lease, gate-resource_admissible, gate-provider_ready)",
+    "Evidence grid renders 10 RECORDED EVIDENCE cards",
+    "evidence-card-c07-checker opens evidence-drawer with C07 detail JSON (verdict + 10/8/5 vector counts)",
+    "evidence-card-a6-lease-resourceguard opens drawer with raw text containing 'C07 L-T01 through L-T15: PASS'",
+    "mode-toggle-live reveals live-curtain with 'LIVE mode is unavailable', reason mentioning phoneboostd, 3 requirement <li> items, and switch-to-recorded button; no fake device/metric appears",
+    "Roadmap columns render 12 / 3 / 4 <li> items respectively"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Public URL https://rust-android-lab.preview.emergentagent.com used for e2e. No credentials required (app is unauthenticated presentation layer). LIVE data absence explicitly verified: live-curtain shows only unavailability copy and requirement list, no fabricated device state on toggle."
+}
