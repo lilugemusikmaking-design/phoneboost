@@ -1,7 +1,10 @@
 use std::fs::File;
 use std::io::Read;
-use std::net::TcpStream;
-use std::sync::{Condvar, Mutex};
+use std::net::{Shutdown, TcpStream};
+use std::sync::{
+    Condvar, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::{Duration, Instant};
 
 use pb_pbmux::{
@@ -29,9 +32,20 @@ use crate::wire::{SecureWireError, read_encrypted, read_record, write_encrypted,
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 const SESSION_POLL: Duration = Duration::from_millis(20);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
+const DEVICE_OFFLINE_TIMEOUT: Duration = Duration::from_secs(10);
 const XX_FIRST_MESSAGE_BYTES: usize = 32;
 
-struct SessionScope;
+struct SessionScope {
+    live: AtomicBool,
+}
+
+impl SessionScope {
+    const fn new() -> Self {
+        Self {
+            live: AtomicBool::new(true),
+        }
+    }
+}
 
 /// Proof that a peer identity came from the authenticated, committed secure session.
 ///
@@ -66,6 +80,7 @@ struct SessionScope;
 pub struct VerifiedPeerSession<'session> {
     peer_id: PeerId,
     session_id: VerifiedSessionId,
+    live: &'session AtomicBool,
     _scope: std::marker::PhantomData<&'session SessionScope>,
 }
 
@@ -155,6 +170,18 @@ impl VerifiedPeerSession<'_> {
 
     pub const fn session_id(&self) -> VerifiedSessionId {
         self.session_id
+    }
+
+    /// Returns whether the authenticated transport still owns this session.
+    ///
+    /// This is revocation state, not authentication authority: production
+    /// mutation APIs must still require the opaque session proof itself.
+    pub fn is_live(&self) -> bool {
+        self.live.load(Ordering::Acquire)
+    }
+
+    fn revoke(&self) {
+        self.live.store(false, Ordering::Release);
     }
 }
 
@@ -685,6 +712,7 @@ impl SecureRuntime {
         let verified = VerifiedPeerSession {
             peer_id: PeerId::from_static_public_key(remote),
             session_id: VerifiedSessionId(random_nonzero_128()?),
+            live: &_scope.live,
             _scope: std::marker::PhantomData,
         };
         #[cfg(test)]
@@ -1212,7 +1240,7 @@ fn enter_authenticated_loop(
     receive_sequence: SequenceTracker,
     initiator: bool,
 ) -> Result<SessionOutcome, RuntimeError> {
-    let scope = SessionScope;
+    let scope = SessionScope::new();
     let verified_peer = runtime.mark_authenticated(&remote, &scope)?;
     runtime.heartbeat();
     let result = run_authenticated_loop(
@@ -1225,6 +1253,7 @@ fn enter_authenticated_loop(
         receive_sequence,
         initiator,
     );
+    verified_peer.revoke();
     command_handler
         .authenticated_session_ended(&verified_peer)
         .map_err(|_| RuntimeError::CommandHandlerFailed)?;
@@ -1242,9 +1271,14 @@ fn run_authenticated_loop(
     initiator: bool,
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
+    let mut last_authenticated_traffic = Instant::now();
     let mut outstanding = None;
     let mut reassembler = Reassembler::default();
     loop {
+        if last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT {
+            verified_peer.revoke();
+            return Err(RuntimeError::SessionLost);
+        }
         if initiator && Instant::now() >= next_heartbeat && outstanding.is_none() {
             let request = random_nonzero_u64()?;
             send_frame(
@@ -1261,6 +1295,7 @@ fn run_authenticated_loop(
                 .accept(frame.header.sequence)
                 .map_err(|_| RuntimeError::Pbmux)?;
             authorize_dispatch(&frame, DispatchMode::Committed).map_err(|_| RuntimeError::Pbmux)?;
+            last_authenticated_traffic = Instant::now();
             if frame.header.channel == Channel::Control {
                 match ControlType::try_from(frame.header.message_type) {
                     Ok(ControlType::Ping) if !initiator => {
@@ -1369,9 +1404,14 @@ fn run_authenticated_loop(
             } else if frame.header.channel == Channel::Compute {
                 let request =
                     parse_compute_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                let response = command_handler
-                    .handle_authenticated_compute(verified_peer, frame.header.request_id, request)
-                    .map_err(handler_runtime_error)?;
+                let response = handle_compute_with_transport_liveness(
+                    stream,
+                    command_handler,
+                    verified_peer,
+                    frame.header.request_id,
+                    request,
+                    last_authenticated_traffic,
+                )?;
                 let valid_response_kind = matches!(
                     (&request, &response),
                     (ComputeRequest::Submit(_), ComputeResponse::Status(_))
@@ -1391,6 +1431,7 @@ fn run_authenticated_loop(
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
                     parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    runtime.heartbeat();
                 } else {
                     return Err(RuntimeError::Pbmux);
                 }
@@ -1399,6 +1440,55 @@ fn run_authenticated_loop(
             }
         }
         std::thread::sleep(SESSION_POLL);
+    }
+}
+
+fn handle_compute_with_transport_liveness(
+    stream: &TcpStream,
+    command_handler: &dyn AuthenticatedCommandHandler,
+    verified_peer: &VerifiedPeerSession<'_>,
+    request_id: u64,
+    request: ComputeRequest,
+    last_authenticated_traffic: Instant,
+) -> Result<ComputeResponse, RuntimeError> {
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    std::thread::scope(|scope| {
+        scope.spawn(move || {
+            let _ = sender.send(command_handler.handle_authenticated_compute(
+                verified_peer,
+                request_id,
+                request,
+            ));
+        });
+        loop {
+            if transport_loss_observed(stream)
+                || last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT
+            {
+                verified_peer.revoke();
+                let _ = stream.shutdown(Shutdown::Both);
+                return Err(RuntimeError::SessionLost);
+            }
+            match receiver.try_recv() {
+                Ok(result) => return result.map_err(handler_runtime_error),
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(SESSION_POLL);
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    return Err(RuntimeError::CommandHandlerFailed);
+                }
+            }
+        }
+    })
+}
+
+fn transport_loss_observed(stream: &TcpStream) -> bool {
+    let mut byte = [0_u8; 1];
+    match stream.peek(&mut byte) {
+        Ok(0) => true,
+        Ok(_) => false,
+        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => false,
+        Err(error) if error.kind() == std::io::ErrorKind::Interrupted => false,
+        Err(_) => true,
     }
 }
 
@@ -1535,6 +1625,7 @@ mod tests {
     use super::*;
     use rustix::fs::{Mode, OFlags, open};
     use std::fs;
+    use std::io::Write;
     use std::net::{Shutdown, TcpListener};
     use std::os::unix::fs::DirBuilderExt;
     use std::path::{Path, PathBuf};
@@ -1677,6 +1768,53 @@ mod tests {
         Err(RuntimeError::SessionLost)
     }
 
+    fn start_manual_committed_ik(
+        label: &str,
+    ) -> (
+        TcpStream,
+        TransportState,
+        Arc<SecureRuntime>,
+        std::thread::JoinHandle<RuntimeError>,
+    ) {
+        let host_dir = TestDirectory::new(&format!("{label}-host"));
+        let android_dir = TestDirectory::new(&format!("{label}-android"));
+        let host_store = open_store(&host_dir.0);
+        let android_store = open_store(&android_dir.0);
+        let host_identity = host_store.load_or_create_identity().unwrap();
+        let android_identity = android_store.load_or_create_identity().unwrap();
+        let android_peer = PeerRecord::new(*android_identity.public(), "Android", 1);
+        android_store
+            .commit_peer(&PeerRecord::new(*host_identity.public(), "host", 1))
+            .unwrap();
+        let android = Arc::new(
+            SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap(),
+        );
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let responder_runtime = Arc::clone(&android);
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            run_responder_session(&mut stream, &responder_runtime, &[]).unwrap_err()
+        });
+        let mut stream = TcpStream::connect(endpoint).unwrap();
+        configure_handshake_stream(&stream).unwrap();
+        let (mut transport, _) =
+            initiator_ik(&mut stream, host_identity.private(), &android_peer).unwrap();
+        configure_session_stream(&stream).unwrap();
+        send_frame(
+            &mut stream,
+            &mut transport,
+            &control_frame(ControlType::Ping, 9, 0),
+        )
+        .unwrap();
+        let pong = receive_test_frame(&mut stream, &mut transport).unwrap();
+        assert_eq!(pong.header.message_type, ControlType::Pong as u16);
+        assert_eq!(pong.header.request_id, 9);
+        assert!(android.snapshot().authenticated);
+        assert!(android.snapshot().heartbeat_count > 0);
+        (stream, transport, android, responder)
+    }
+
     fn run_committed_ik_command(
         handler: Option<Arc<dyn AuthenticatedCommandHandler>>,
         command: CommandPayload,
@@ -1771,22 +1909,67 @@ mod tests {
     }
 
     #[test]
+    fn authenticated_liveness_profile_is_two_second_heartbeat_and_ten_second_offline() {
+        assert_eq!(HEARTBEAT_INTERVAL, Duration::from_secs(2));
+        assert_eq!(DEVICE_OFFLINE_TIMEOUT, Duration::from_secs(10));
+    }
+
+    #[test]
     fn reconnect_mints_a_fresh_opaque_session_id_for_the_same_peer() {
         let directory = TestDirectory::new("session-generation");
         let store = open_store(&directory.0);
         let runtime = SecureRuntime::initialize(EndpointRole::AndroidResponder, store).unwrap();
         let remote = [0x55; 32];
-        let first_scope = SessionScope;
-        let first = runtime
-            .mark_authenticated(&remote, &first_scope)
-            .unwrap()
-            .session_id();
-        let second_scope = SessionScope;
+        let first_scope = SessionScope::new();
+        let first = runtime.mark_authenticated(&remote, &first_scope).unwrap();
+        assert!(first.is_live());
+        let first_id = first.session_id();
+        first.revoke();
+        assert!(!first.is_live());
+        let second_scope = SessionScope::new();
         let second = runtime
             .mark_authenticated(&remote, &second_scope)
             .unwrap()
             .session_id();
-        assert!(first != second);
+        assert!(first_id != second);
+    }
+
+    #[test]
+    fn committed_transport_partial_records_crypto_and_pbmux_fail_closed() {
+        let (mut prefix_stream, _prefix_transport, prefix_runtime, prefix_responder) =
+            start_manual_committed_ik("partial-prefix");
+        prefix_stream.set_nonblocking(false).unwrap();
+        prefix_stream.write_all(&[0]).unwrap();
+        assert_eq!(prefix_responder.join().unwrap(), RuntimeError::SessionLost);
+        assert!(!prefix_runtime.snapshot().authenticated);
+        assert_eq!(prefix_runtime.snapshot().state, RuntimeState::Paired);
+
+        let (mut payload_stream, _payload_transport, payload_runtime, payload_responder) =
+            start_manual_committed_ik("partial-payload");
+        payload_stream.set_nonblocking(false).unwrap();
+        payload_stream.write_all(&100_u16.to_be_bytes()).unwrap();
+        payload_stream.write_all(&[0]).unwrap();
+        let payload_error = payload_responder.join().unwrap();
+        assert_eq!(payload_error, RuntimeError::Wire(SecureWireError::Io));
+        assert_eq!(payload_error.reason_code(), "DEVICE_LOST");
+        assert!(!payload_runtime.snapshot().authenticated);
+
+        let (mut crypto_stream, _crypto_transport, crypto_runtime, crypto_responder) =
+            start_manual_committed_ik("crypto-failure");
+        crypto_stream.set_nonblocking(false).unwrap();
+        write_record(&mut crypto_stream, &[0x5a; 32]).unwrap();
+        assert_eq!(
+            crypto_responder.join().unwrap(),
+            RuntimeError::Wire(SecureWireError::Crypto)
+        );
+        assert!(!crypto_runtime.snapshot().authenticated);
+
+        let (mut pbmux_stream, mut pbmux_transport, pbmux_runtime, pbmux_responder) =
+            start_manual_committed_ik("pbmux-failure");
+        pbmux_stream.set_nonblocking(false).unwrap();
+        write_encrypted(&mut pbmux_stream, &mut pbmux_transport, &[0; 40]).unwrap();
+        assert_eq!(pbmux_responder.join().unwrap(), RuntimeError::Pbmux);
+        assert!(!pbmux_runtime.snapshot().authenticated);
     }
 
     #[test]

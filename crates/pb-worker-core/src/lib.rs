@@ -609,9 +609,14 @@ impl WorkerCore {
         let session_id =
             remote_buffer::SessionBinding::from_verified(verified_session.session_id());
         match request {
-            ComputeRequest::Submit(submit) => {
-                self.apply_compute_submit(proof, session_id, request_id, submit, now_ms)
-            }
+            ComputeRequest::Submit(submit) => self.apply_compute_submit(
+                verified_session,
+                proof,
+                session_id,
+                request_id,
+                submit,
+                now_ms,
+            ),
             ComputeRequest::Status(status) => {
                 self.compute_jobs.status(proof, session_id, status, now_ms)
             }
@@ -628,6 +633,7 @@ impl WorkerCore {
 
     fn apply_compute_submit(
         &mut self,
+        verified_session: &VerifiedPeerSession<'_>,
         proof: lease::LeaseProof,
         session_id: remote_buffer::SessionBinding,
         request_id: u64,
@@ -764,7 +770,14 @@ impl WorkerCore {
             buffer_id,
             input_offset,
             input_length,
-            |input| compute::blake3_digest_bounded(input, now_ms, || clock.now_ms()),
+            |input| {
+                compute::blake3_digest_bounded(
+                    input,
+                    now_ms,
+                    || clock.now_ms(),
+                    || verified_session.is_live(),
+                )
+            },
         );
         let finished_ms = self.clock.now_ms();
         self.compute_jobs.terminalize(

@@ -505,20 +505,27 @@ impl ComputeJobStore {
 
 #[cfg(test)]
 pub(crate) fn blake3_digest(input: &[u8]) -> [u8; 32] {
-    blake3_digest_bounded(input, 0, || 0).expect("zero-duration local hash")
+    blake3_digest_bounded(input, 0, || 0, || true).expect("zero-duration local hash")
 }
 
 pub(crate) fn blake3_digest_bounded(
     input: &[u8],
     started_ms: u64,
     mut now_ms: impl FnMut() -> u64,
+    mut session_is_live: impl FnMut() -> bool,
 ) -> Result<[u8; 32], ComputeReason> {
     let mut hasher = blake3::Hasher::new();
     for chunk in input.chunks(HASH_CHUNK_BYTES) {
+        if !session_is_live() {
+            return Err(ComputeReason::SessionLost);
+        }
         if now_ms().saturating_sub(started_ms) > PROVIDER_TIMEOUT_MS {
             return Err(ComputeReason::ProviderTimeout);
         }
         hasher.update(chunk);
+    }
+    if !session_is_live() {
+        return Err(ComputeReason::SessionLost);
     }
     if now_ms().saturating_sub(started_ms) > PROVIDER_TIMEOUT_MS {
         return Err(ComputeReason::ProviderTimeout);
@@ -668,16 +675,34 @@ mod tests {
         );
 
         let calls = std::cell::Cell::new(0_u8);
-        let timeout = blake3_digest_bounded(&vec![0; 2 * HASH_CHUNK_BYTES], 0, || {
-            let call = calls.get();
-            calls.set(call + 1);
-            if call == 0 {
-                0
-            } else {
-                PROVIDER_TIMEOUT_MS + 1
-            }
-        });
+        let timeout = blake3_digest_bounded(
+            &vec![0; 2 * HASH_CHUNK_BYTES],
+            0,
+            || {
+                let call = calls.get();
+                calls.set(call + 1);
+                if call == 0 {
+                    0
+                } else {
+                    PROVIDER_TIMEOUT_MS + 1
+                }
+            },
+            || true,
+        );
         assert_eq!(timeout, Err(ComputeReason::ProviderTimeout));
+
+        let liveness_checks = std::cell::Cell::new(0_u8);
+        let session_lost = blake3_digest_bounded(
+            &vec![0; 2 * HASH_CHUNK_BYTES],
+            0,
+            || 0,
+            || {
+                let check = liveness_checks.get();
+                liveness_checks.set(check + 1);
+                check == 0
+            },
+        );
+        assert_eq!(session_lost, Err(ComputeReason::SessionLost));
     }
 
     #[test]

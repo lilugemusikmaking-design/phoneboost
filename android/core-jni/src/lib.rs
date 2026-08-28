@@ -645,11 +645,128 @@ mod tests {
         parse_compute_response_frame, parse_remote_buffer_result_frame,
         parse_resource_result_frame,
     };
+    use pb_runtime_secure::VerifiedSessionId;
     use pb_secure::{NOISE_IK_NAME, PROLOGUE};
     use pb_types::{Channel, ControlType, FLAG_END, FLAG_START};
     use snow::{Builder, TransportState, params::NoiseParams};
 
     static TEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    enum HostDelivery<T> {
+        Known(T),
+        UnknownAfterDisconnect,
+    }
+
+    struct ResilienceHandler {
+        session_ids: Mutex<Vec<VerifiedSessionId>>,
+        fail_after_remote_request: AtomicU64,
+    }
+
+    impl ResilienceHandler {
+        fn new() -> Self {
+            Self {
+                session_ids: Mutex::new(Vec::new()),
+                fail_after_remote_request: AtomicU64::new(0),
+            }
+        }
+
+        fn record(&self, verified_session: &VerifiedPeerSession<'_>) {
+            let mut sessions = self.session_ids.lock().expect("session observation lock");
+            let session_id = verified_session.session_id();
+            if sessions.last().copied() != Some(session_id) {
+                sessions.push(session_id);
+            }
+        }
+
+        fn fail_after_remote_request(&self, request_id: u64) {
+            assert_ne!(request_id, 0);
+            self.fail_after_remote_request
+                .store(request_id, Ordering::Release);
+        }
+
+        fn session_ids(&self) -> Vec<VerifiedSessionId> {
+            self.session_ids
+                .lock()
+                .expect("session observation lock")
+                .clone()
+        }
+    }
+
+    impl AuthenticatedCommandHandler for ResilienceHandler {
+        fn handle_authenticated_command(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            command: CommandPayload,
+        ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+            self.record(verified_session);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_command(
+                verified_session,
+                request_id,
+                command,
+            )
+        }
+
+        fn handle_authenticated_resource(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ResourceRequest,
+        ) -> Result<(ResourceResponseKind, ResourceResult), AuthenticatedCommandHandlerError>
+        {
+            self.record(verified_session);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_resource(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn handle_authenticated_remote_buffer(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: RemoteBufferRequest,
+        ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError>
+        {
+            self.record(verified_session);
+            let result = ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_remote_buffer(
+                verified_session,
+                request_id,
+                request,
+            )?;
+            if self
+                .fail_after_remote_request
+                .compare_exchange(request_id, 0, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
+                return Err(AuthenticatedCommandHandlerError::Failed);
+            }
+            Ok(result)
+        }
+
+        fn handle_authenticated_compute(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ComputeRequest,
+        ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
+            self.record(verified_session);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_compute(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn authenticated_session_ended(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+        ) -> Result<(), AuthenticatedCommandHandlerError> {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.authenticated_session_ended(verified_session)
+        }
+    }
 
     struct TestDirectory(PathBuf);
 
@@ -681,11 +798,15 @@ mod tests {
     }
 
     fn read_record(stream: &mut TcpStream) -> Vec<u8> {
+        try_read_record(stream).unwrap()
+    }
+
+    fn try_read_record(stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
         let mut length = [0; 2];
-        stream.read_exact(&mut length).unwrap();
+        stream.read_exact(&mut length)?;
         let mut bytes = vec![0; u16::from_be_bytes(length) as usize];
-        stream.read_exact(&mut bytes).unwrap();
-        bytes
+        stream.read_exact(&mut bytes)?;
+        Ok(bytes)
     }
 
     fn send_encrypted(stream: &mut TcpStream, transport: &mut TransportState, frame: &Frame) {
@@ -702,6 +823,18 @@ mod tests {
         let mut plaintext = vec![0; u16::MAX as usize];
         let length = transport.read_message(&ciphertext, &mut plaintext).unwrap();
         decode(&plaintext[..length]).unwrap()
+    }
+
+    fn try_receive_encrypted(
+        stream: &mut TcpStream,
+        transport: &mut TransportState,
+    ) -> Result<Frame, ()> {
+        let ciphertext = try_read_record(stream).map_err(|_| ())?;
+        let mut plaintext = vec![0; u16::MAX as usize];
+        let length = transport
+            .read_message(&ciphertext, &mut plaintext)
+            .map_err(|_| ())?;
+        decode(&plaintext[..length]).map_err(|_| ())
     }
 
     fn run_production_android_command(
@@ -832,6 +965,114 @@ mod tests {
             parse_compute_response_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
                 .unwrap()
         }
+
+        fn send_remote_without_waiting(&mut self, request_id: u64, request: RemoteBufferRequest) {
+            let frames =
+                build_remote_buffer_request_frames(&request, request_id, self.send_sequence)
+                    .unwrap();
+            self.send_sequence += frames.len() as u64;
+            for frame in frames {
+                send_encrypted(&mut self.stream, &mut self.transport, &frame);
+            }
+        }
+
+        fn receive_remote_delivery(&mut self) -> HostDelivery<BufferResult> {
+            let Ok(frame) = try_receive_encrypted(&mut self.stream, &mut self.transport) else {
+                return HostDelivery::UnknownAfterDisconnect;
+            };
+            match parse_remote_buffer_result_frame(&frame) {
+                Ok((_, result)) => HostDelivery::Known(result),
+                Err(_) => HostDelivery::UnknownAfterDisconnect,
+            }
+        }
+
+        fn send_compute_without_waiting(&mut self, request_id: u64, request: ComputeRequest) {
+            let frame =
+                build_compute_request_frame(&request, request_id, self.send_sequence).unwrap();
+            self.send_sequence += 1;
+            send_encrypted(&mut self.stream, &mut self.transport, &frame);
+        }
+
+        fn receive_compute_delivery(&mut self) -> HostDelivery<ComputeResponse> {
+            let Ok(frame) = try_receive_encrypted(&mut self.stream, &mut self.transport) else {
+                return HostDelivery::UnknownAfterDisconnect;
+            };
+            match parse_compute_response_frame(&frame) {
+                Ok(result) => HostDelivery::Known(result),
+                Err(_) => HostDelivery::UnknownAfterDisconnect,
+            }
+        }
+    }
+
+    fn connect_production_android_session(
+        runtime: Arc<SecureRuntime>,
+        host_private: &[u8; 32],
+        android_public: &[u8; 32],
+        handler: Arc<dyn AuthenticatedCommandHandler>,
+    ) -> (
+        ProductionClient,
+        std::thread::JoinHandle<pb_runtime_secure::RuntimeError>,
+    ) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let responder_runtime = Arc::clone(&runtime);
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            run_responder_session_with_handler(
+                &mut stream,
+                &responder_runtime,
+                &[],
+                handler.as_ref(),
+            )
+            .unwrap_err()
+        });
+
+        let mut stream = TcpStream::connect(endpoint).unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        let params: NoiseParams = NOISE_IK_NAME.parse().unwrap();
+        let mut handshake = Builder::new(params)
+            .local_private_key(host_private)
+            .remote_public_key(android_public)
+            .prologue(PROLOGUE)
+            .build_initiator()
+            .unwrap();
+        let mut handshake_message = vec![0; u16::MAX as usize];
+        let length = handshake
+            .write_message(&[], &mut handshake_message)
+            .unwrap();
+        write_record(&mut stream, &handshake_message[..length]);
+        let response = read_record(&mut stream);
+        handshake
+            .read_message(&response, &mut handshake_message)
+            .unwrap();
+        let mut transport = handshake.into_transport_mode().unwrap();
+        let ping = Frame {
+            header: Header {
+                channel: Channel::Control,
+                flags: FLAG_START | FLAG_END,
+                message_type: ControlType::Ping as u16,
+                request_id: 9,
+                sequence: 0,
+                fragment_index: 0,
+                payload_len: 0,
+                logical_message_len: 0,
+            },
+            payload: Vec::new(),
+        };
+        send_encrypted(&mut stream, &mut transport, &ping);
+        let pong = receive_encrypted(&mut stream, &mut transport);
+        assert_eq!(pong.header.message_type, ControlType::Pong as u16);
+        assert_eq!(pong.header.request_id, 9);
+        (
+            ProductionClient {
+                stream,
+                transport,
+                send_sequence: 1,
+            },
+            responder,
+        )
     }
 
     fn with_production_android_session<T>(
@@ -955,6 +1196,239 @@ mod tests {
         assert_eq!(result.state, ComputeJobState::Completed);
         assert_eq!(result.reason, ComputeReason::None);
         (result.job.unwrap().job_id, result.digest.unwrap())
+    }
+
+    #[derive(Clone, Copy)]
+    struct LeaseContext {
+        lease_id: [u8; 16],
+        incarnation: [u8; 16],
+        next_command_seq: u64,
+    }
+
+    fn refresh_health() {
+        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+    }
+
+    fn start_healthy_worker() {
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        refresh_health();
+        std::thread::sleep(std::time::Duration::from_millis(10_050));
+        refresh_health();
+    }
+
+    fn acquire_or_renew(
+        client: &mut ProductionClient,
+        request_id: u64,
+        existing: Option<LeaseContext>,
+    ) -> LeaseContext {
+        let command = if let Some(lease) = existing {
+            CommandPayload {
+                command_type: 2,
+                lease_present: 1,
+                lease_id: lease.lease_id,
+                command_seq: lease.next_command_seq,
+                trace_id: [0x65; 16],
+                provider_present: 0,
+                provider_id: 0,
+                payload_len: 0,
+            }
+        } else {
+            CommandPayload {
+                command_type: 1,
+                lease_present: 0,
+                lease_id: [0; 16],
+                command_seq: 0,
+                trace_id: [0x65; 16],
+                provider_present: 0,
+                provider_id: 0,
+                payload_len: 0,
+            }
+        };
+        let ack = client.command(request_id, command);
+        assert_eq!(ack.ack_state, 2);
+        if let Some(old) = existing {
+            assert_eq!(ack.lease_id, old.lease_id);
+            assert_eq!(ack.worker_incarnation, old.incarnation);
+        }
+        LeaseContext {
+            lease_id: ack.lease_id,
+            incarnation: ack.worker_incarnation,
+            next_command_seq: ack.next_command_seq,
+        }
+    }
+
+    fn create_ready_buffer(
+        client: &mut ProductionClient,
+        next_request_id: &mut u64,
+        lease: LeaseContext,
+        data: &[u8],
+    ) -> ([u8; 16], [u8; 16]) {
+        assert!(!data.is_empty());
+        refresh_health();
+        let reservation_id = reserve_and_commit(
+            client,
+            next_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::RemoteBufferBytes,
+            data.len() as u64,
+        );
+        let alloc = client.remote(
+            *next_request_id,
+            RemoteBufferRequest::Alloc {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id,
+                size_bytes: data.len() as u64,
+                allocation_flags: AllocationFlags::NONE,
+            },
+        );
+        *next_request_id += 1;
+        assert!(alloc.completed, "ALLOC failed: {:?}", alloc.reason);
+        let buffer_id = alloc.buffer.unwrap().buffer_id;
+        let put = client.remote(
+            *next_request_id,
+            RemoteBufferRequest::Put {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                buffer_id,
+                offset: 0,
+                data: data.to_vec(),
+            },
+        );
+        *next_request_id += 1;
+        assert!(put.completed, "PUT failed: {:?}", put.reason);
+        assert_eq!(put.buffer.unwrap().state, BufferState::Ready);
+        (buffer_id, reservation_id)
+    }
+
+    fn assert_full_budget_available(
+        client: &mut ProductionClient,
+        next_request_id: &mut u64,
+        lease: LeaseContext,
+    ) {
+        refresh_health();
+        let reservation_id = reserve_and_commit(
+            client,
+            next_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::RemoteBufferBytes,
+            128 * 1024 * 1024,
+        );
+        let release = client.resource(
+            *next_request_id,
+            ResourceRequest::Release {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id,
+            },
+        );
+        *next_request_id += 1;
+        assert_eq!(
+            release.reservation.unwrap().state,
+            WireReservationState::Released
+        );
+    }
+
+    fn prove_fresh_c08_c09_c10_work(
+        client: &mut ProductionClient,
+        next_request_id: &mut u64,
+        next_compute_request_id: &mut u64,
+        lease: LeaseContext,
+    ) {
+        let input = b"fresh-session-work";
+        let (buffer_id, _) = create_ready_buffer(client, next_request_id, lease, input);
+        let scratch = reserve_and_commit(
+            client,
+            next_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::NativeOpScratchBytes,
+            1024,
+        );
+        let (_, digest) = completed_digest(client.compute(
+            *next_compute_request_id,
+            ComputeRequest::Submit(ComputeSubmit {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id: scratch,
+                provider_id: 1,
+                provider_version: 1,
+                input_kind: 1,
+                buffer_id,
+                input_offset: 0,
+                input_length: input.len() as u64,
+            }),
+        ));
+        *next_compute_request_id += 1;
+        assert_eq!(digest, *blake3::hash(input).as_bytes());
+        let freed = client.remote(
+            *next_request_id,
+            RemoteBufferRequest::Free {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                buffer_id,
+            },
+        );
+        *next_request_id += 1;
+        assert!(freed.completed);
+        assert_eq!(freed.buffer.unwrap().state, BufferState::Freed);
+    }
+
+    fn close_production_session(
+        client: ProductionClient,
+        responder: std::thread::JoinHandle<pb_runtime_secure::RuntimeError>,
+    ) -> pb_runtime_secure::RuntimeError {
+        let _ = client.stream.shutdown(Shutdown::Both);
+        drop(client);
+        responder.join().unwrap()
+    }
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    enum FailurePhase {
+        PartialPutBeforeDispatch,
+        PutMutatedBeforeResponse,
+        ComputeBeforeTerminalResponse,
+    }
+
+    fn fixed_failure_schedule(mut seed: u64) -> Vec<FailurePhase> {
+        assert_ne!(seed, 0);
+        let mut phases = vec![
+            FailurePhase::PartialPutBeforeDispatch,
+            FailurePhase::PartialPutBeforeDispatch,
+            FailurePhase::PartialPutBeforeDispatch,
+            FailurePhase::PutMutatedBeforeResponse,
+            FailurePhase::PutMutatedBeforeResponse,
+            FailurePhase::PutMutatedBeforeResponse,
+            FailurePhase::ComputeBeforeTerminalResponse,
+            FailurePhase::ComputeBeforeTerminalResponse,
+            FailurePhase::ComputeBeforeTerminalResponse,
+        ];
+        for index in (1..phases.len()).rev() {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            phases.swap(index, seed as usize % (index + 1));
+        }
+        phases
+    }
+
+    fn configured_resilience_runtime() -> (TestDirectory, Arc<SecureRuntime>, [u8; 32], [u8; 32]) {
+        let directory = TestDirectory::new();
+        let directory_fd: OwnedFd = fs::File::open(&directory.0).unwrap().into();
+        let store = StateStore::from_directory_fd(directory_fd).unwrap();
+        let android_identity = store.load_or_create_identity().unwrap();
+        let host_private = [0x6d; 32];
+        let host_public = MontgomeryPoint::mul_base_clamped(host_private).to_bytes();
+        store
+            .commit_peer(&pb_runtime_secure::PeerRecord::new(host_public, "host", 1))
+            .unwrap();
+        let android_public = *android_identity.public();
+        let runtime =
+            Arc::new(SecureRuntime::initialize(EndpointRole::AndroidResponder, store).unwrap());
+        (directory, runtime, host_private, android_public)
     }
 
     fn test_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -1966,6 +2440,463 @@ mod tests {
                 assert_eq!(old_job.reason, ComputeReason::JobNotOwned);
                 assert!(old_job.job.is_none());
             },
+        );
+        reset();
+    }
+
+    #[test]
+    fn e_gen_05_authenticated_randomized_disconnects_and_restart_never_false_succeed() {
+        const SEED: u64 = 0xe5_2026_0828_5eed;
+
+        let _test_guard = test_lock();
+        start_healthy_worker();
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        let handler = Arc::new(ResilienceHandler::new());
+        let mut lease = None;
+        let mut next_resource_request_id = 20_000_u64;
+        let mut next_compute_request_id = 30_000_u64;
+        let mut next_command_request_id = 40_000_u64;
+
+        let schedule = fixed_failure_schedule(SEED);
+        assert_eq!(schedule.len(), 9);
+        for phase in [
+            FailurePhase::PartialPutBeforeDispatch,
+            FailurePhase::PutMutatedBeforeResponse,
+            FailurePhase::ComputeBeforeTerminalResponse,
+        ] {
+            assert_eq!(
+                schedule
+                    .iter()
+                    .filter(|candidate| **candidate == phase)
+                    .count(),
+                3
+            );
+        }
+
+        for (run, phase) in schedule.into_iter().enumerate() {
+            eprintln!("E-GEN-05 seed={SEED:#x} run={} phase={phase:?}", run + 1);
+            refresh_health();
+            let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+            let (mut client, responder) = connect_production_android_session(
+                Arc::clone(&runtime),
+                &host_private,
+                &android_public,
+                trait_handler,
+            );
+            let active = acquire_or_renew(&mut client, next_command_request_id, lease);
+            next_command_request_id += 1;
+
+            let buffer_id;
+            let mut compute_replay = None;
+            let expected_session_error;
+            match phase {
+                FailurePhase::PartialPutBeforeDispatch => {
+                    let bytes = vec![0x31; 128 * 1024];
+                    let reservation_id = reserve_and_commit(
+                        &mut client,
+                        &mut next_resource_request_id,
+                        active.lease_id,
+                        active.incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        bytes.len() as u64,
+                    );
+                    let alloc = client.remote(
+                        next_resource_request_id,
+                        RemoteBufferRequest::Alloc {
+                            lease_id: active.lease_id,
+                            worker_incarnation_id: active.incarnation,
+                            reservation_id,
+                            size_bytes: bytes.len() as u64,
+                            allocation_flags: AllocationFlags::NONE,
+                        },
+                    );
+                    next_resource_request_id += 1;
+                    buffer_id = alloc.buffer.unwrap().buffer_id;
+                    let request_id = next_resource_request_id;
+                    next_resource_request_id += 1;
+                    let frames = build_remote_buffer_request_frames(
+                        &RemoteBufferRequest::Put {
+                            lease_id: active.lease_id,
+                            worker_incarnation_id: active.incarnation,
+                            buffer_id,
+                            offset: 0,
+                            data: bytes,
+                        },
+                        request_id,
+                        client.send_sequence,
+                    )
+                    .unwrap();
+                    assert!(frames.len() > 1);
+                    client.send_sequence += frames.len() as u64;
+                    send_encrypted(&mut client.stream, &mut client.transport, &frames[0]);
+                    client.stream.shutdown(Shutdown::Both).unwrap();
+                    assert_eq!(
+                        client.receive_remote_delivery(),
+                        HostDelivery::UnknownAfterDisconnect
+                    );
+                    expected_session_error = pb_runtime_secure::RuntimeError::SessionLost;
+                }
+                FailurePhase::PutMutatedBeforeResponse => {
+                    let reservation_id = reserve_and_commit(
+                        &mut client,
+                        &mut next_resource_request_id,
+                        active.lease_id,
+                        active.incarnation,
+                        WireResourceClass::RemoteBufferBytes,
+                        32,
+                    );
+                    let alloc = client.remote(
+                        next_resource_request_id,
+                        RemoteBufferRequest::Alloc {
+                            lease_id: active.lease_id,
+                            worker_incarnation_id: active.incarnation,
+                            reservation_id,
+                            size_bytes: 32,
+                            allocation_flags: AllocationFlags::NONE,
+                        },
+                    );
+                    next_resource_request_id += 1;
+                    buffer_id = alloc.buffer.unwrap().buffer_id;
+                    let request_id = next_resource_request_id;
+                    next_resource_request_id += 1;
+                    handler.fail_after_remote_request(request_id);
+                    client.send_remote_without_waiting(
+                        request_id,
+                        RemoteBufferRequest::Put {
+                            lease_id: active.lease_id,
+                            worker_incarnation_id: active.incarnation,
+                            buffer_id,
+                            offset: 0,
+                            data: vec![0x52; 32],
+                        },
+                    );
+                    assert_eq!(
+                        client.receive_remote_delivery(),
+                        HostDelivery::UnknownAfterDisconnect
+                    );
+                    expected_session_error = pb_runtime_secure::RuntimeError::CommandHandlerFailed;
+                }
+                FailurePhase::ComputeBeforeTerminalResponse => {
+                    let input = vec![0xa7; MAX_PUT_BODY];
+                    (buffer_id, _) = create_ready_buffer(
+                        &mut client,
+                        &mut next_resource_request_id,
+                        active,
+                        &input,
+                    );
+                    refresh_health();
+                    let scratch = reserve_and_commit(
+                        &mut client,
+                        &mut next_resource_request_id,
+                        active.lease_id,
+                        active.incarnation,
+                        WireResourceClass::NativeOpScratchBytes,
+                        1024 * 1024,
+                    );
+                    let submit_request_id = next_compute_request_id;
+                    next_compute_request_id += 1;
+                    let submit = ComputeSubmit {
+                        lease_id: active.lease_id,
+                        worker_incarnation_id: active.incarnation,
+                        reservation_id: scratch,
+                        provider_id: 1,
+                        provider_version: 1,
+                        input_kind: 1,
+                        buffer_id,
+                        input_offset: 0,
+                        input_length: input.len() as u64,
+                    };
+                    client.send_compute_without_waiting(
+                        submit_request_id,
+                        ComputeRequest::Submit(submit),
+                    );
+                    client.stream.shutdown(Shutdown::Both).unwrap();
+                    assert_eq!(
+                        client.receive_compute_delivery(),
+                        HostDelivery::UnknownAfterDisconnect
+                    );
+                    compute_replay = Some((submit_request_id, submit));
+                    expected_session_error = pb_runtime_secure::RuntimeError::SessionLost;
+                }
+            }
+            drop(client);
+            assert_eq!(responder.join().unwrap(), expected_session_error);
+            assert!(!runtime.snapshot().authenticated);
+
+            refresh_health();
+            let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+            let (mut recovery, recovery_responder) = connect_production_android_session(
+                Arc::clone(&runtime),
+                &host_private,
+                &android_public,
+                trait_handler,
+            );
+            let recovered = acquire_or_renew(&mut recovery, next_command_request_id, Some(active));
+            next_command_request_id += 1;
+            assert_eq!(recovered.lease_id, active.lease_id);
+            assert_eq!(recovered.incarnation, active.incarnation);
+            lease = Some(recovered);
+
+            let lost = recovery.remote(
+                next_resource_request_id,
+                RemoteBufferRequest::Stat {
+                    lease_id: recovered.lease_id,
+                    worker_incarnation_id: recovered.incarnation,
+                    buffer_id,
+                },
+            );
+            next_resource_request_id += 1;
+            assert_eq!(lost.reason, BufferReason::BufferLost);
+            assert_eq!(lost.buffer.unwrap().state, BufferState::Lost);
+            let stale_get = recovery.remote(
+                next_resource_request_id,
+                RemoteBufferRequest::Get {
+                    lease_id: recovered.lease_id,
+                    worker_incarnation_id: recovered.incarnation,
+                    buffer_id,
+                    offset: 0,
+                    length: 1,
+                },
+            );
+            next_resource_request_id += 1;
+            assert!(!stale_get.completed);
+            assert_eq!(stale_get.reason, BufferReason::BufferLost);
+            assert!(stale_get.data.is_empty());
+
+            if let Some((request_id, submit)) = compute_replay {
+                let ComputeResponse::Result(replay) =
+                    recovery.compute(request_id, ComputeRequest::Submit(submit))
+                else {
+                    panic!("dead-session compute replay must be RESULT refusal");
+                };
+                assert_eq!(replay.state, ComputeJobState::Invalid);
+                assert_eq!(replay.reason, ComputeReason::BufferLost);
+                assert!(replay.job.is_none());
+                assert!(replay.digest.is_none());
+            }
+
+            assert_full_budget_available(&mut recovery, &mut next_resource_request_id, recovered);
+            prove_fresh_c08_c09_c10_work(
+                &mut recovery,
+                &mut next_resource_request_id,
+                &mut next_compute_request_id,
+                recovered,
+            );
+            assert_eq!(
+                close_production_session(recovery, recovery_responder),
+                pb_runtime_secure::RuntimeError::SessionLost
+            );
+        }
+
+        refresh_health();
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut before_restart, before_restart_responder) = connect_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+        );
+        let old_lease = acquire_or_renew(&mut before_restart, next_command_request_id, lease);
+        next_command_request_id += 1;
+        let restart_input = b"restart-bound";
+        let (old_buffer_id, old_storage_reservation) = create_ready_buffer(
+            &mut before_restart,
+            &mut next_resource_request_id,
+            old_lease,
+            restart_input,
+        );
+        let old_scratch = reserve_and_commit(
+            &mut before_restart,
+            &mut next_resource_request_id,
+            old_lease.lease_id,
+            old_lease.incarnation,
+            WireResourceClass::NativeOpScratchBytes,
+            1024,
+        );
+        let (old_job_id, _) = completed_digest(before_restart.compute(
+            next_compute_request_id,
+            ComputeRequest::Submit(ComputeSubmit {
+                lease_id: old_lease.lease_id,
+                worker_incarnation_id: old_lease.incarnation,
+                reservation_id: old_scratch,
+                provider_id: 1,
+                provider_version: 1,
+                input_kind: 1,
+                buffer_id: old_buffer_id,
+                input_offset: 0,
+                input_length: restart_input.len() as u64,
+            }),
+        ));
+        next_compute_request_id += 1;
+        assert_eq!(
+            close_production_session(before_restart, before_restart_responder),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        assert_eq!(stop_worker(), RESULT_OK);
+        start_healthy_worker();
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut after_restart, after_restart_responder) = connect_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+        );
+        let stale_resource = after_restart.resource(
+            next_resource_request_id,
+            ResourceRequest::Release {
+                lease_id: old_lease.lease_id,
+                worker_incarnation_id: old_lease.incarnation,
+                reservation_id: old_storage_reservation,
+            },
+        );
+        next_resource_request_id += 1;
+        assert_eq!(
+            stale_resource.reason,
+            pb_pbmux::ResourceReason::StaleControllerLease
+        );
+        let stale_buffer = after_restart.remote(
+            next_resource_request_id,
+            RemoteBufferRequest::Stat {
+                lease_id: old_lease.lease_id,
+                worker_incarnation_id: old_lease.incarnation,
+                buffer_id: old_buffer_id,
+            },
+        );
+        next_resource_request_id += 1;
+        assert_eq!(stale_buffer.reason, BufferReason::BufferWrongIncarnation);
+        let ComputeResponse::Status(stale_job) = after_restart.compute(
+            next_compute_request_id,
+            ComputeRequest::Status(ComputeJobRequest {
+                lease_id: old_lease.lease_id,
+                worker_incarnation_id: old_lease.incarnation,
+                job_id: old_job_id,
+            }),
+        ) else {
+            panic!("old-incarnation job lookup must be STATUS refusal");
+        };
+        next_compute_request_id += 1;
+        assert_eq!(stale_job.reason, ComputeReason::WrongWorkerIncarnation);
+        let new_lease = acquire_or_renew(&mut after_restart, next_command_request_id, None);
+        assert_ne!(new_lease.incarnation, old_lease.incarnation);
+        assert_ne!(new_lease.lease_id, old_lease.lease_id);
+        prove_fresh_c08_c09_c10_work(
+            &mut after_restart,
+            &mut next_resource_request_id,
+            &mut next_compute_request_id,
+            new_lease,
+        );
+        assert_eq!(
+            close_production_session(after_restart, after_restart_responder),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        reset();
+    }
+
+    #[test]
+    fn e_gen_06_authenticated_heartbeat_reconnects_fresh_without_object_resurrection() {
+        let _test_guard = test_lock();
+        start_healthy_worker();
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        let handler = Arc::new(ResilienceHandler::new());
+        let mut next_resource_request_id = 60_000_u64;
+        let mut next_compute_request_id = 70_000_u64;
+
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut first, first_responder) = connect_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+        );
+        let first_heartbeat_count = runtime.snapshot().heartbeat_count;
+        assert!(first_heartbeat_count > 0);
+        let lease = acquire_or_renew(&mut first, 80_000, None);
+        let input = b"session-one";
+        let (old_buffer_id, _) =
+            create_ready_buffer(&mut first, &mut next_resource_request_id, lease, input);
+        let scratch = reserve_and_commit(
+            &mut first,
+            &mut next_resource_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::NativeOpScratchBytes,
+            1024,
+        );
+        let (old_job_id, digest) = completed_digest(first.compute(
+            next_compute_request_id,
+            ComputeRequest::Submit(ComputeSubmit {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id: scratch,
+                provider_id: 1,
+                provider_version: 1,
+                input_kind: 1,
+                buffer_id: old_buffer_id,
+                input_offset: 0,
+                input_length: input.len() as u64,
+            }),
+        ));
+        next_compute_request_id += 1;
+        assert_eq!(digest, *blake3::hash(input).as_bytes());
+        first.stream.shutdown(Shutdown::Both).unwrap();
+        drop(first);
+        assert_eq!(
+            first_responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        assert!(!runtime.snapshot().authenticated);
+        assert_eq!(runtime.snapshot().state, RuntimeState::Paired);
+
+        refresh_health();
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut second, second_responder) = connect_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+        );
+        let resumed = acquire_or_renew(&mut second, 80_001, Some(lease));
+        assert_eq!(resumed.lease_id, lease.lease_id);
+        assert_eq!(resumed.incarnation, lease.incarnation);
+        assert!(runtime.snapshot().heartbeat_count > first_heartbeat_count);
+        let sessions = handler.session_ids();
+        assert!(sessions.len() >= 2);
+        assert!(sessions[sessions.len() - 2] != sessions[sessions.len() - 1]);
+
+        let old_buffer = second.remote(
+            next_resource_request_id,
+            RemoteBufferRequest::Stat {
+                lease_id: resumed.lease_id,
+                worker_incarnation_id: resumed.incarnation,
+                buffer_id: old_buffer_id,
+            },
+        );
+        next_resource_request_id += 1;
+        assert_eq!(old_buffer.reason, BufferReason::BufferLost);
+        assert_eq!(old_buffer.buffer.unwrap().state, BufferState::Lost);
+        let ComputeResponse::Status(old_job) = second.compute(
+            next_compute_request_id,
+            ComputeRequest::Status(ComputeJobRequest {
+                lease_id: resumed.lease_id,
+                worker_incarnation_id: resumed.incarnation,
+                job_id: old_job_id,
+            }),
+        ) else {
+            panic!("dead-session job lookup must be STATUS refusal");
+        };
+        next_compute_request_id += 1;
+        assert_eq!(old_job.reason, ComputeReason::JobNotOwned);
+        assert!(old_job.job.is_none());
+        assert_full_budget_available(&mut second, &mut next_resource_request_id, resumed);
+        prove_fresh_c08_c09_c10_work(
+            &mut second,
+            &mut next_resource_request_id,
+            &mut next_compute_request_id,
+            resumed,
+        );
+        assert_eq!(
+            close_production_session(second, second_responder),
+            pb_runtime_secure::RuntimeError::SessionLost
         );
         reset();
     }
