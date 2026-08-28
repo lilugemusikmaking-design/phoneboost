@@ -13,9 +13,10 @@ Authority remains:
 5. Fixture Generation Spec V1.0
 
 `PHONEBOOST_C08_C09_REGISTRY_RESOLUTION_V0_1_001.md` is the project-owner
-erratum resolving the SPEC V0.7 TOUCH omission. This addendum closes only the
-C08 RESOURCE and C09 REMOTE_BUFFER byte-level schemas. It changes no C05, C06,
-or C07 layout and creates no production runtime authority by itself.
+erratum resolving the SPEC V0.7 TOUCH omission and authorizing the additive C08
+native-operation scratch resource class. This addendum closes only the C08
+RESOURCE and C09 REMOTE_BUFFER byte-level schemas. It changes no C05, C06, or
+C07 layout and creates no production runtime authority by itself.
 
 ## 2. General wire rules
 
@@ -111,10 +112,18 @@ payload_len = logical_message_len = exact fixed size
 | 36 | 8 | `requested_bytes` u64 BE |
 | 44 | 4 | `reservation_ttl_ms` u32 BE |
 
-V0.1 defines only `resource_class = 1`, `REMOTE_BUFFER_BYTES`. Zero and values
-2 through 255 are unsupported. `requested_bytes` is nonzero and no greater
-than 128 MiB. `reservation_ttl_ms` is exactly 30,000. No truncation or silent
-TTL defaulting occurs.
+The resource-class registry is:
+
+| Value | Name | Valid `requested_bytes` | Exclusive purpose |
+|---:|---|---:|---|
+| 1 | `REMOTE_BUFFER_BYTES` | `1..=128 MiB` | C09 RemoteBuffer backing storage |
+| 2 | `NATIVE_OP_SCRATCH_BYTES` | `1..=8 MiB` | trusted native-operation/provider scratch |
+
+Zero and values 3 through 255 are unsupported. Class 1 is never compute
+scratch; class 2 is never RemoteBuffer backing. `reservation_ttl_ms` is exactly
+30,000. No truncation or silent TTL defaulting occurs. A known class with zero
+or over-profile bytes is an invalid V0.1 RESERVE payload and never mutates
+ResourceGuard.
 
 ### 5.2 RESOURCE/3 COMMIT request — exactly 48 bytes
 
@@ -169,7 +178,7 @@ FAILED requires a nonzero assigned reason.
 | 0 | `NONE` | no |
 | 1 | `RESERVED` | yes |
 | 2 | `COMMITTED` | yes |
-| 3 | `CONSUMED` | budget owned by buffer |
+| 3 | `CONSUMED` | budget transferred to the authorized class-specific consumer |
 | 4 | `RELEASED` | no |
 | 5 | `EXPIRED` | no |
 | 6 | `REFUSED_SAFETY` | no |
@@ -182,9 +191,10 @@ owned by the requesting peer/lease/incarnation. RESERVED has relative TTL in
 
 Successful profiles are exact:
 
-- RESERVE_ACK: present, state RESERVED, class 1, granted bytes equal requested.
-- COMMIT: present, state COMMITTED, class 1, TTL zero.
-- RELEASE: present, state RELEASED, class 1, TTL zero.
+- RESERVE_ACK: present, state RESERVED, class echoes request (1 or 2), granted
+  bytes equal requested.
+- COMMIT: present, state COMMITTED, class is the reservation class, TTL zero.
+- RELEASE: present, state RELEASED, class is the reservation class, TTL zero.
 
 Known owned failures may carry their actual reservation state. Stale lease,
 not-found, request-conflict, unsupported, and internal failures carry no
@@ -218,13 +228,14 @@ An unassigned response reason is an unsupported V0.1 logical payload.
 | 0 | 16 | `lease_id` |
 | 16 | 16 | current `worker_incarnation_id` |
 | 32 | 16 | `reservation_id` |
-| 48 | 1 | `resource_class` = 1 |
+| 48 | 1 | `resource_class` = 1 or 2 |
 | 49 | 1 | `reservation_state` = EXPIRED / 5 |
 | 50 | 2 | `reason_code` = RESERVATION_EXPIRED / 6 |
 | 52 | 8 | `granted_bytes` u64 BE |
 | 60 | 4 | reserved zero |
 
-It uses START|END, request ID zero, and no ACK_REQUIRED. It is advisory: loss
+The class and granted bytes obey the same per-class profile as RESERVE. It uses
+START|END, request ID zero, and no ACK_REQUIRED. It is advisory: loss
 of the notification does not alter worker authority. Only an uncommitted
 RESERVED reservation expires under the 30-second reservation TTL.
 
@@ -428,7 +439,7 @@ before logical allocation.
 
 ## 11. Reservation consumption and budget atomicity
 
-One reservation backs one buffer. WorkerCore serializes this transaction:
+One class-1 reservation backs one buffer. WorkerCore serializes this transaction:
 
 1. Validate authenticated peer, active lease, current incarnation, quotas,
    exact size, COMMITTED ownership, and unconsumed reservation.
@@ -447,6 +458,15 @@ invalidate backing, transition its reservation to CONSUMED_RELEASED, and
 release budget once. Repeated cleanup observes the terminal accounting marker
 and releases zero additional bytes. CONSUMED and CONSUMED_RELEASED can never
 authorize another ALLOC.
+
+One class-2 reservation backs one native compute job. Compute admission
+validates COMMITTED ownership for the authenticated peer, active lease, current
+incarnation, and current SecureSession, then atomically transitions the
+reservation to CONSUMED while publishing exactly one job. Failed admission
+leaves it COMMITTED and unconsumed. Job terminalization transitions it to
+CONSUMED_RELEASED and releases its held scratch bytes exactly once. A class-2
+reservation never backs ALLOC, and class-1 RemoteBuffer bytes are not charged
+again as compute scratch.
 
 ## 12. Session and worker loss
 
@@ -488,12 +508,14 @@ Test-only constants are:
 
 ```text
 C08 request_id             0x1112131415161718
+C08 native request_id      0x1112131415161722
 C09 request_id             0x2122232425262728
 lease_id                   00112233445566778899aabbccddeeff
 worker_incarnation_id      102132435465768798a9bacbdcedfe0f
 reservation_id             202122232425262728292a2b2c2d2e2f
 buffer_id                  303132333435363738393a3b3c3d3e3f
 resource amount            134,217,728 bytes
+native scratch amount      8,388,608 bytes
 reservation TTL            30,000 ms
 buffer fixture size        134,217,728 bytes
 default buffer TTL         300,000 ms

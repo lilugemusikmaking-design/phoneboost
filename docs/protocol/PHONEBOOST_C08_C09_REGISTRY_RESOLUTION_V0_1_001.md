@@ -9,6 +9,11 @@ registry assigns REMOTE_BUFFER values 1 through 7 without a TOUCH value. The
 project owner resolves that internal omission as follows. Existing assignments
 are not renumbered or reinterpreted.
 
+The project owner additionally resolves the C10 native-operation admission
+class required by Contract C10. This is an additive C08 resource-class
+extension. It changes no RESOURCE message type, payload offset, or payload
+length and does not reinterpret the existing RemoteBuffer class.
+
 ## C08 RESOURCE registry
 
 | Value | Name | Host to worker | Worker to host |
@@ -21,6 +26,23 @@ are not renumbered or reinterpreted.
 
 Types 3 and 4 are direction-disambiguated request/response envelopes. There is
 no generic RESOURCE result type.
+
+### C08 resource-class registry
+
+| Value | Name | Purpose |
+|---:|---|---|
+| 1 | `REMOTE_BUFFER_BYTES` | C09 RemoteBuffer backing storage only |
+| 2 | `NATIVE_OP_SCRATCH_BYTES` | trusted native-operation/provider execution scratch only |
+
+Zero and values 3 through 255 are unassigned. Class 1 semantics remain
+unchanged. Class 2 uses the existing RESERVE, COMMIT, RELEASE, result, and
+EXPIRE_NOTIFY envelopes. For `pb.native.blake3/1`, a class-2 request is nonzero
+and no greater than 8 MiB.
+
+One COMMITTED class-2 reservation backs exactly one compute job. Compute
+admission atomically consumes it; terminal cleanup releases its held budget
+exactly once. Failed admission leaves it COMMITTED and unconsumed. Bytes held
+by a referenced class-1 RemoteBuffer are never charged again through class 2.
 
 ## C09 REMOTE_BUFFER registry
 
@@ -42,7 +64,8 @@ result type. The canonical wrong-owner reason name remains
 ## Compatibility
 
 This erratum changes no C05, C06, or C07 byte layout. It does not reassign
-RESOURCE values 1 through 5 or REMOTE_BUFFER values 1 through 7. Implementations
+RESOURCE values 1 through 5 or REMOTE_BUFFER values 1 through 7. The additive
+resource class 2 changes no C08 envelope layout. Implementations
 that do not recognize REMOTE_BUFFER type 8 reject it as `UNSUPPORTED_MESSAGE`;
 V0.1 General POC implementations implementing C09 must recognize it.
 

@@ -18,6 +18,8 @@ self-delimiting through its 40-byte header and payload length.
 | `GV-C08-08-expire-notify.bin` | `worker->host` | `PASS` | 104 | `cb3b973caac4248bc153b726aa43b25a5090bc83a479b8e2f32a3c336b64c7e4` | EXPIRE_NOTIFY |
 | `GV-C08-09-malformed-presence.bin` | `worker->host` | `REJECT` | 112 | `b04f8d87c90fe6b14aed64a928f5807b8938b9e20dfebeb1e57e747fde47579c` | reservation_present=2 |
 | `GV-C08-10-request-id-conflict.bin` | `host->worker` | `REQUEST_ID_CONFLICT` | 88 | `01ae2e2f8f2367241012916836d41640a728b1002cfab72030820e2bdd2384ac` | same lease/request_id, different amount after GV-C08-01 |
+| `GV-C08-11-native-scratch-reserve-request.bin` | `host->worker` | `PASS` | 88 | `46b51a8474df1fef71db66d898c8a3b260445ccb114e6d73848fc34a75b5477d` | RESERVE NATIVE_OP_SCRATCH_BYTES |
+| `GV-C08-12-native-scratch-reserve-success.bin` | `worker->host` | `PASS` | 112 | `38b5458412101599a0f189da5cfc1abb90f565a95081ce6509ee44c9f0d5a9a4` | RESERVE_ACK NATIVE_OP_SCRATCH_BYTES RESERVED |
 | `GV-C09-01-alloc-request.bin` | `host->worker` | `PASS` | 104 | `2f3123b9bfc052984a722060ea2036de67ee3da2f528315dfd1331e29db0f4b4` | ALLOC |
 | `GV-C09-02-alloc-ack.bin` | `worker->host` | `PASS` | 140 | `bc49f6479c04055e7ee870381649bb344142a6b8085d6bf6ed22faf629783f6c` | ALLOC_ACK ALLOCATED |
 | `GV-C09-03-put-small-request.bin` | `host->worker` | `PASS` | 118 | `9c81a324bd32a51960cda41010e5bfdb492701cca4823822716acdfa99562419` | PUT small staged body |
@@ -45,3 +47,5 @@ Expected meanings:
 - `REJECT`: malformed/noncanonical data rejected before domain mutation.
 - `REQUEST_ID_CONFLICT`: structurally valid RESERVE that conflicts with the prior
   same-lease/same-request-ID fixture in the stateful C08 oracle.
+- C08 class 1 remains RemoteBuffer-only; class 2 is native-operation scratch-only
+  and uses the unchanged fixed envelopes.

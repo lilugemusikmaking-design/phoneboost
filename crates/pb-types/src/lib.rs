@@ -134,12 +134,35 @@ impl TryFrom<u16> for ControlType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u16)]
+pub enum ComputeType {
+    Submit = 1,
+    Status = 2,
+    Result = 3,
+    Cancel = 4,
+}
+
+impl TryFrom<u16> for ComputeType {
+    type Error = ();
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Submit),
+            2 => Ok(Self::Status),
+            3 => Ok(Self::Result),
+            4 => Ok(Self::Cancel),
+            _ => Err(()),
+        }
+    }
+}
+
 pub fn is_known_message_type(channel: Channel, message_type: u16) -> bool {
     match channel {
         Channel::Control => ControlType::try_from(message_type).is_ok(),
         Channel::Resource => (1..=5).contains(&message_type),
         Channel::RemoteBuffer => (1..=8).contains(&message_type),
-        Channel::Compute => (1..=4).contains(&message_type),
+        Channel::Compute => ComputeType::try_from(message_type).is_ok(),
         Channel::AiRpc => (1..=4).contains(&message_type),
         Channel::Metrics => (1..=2).contains(&message_type),
     }
@@ -291,5 +314,11 @@ mod tests {
         assert!(is_known_message_type(Channel::RemoteBuffer, 7));
         assert!(is_known_message_type(Channel::RemoteBuffer, 8));
         assert!(!is_known_message_type(Channel::RemoteBuffer, 9));
+        assert_eq!(ComputeType::try_from(1), Ok(ComputeType::Submit));
+        assert_eq!(ComputeType::try_from(2), Ok(ComputeType::Status));
+        assert_eq!(ComputeType::try_from(3), Ok(ComputeType::Result));
+        assert_eq!(ComputeType::try_from(4), Ok(ComputeType::Cancel));
+        assert!(ComputeType::try_from(0).is_err());
+        assert!(ComputeType::try_from(5).is_err());
     }
 }

@@ -28,6 +28,7 @@ MAX_LOGICAL = 4 * 1024 * 1024
 RESOURCE_CHANNEL = 1
 REMOTE_BUFFER_CHANNEL = 2
 RESOURCE_REQUEST_ID = 0x1112_1314_1516_1718
+NATIVE_REQUEST_ID = RESOURCE_REQUEST_ID + 10
 BUFFER_REQUEST_ID = 0x2122_2324_2526_2728
 
 LEASE_ID = bytes.fromhex("00112233445566778899aabbccddeeff")
@@ -36,6 +37,7 @@ RESERVATION_ID = bytes.fromhex("202122232425262728292a2b2c2d2e2f")
 BUFFER_ID = bytes.fromhex("303132333435363738393a3b3c3d3e3f")
 ZERO_16 = bytes(16)
 RESOURCE_BYTES = 128 * 1024 * 1024
+NATIVE_SCRATCH_BYTES = 8 * 1024 * 1024
 RESERVATION_TTL_MS = 30_000
 BUFFER_TTL_MS = 300_000
 
@@ -91,9 +93,15 @@ def frame(
     ) + payload
 
 
-def reserve_request(amount: int = RESOURCE_BYTES) -> bytes:
+def reserve_request(amount: int = RESOURCE_BYTES, resource_class: int = 1) -> bytes:
     return struct.pack(
-        ">16s16sB3sQI", LEASE_ID, INCARNATION_ID, 1, bytes(3), amount, RESERVATION_TTL_MS
+        ">16s16sB3sQI",
+        LEASE_ID,
+        INCARNATION_ID,
+        resource_class,
+        bytes(3),
+        amount,
+        RESERVATION_TTL_MS,
     )
 
 
@@ -109,9 +117,10 @@ def resource_result(
     reservation_state: int = 0,
     granted: int = 0,
     ttl: int = 0,
+    resource_class: int = 1,
 ) -> bytes:
     reservation = RESERVATION_ID if reservation_present == 1 else ZERO_16
-    resource_class = 1 if reservation_present == 1 else 0
+    encoded_class = resource_class if reservation_present == 1 else 0
     payload = struct.pack(
         ">BBH16s16s16sBB2sQI4s",
         result_state,
@@ -121,7 +130,7 @@ def resource_result(
         INCARNATION_ID,
         reservation,
         reservation_state,
-        resource_class,
+        encoded_class,
         bytes(2),
         granted,
         ttl,
@@ -351,6 +360,40 @@ def build_vectors() -> list[Vector]:
             HOST_TO_WORKER,
             REQUEST_ID_CONFLICT,
             "same lease/request_id, different amount after GV-C08-01",
+        ),
+        Vector(
+            "GV-C08-11-native-scratch-reserve-request.bin",
+            frame(
+                RESOURCE_CHANNEL,
+                1,
+                0x0007,
+                NATIVE_REQUEST_ID,
+                reserve_request(NATIVE_SCRATCH_BYTES, 2),
+            ),
+            HOST_TO_WORKER,
+            PASS,
+            "RESERVE NATIVE_OP_SCRATCH_BYTES",
+        ),
+        Vector(
+            "GV-C08-12-native-scratch-reserve-success.bin",
+            frame(
+                RESOURCE_CHANNEL,
+                2,
+                0x0003,
+                NATIVE_REQUEST_ID,
+                resource_result(
+                    result_state=2,
+                    reason=0,
+                    reservation_present=1,
+                    reservation_state=1,
+                    granted=NATIVE_SCRATCH_BYTES,
+                    ttl=RESERVATION_TTL_MS,
+                    resource_class=2,
+                ),
+            ),
+            WORKER_TO_HOST,
+            PASS,
+            "RESERVE_ACK NATIVE_OP_SCRATCH_BYTES RESERVED",
         ),
         Vector("GV-C09-01-alloc-request.bin", request(1, alloc_request()), HOST_TO_WORKER, PASS, "ALLOC"),
         Vector(
@@ -646,7 +689,10 @@ def parse_resource_result(payload: bytes, message_type: int) -> str:
         if reservation != ZERO_16 or state != 0 or resource_class != 0 or granted != 0 or ttl != 0:
             return REJECT
     else:
-        if reservation == ZERO_16 or state not in range(1, 8) or resource_class != 1 or granted == 0:
+        if reservation == ZERO_16 or state not in range(1, 8) or resource_class not in (1, 2) or granted == 0:
+            return REJECT
+        class_cap = RESOURCE_BYTES if resource_class == 1 else NATIVE_SCRATCH_BYTES
+        if granted > class_cap:
             return REJECT
         if state == 1:
             if not 1 <= ttl <= RESERVATION_TTL_MS:
@@ -671,11 +717,13 @@ def parse_c08(message_type: int, direction: str, request_id: int, payload: bytes
                 return REJECT
             if payload[0:16] == ZERO_16 or payload[16:32] == ZERO_16:
                 return REJECT
-            if payload[32] != 1 or payload[33:36] != bytes(3):
+            resource_class = payload[32]
+            if resource_class not in (1, 2) or payload[33:36] != bytes(3):
                 return REJECT
             amount = unsigned(payload[36:44])
             ttl = unsigned(payload[44:48])
-            return PASS if 0 < amount <= RESOURCE_BYTES and ttl == RESERVATION_TTL_MS else REJECT
+            class_cap = RESOURCE_BYTES if resource_class == 1 else NATIVE_SCRATCH_BYTES
+            return PASS if 0 < amount <= class_cap and ttl == RESERVATION_TTL_MS else REJECT
         if len(payload) != 48:
             return REJECT
         return PASS if payload[0:16] != ZERO_16 and payload[16:32] != ZERO_16 and payload[32:48] != ZERO_16 else REJECT
@@ -689,9 +737,12 @@ def parse_c08(message_type: int, direction: str, request_id: int, payload: bytes
             return REJECT
         if payload[0:16] == ZERO_16 or payload[16:32] == ZERO_16 or payload[32:48] == ZERO_16:
             return REJECT
-        if payload[48] != 1 or payload[49] != 5 or unsigned(payload[50:52]) != 6:
+        resource_class = payload[48]
+        if resource_class not in (1, 2) or payload[49] != 5 or unsigned(payload[50:52]) != 6:
             return REJECT
-        if unsigned(payload[52:60]) == 0 or payload[60:64] != bytes(4):
+        granted = unsigned(payload[52:60])
+        class_cap = RESOURCE_BYTES if resource_class == 1 else NATIVE_SCRATCH_BYTES
+        if not 0 < granted <= class_cap or payload[60:64] != bytes(4):
             return REJECT
         return PASS
     return REJECT
@@ -832,6 +883,8 @@ def readme_bytes(vectors: list[Vector]) -> bytes:
             "- `REJECT`: malformed/noncanonical data rejected before domain mutation.",
             "- `REQUEST_ID_CONFLICT`: structurally valid RESERVE that conflicts with the prior",
             "  same-lease/same-request-ID fixture in the stateful C08 oracle.",
+            "- C08 class 1 remains RemoteBuffer-only; class 2 is native-operation scratch-only",
+            "  and uses the unchanged fixed envelopes.",
             "",
         ]
     )
@@ -860,6 +913,15 @@ def verify_semantic_oracles(vectors: list[Vector]) -> None:
     conflict_frame = split_frames(conflict.data)[0]
     if original_frame[0][6] != conflict_frame[0][6] or original_frame[1] == conflict_frame[1]:
         raise CheckFailure("request conflict fixture does not reuse ID with changed parameters")
+
+    native_request = next(
+        vector for vector in vectors if vector.name == "GV-C08-11-native-scratch-reserve-request.bin"
+    )
+    native_success = next(
+        vector for vector in vectors if vector.name == "GV-C08-12-native-scratch-reserve-success.bin"
+    )
+    if parse_vector(native_request) != PASS or parse_vector(native_success) != PASS:
+        raise CheckFailure("native scratch class vectors are not canonical")
 
     class Oracle:
         def __init__(self) -> None:
@@ -913,6 +975,7 @@ def verify_semantic_oracles(vectors: list[Vector]) -> None:
     if oracle.alloc(RESOURCE_BYTES):
         raise CheckFailure("LOST buffer or consumed reservation resurrected")
     print("SEMANTIC request-id-conflict PASS")
+    print("SEMANTIC resource-class-separation PASS")
     print("SEMANTIC reservation-single-consumption PASS")
     print("SEMANTIC lost-no-resurrection PASS")
     print("SEMANTIC budget-release-exactly-once PASS")
@@ -934,9 +997,23 @@ def verify_mutation_rejections(vectors: list[Vector]) -> None:
 
     if parse_vector(Vector("direction", alloc.data, HOST_TO_WORKER, REJECT, "")) != REJECT:
         raise CheckFailure("direction-invalid ALLOC_ACK accepted")
+
+    oversize_native = frame(
+        RESOURCE_CHANNEL,
+        1,
+        0x0007,
+        NATIVE_REQUEST_ID + 1,
+        reserve_request(NATIVE_SCRATCH_BYTES + 1, 2),
+    )
+    if (
+        parse_vector(Vector("native-oversize", oversize_native, HOST_TO_WORKER, REJECT, ""))
+        != REJECT
+    ):
+        raise CheckFailure("over-profile native scratch reservation accepted")
     print("NEGATIVE reserved-zero PASS")
     print("NEGATIVE reason-state-profile PASS")
     print("NEGATIVE direction-profile PASS")
+    print("NEGATIVE native-scratch-cap PASS")
 
 
 def verify() -> None:
