@@ -10,6 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use curve25519_dalek::montgomery::MontgomeryPoint;
 use pb_secure::PairingGuard;
+use pb_types::PeerId;
 use rustix::fs::{
     AtFlags, FileType, Mode, OFlags, RawDir, fstat, fsync, mkdirat, open, openat, renameat, statat,
     unlinkat,
@@ -17,7 +18,6 @@ use rustix::fs::{
 use rustix::io::Errno;
 use rustix::process::getuid;
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 
 const IDENTITY_FILE: &str = "identity.key";
 const GUARD_FILE: &str = "pairing_guard.json";
@@ -500,7 +500,7 @@ fn required_u64(object: &serde_json::Map<String, Value>, key: &str) -> Result<u6
 }
 
 fn peer_id(public: &[u8; 32]) -> String {
-    hex_encode(&Sha256::digest(public))
+    hex_encode(PeerId::from_static_public_key(public).as_bytes())
 }
 
 fn hex_encode(bytes: &[u8]) -> String {
@@ -634,6 +634,10 @@ mod tests {
     fn peer_commit_is_atomic_strict_and_no_intermediate_state_exists() {
         let (path, store) = temporary_store();
         let record = PeerRecord::new([7; 32], "peer", 42);
+        assert_eq!(
+            record.peer_id,
+            "4bb06f8e4e3a7715d201d573d0aa423762e55dabd61a2c02278fa56cc6d294e0"
+        );
         store.commit_peer(&record).expect("commit");
         assert_eq!(store.load_peers().unwrap(), vec![record]);
         let entries: Vec<_> = fs::read_dir(path.join(PEERS_DIRECTORY))

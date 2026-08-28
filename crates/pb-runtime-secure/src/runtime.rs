@@ -13,7 +13,9 @@ use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
     production_xx_responder,
 };
-use pb_types::{Channel, ControlType, FLAG_END, FLAG_START, PAIRING_TIMEOUT_MS, PairingState};
+use pb_types::{
+    Channel, ControlType, FLAG_END, FLAG_START, PAIRING_TIMEOUT_MS, PairingState, PeerId,
+};
 use snow::{Builder, HandshakeState, TransportState, params::NoiseParams};
 
 use crate::storage::{Identity, PeerRecord, StateStore, StorageError, wall_clock_ms};
@@ -23,6 +25,49 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 const SESSION_POLL: Duration = Duration::from_millis(20);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
 const XX_FIRST_MESSAGE_BYTES: usize = 32;
+
+struct SessionScope;
+
+/// Proof that a peer identity came from the authenticated, committed secure session.
+///
+/// The proof is scoped to one live secure session and cannot be constructed from a
+/// [`PeerId`] by downstream code.
+///
+/// ```compile_fail
+/// use pb_runtime_secure::VerifiedPeerSession;
+/// use pb_types::PeerId;
+/// use std::marker::PhantomData;
+///
+/// let peer_id = PeerId::from_sha256_digest([0; 32]);
+/// let _proof = VerifiedPeerSession {
+///     peer_id,
+///     _scope: PhantomData,
+/// };
+/// ```
+///
+/// ```compile_fail
+/// use pb_runtime_secure::VerifiedPeerSession;
+///
+/// let _proof: VerifiedPeerSession<'static> = Default::default();
+/// ```
+///
+/// ```compile_fail
+/// use pb_runtime_secure::VerifiedPeerSession;
+///
+/// fn duplicate(proof: VerifiedPeerSession<'_>) {
+///     let _copy = proof.clone();
+/// }
+/// ```
+pub struct VerifiedPeerSession<'session> {
+    peer_id: PeerId,
+    _scope: std::marker::PhantomData<&'session SessionScope>,
+}
+
+impl VerifiedPeerSession<'_> {
+    pub const fn peer_id(&self) -> &PeerId {
+        &self.peer_id
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EndpointRole {
@@ -177,6 +222,10 @@ struct RuntimeInner {
     heartbeat_count: u64,
     session_active: bool,
     mismatch_count: u8,
+    #[cfg(test)]
+    verified_peer_id: Option<PeerId>,
+    #[cfg(test)]
+    verified_session_mints: u64,
 }
 
 pub struct SecureRuntime {
@@ -236,6 +285,10 @@ impl SecureRuntime {
                 heartbeat_count: 0,
                 session_active: false,
                 mismatch_count,
+                #[cfg(test)]
+                verified_peer_id: None,
+                #[cfg(test)]
+                verified_session_mints: 0,
             }),
             changed: Condvar::new(),
         })
@@ -403,6 +456,10 @@ impl SecureRuntime {
         }
         inner.session_active = true;
         inner.authenticated = false;
+        #[cfg(test)]
+        {
+            inner.verified_peer_id = None;
+        }
         inner.sas = None;
         inner.confirm_requested = false;
         inner.cancel_requested = false;
@@ -423,6 +480,10 @@ impl SecureRuntime {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         inner.session_active = false;
         inner.authenticated = false;
+        #[cfg(test)]
+        {
+            inner.verified_peer_id = None;
+        }
         inner.sas = None;
         inner.begin_requested = false;
         inner.confirm_requested = false;
@@ -506,7 +567,11 @@ impl SecureRuntime {
         Ok(())
     }
 
-    fn mark_authenticated(&self) -> Result<(), RuntimeError> {
+    fn mark_authenticated<'session>(
+        &self,
+        remote: &[u8; 32],
+        _scope: &'session SessionScope,
+    ) -> Result<VerifiedPeerSession<'session>, RuntimeError> {
         let now = wall_clock_ms()?;
         let mut guard = self
             .guard
@@ -524,8 +589,17 @@ impl SecureRuntime {
         inner.state = RuntimeState::Authenticated;
         inner.authenticated = true;
         inner.mismatch_count = guard.mismatch_count;
+        let verified = VerifiedPeerSession {
+            peer_id: PeerId::from_static_public_key(remote),
+            _scope: std::marker::PhantomData,
+        };
+        #[cfg(test)]
+        {
+            inner.verified_peer_id = Some(*verified.peer_id());
+            inner.verified_session_mints = inner.verified_session_mints.saturating_add(1);
+        }
         self.changed.notify_all();
-        Ok(())
+        Ok(verified)
     }
 
     fn heartbeat(&self) {
@@ -882,12 +956,11 @@ fn run_pairing_loop(
                         control_frame(ControlType::Pong, frame.header.request_id, send_sequence);
                     send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
                     send_frame(stream, &mut transport, &pong)?;
-                    runtime.mark_authenticated()?;
-                    runtime.heartbeat();
-                    return run_authenticated_loop(
+                    return enter_authenticated_loop(
                         stream,
                         runtime,
                         transport,
+                        remote,
                         send_sequence,
                         receive_sequence,
                         false,
@@ -897,12 +970,11 @@ fn run_pairing_loop(
                     if Some(frame.header.request_id) != commit_ping_request {
                         return Err(RuntimeError::Pbmux);
                     }
-                    runtime.mark_authenticated()?;
-                    runtime.heartbeat();
-                    return run_authenticated_loop(
+                    return enter_authenticated_loop(
                         stream,
                         runtime,
                         transport,
+                        remote,
                         send_sequence,
                         receive_sequence,
                         true,
@@ -944,7 +1016,7 @@ fn run_committed_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
     mut transport: TransportState,
-    _remote: [u8; 32],
+    remote: [u8; 32],
     initiator: bool,
 ) -> Result<SessionOutcome, RuntimeError> {
     configure_session_stream(stream)?;
@@ -966,12 +1038,11 @@ fn run_committed_loop(
                 if frame.header.message_type == ControlType::Pong as u16
                     && frame.header.request_id == request
                 {
-                    runtime.mark_authenticated()?;
-                    runtime.heartbeat();
-                    return run_authenticated_loop(
+                    return enter_authenticated_loop(
                         stream,
                         runtime,
                         transport,
+                        remote,
                         send_sequence,
                         receive_sequence,
                         true,
@@ -993,12 +1064,11 @@ fn run_committed_loop(
             let pong = control_frame(ControlType::Pong, frame.header.request_id, send_sequence);
             send_frame(stream, &mut transport, &pong)?;
             send_sequence += 1;
-            runtime.mark_authenticated()?;
-            runtime.heartbeat();
-            return run_authenticated_loop(
+            return enter_authenticated_loop(
                 stream,
                 runtime,
                 transport,
+                remote,
                 send_sequence,
                 receive_sequence,
                 false,
@@ -1008,10 +1078,34 @@ fn run_committed_loop(
     }
 }
 
+fn enter_authenticated_loop(
+    stream: &mut TcpStream,
+    runtime: &SecureRuntime,
+    transport: TransportState,
+    remote: [u8; 32],
+    send_sequence: u64,
+    receive_sequence: SequenceTracker,
+    initiator: bool,
+) -> Result<SessionOutcome, RuntimeError> {
+    let scope = SessionScope;
+    let verified_peer = runtime.mark_authenticated(&remote, &scope)?;
+    runtime.heartbeat();
+    run_authenticated_loop(
+        stream,
+        runtime,
+        transport,
+        verified_peer,
+        send_sequence,
+        receive_sequence,
+        initiator,
+    )
+}
+
 fn run_authenticated_loop(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
     mut transport: TransportState,
+    _verified_peer: VerifiedPeerSession<'_>,
     mut send_sequence: u64,
     mut receive_sequence: SequenceTracker,
     initiator: bool,
@@ -1209,6 +1303,22 @@ mod tests {
         panic!("bounded secure runtime condition timed out");
     }
 
+    fn verified_peer_id(runtime: &SecureRuntime) -> Option<PeerId> {
+        runtime
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .verified_peer_id
+    }
+
+    fn verified_session_mints(runtime: &SecureRuntime) -> u64 {
+        runtime
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .verified_session_mints
+    }
+
     fn run_ik_failure(
         host: Arc<SecureRuntime>,
         android: Arc<SecureRuntime>,
@@ -1272,7 +1382,7 @@ mod tests {
     }
 
     #[test]
-    fn real_xx_sas_mutual_commit_ping_pong_and_ik_restart() {
+    fn committed_xx_and_ik_mint_verified_peer_identity_only_after_liveness() {
         let host_dir = TestDirectory::new("host");
         let android_dir = TestDirectory::new("android");
         let host = Arc::new(
@@ -1283,6 +1393,8 @@ mod tests {
             SecureRuntime::initialize(EndpointRole::AndroidResponder, open_store(&android_dir.0))
                 .unwrap(),
         );
+        let expected_host_peer = PeerId::from_static_public_key(android.identity.public());
+        let expected_android_peer = PeerId::from_static_public_key(host.identity.public());
 
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let endpoint = listener.local_addr().unwrap();
@@ -1305,6 +1417,10 @@ mod tests {
         if host_sas != android_sas {
             panic!("SAS mismatch");
         }
+        assert_eq!(verified_peer_id(&host), None);
+        assert_eq!(verified_peer_id(&android), None);
+        assert_eq!(verified_session_mints(&host), 0);
+        assert_eq!(verified_session_mints(&android), 0);
         assert_eq!(host.local_confirm(), PairingActionResult::Accepted);
         assert_eq!(host.local_confirm(), PairingActionResult::Duplicate);
         assert_eq!(android.local_confirm(), PairingActionResult::Accepted);
@@ -1312,6 +1428,10 @@ mod tests {
         assert_eq!(host.snapshot().committed_peer_count, 1);
         assert_eq!(android.snapshot().committed_peer_count, 1);
         assert!(host.snapshot().heartbeat_count > 0);
+        assert_eq!(verified_peer_id(&host), Some(expected_host_peer));
+        assert_eq!(verified_peer_id(&android), Some(expected_android_peer));
+        assert_eq!(verified_session_mints(&host), 1);
+        assert_eq!(verified_session_mints(&android), 1);
         shutdown.shutdown(Shutdown::Both).unwrap();
         assert!(matches!(
             initiator.join().unwrap(),
@@ -1334,6 +1454,8 @@ mod tests {
         );
         assert_eq!(host.snapshot().state, RuntimeState::Paired);
         assert_eq!(android.snapshot().state, RuntimeState::Paired);
+        assert_eq!(verified_peer_id(&host), None);
+        assert_eq!(verified_peer_id(&android), None);
 
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let endpoint = listener.local_addr().unwrap();
@@ -1351,6 +1473,10 @@ mod tests {
         wait_until(|| host.snapshot().authenticated && android.snapshot().authenticated);
         assert!(host.snapshot().sas.is_none());
         assert!(android.snapshot().sas.is_none());
+        assert_eq!(verified_peer_id(&host), Some(expected_host_peer));
+        assert_eq!(verified_peer_id(&android), Some(expected_android_peer));
+        assert_eq!(verified_session_mints(&host), 1);
+        assert_eq!(verified_session_mints(&android), 1);
         shutdown.shutdown(Shutdown::Both).unwrap();
         assert!(matches!(
             initiator.join().unwrap(),
@@ -1408,8 +1534,14 @@ mod tests {
         let android = Arc::new(
             SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap(),
         );
+        let observed_host = Arc::clone(&host);
+        let observed_android = Arc::clone(&android);
         let (host_error, _) = run_ik_failure(host, android);
         assert_eq!(host_error, RuntimeError::PeerKeyMismatch);
+        assert_eq!(verified_session_mints(&observed_host), 0);
+        assert_eq!(verified_session_mints(&observed_android), 0);
+        assert_eq!(verified_peer_id(&observed_host), None);
+        assert_eq!(verified_peer_id(&observed_android), None);
     }
 
     #[test]
@@ -1428,7 +1560,13 @@ mod tests {
         let android = Arc::new(
             SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap(),
         );
+        let observed_host = Arc::clone(&host);
+        let observed_android = Arc::clone(&android);
         let (_, android_error) = run_ik_failure(host, android);
         assert_eq!(android_error, RuntimeError::UnknownInitiatorIkRejected);
+        assert_eq!(verified_session_mints(&observed_host), 0);
+        assert_eq!(verified_session_mints(&observed_android), 0);
+        assert_eq!(verified_peer_id(&observed_host), None);
+        assert_eq!(verified_peer_id(&observed_android), None);
     }
 }

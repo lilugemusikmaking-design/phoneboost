@@ -330,7 +330,6 @@ dependencies = [
  "pb-types",
  "rustix",
  "serde_json",
- "sha2",
  "snow",
 ]
 
@@ -346,6 +345,9 @@ dependencies = [
 [[package]]
 name = "pb-types"
 version = "0.1.0"
+dependencies = [
+ "sha2",
+]
 
 [[package]]
 name = "pb-worker-core"

@@ -13,5 +13,4 @@ pb-secure = { path = "../pb-secure" }
 pb-types = { path = "../pb-types" }
 rustix = { workspace = true, features = ["fs", "process"] }
 serde_json.workspace = true
-sha2.workspace = true
 snow.workspace = true

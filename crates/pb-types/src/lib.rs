@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use sha2::{Digest, Sha256};
+
 pub const PBMUX_MAGIC: [u8; 4] = *b"PBM1";
 pub const PBMUX_VERSION: u8 = 1;
 pub const PBMUX_HEADER_LEN: usize = 40;
@@ -26,6 +28,10 @@ pub const PAIRING_MISMATCH_LIMIT: u8 = 3;
 pub struct PeerId([u8; 32]);
 
 impl PeerId {
+    pub fn from_static_public_key(static_public_key: &[u8; 32]) -> Self {
+        Self(Sha256::digest(static_public_key).into())
+    }
+
     pub const fn from_sha256_digest(digest: [u8; 32]) -> Self {
         Self(digest)
     }
@@ -48,6 +54,25 @@ impl From<[u8; 32]> for PeerId {
 impl From<PeerId> for [u8; 32] {
     fn from(peer_id: PeerId) -> Self {
         peer_id.into_bytes()
+    }
+}
+
+#[cfg(test)]
+mod peer_id_tests {
+    use super::PeerId;
+
+    #[test]
+    fn static_public_key_derivation_is_sha256() {
+        let expected = [
+            0x4b, 0xb0, 0x6f, 0x8e, 0x4e, 0x3a, 0x77, 0x15, 0xd2, 0x01, 0xd5, 0x73, 0xd0, 0xaa,
+            0x42, 0x37, 0x62, 0xe5, 0x5d, 0xab, 0xd6, 0x1a, 0x2c, 0x02, 0x27, 0x8f, 0xa5, 0x6c,
+            0xc6, 0xd2, 0x94, 0xe0,
+        ];
+
+        assert_eq!(
+            PeerId::from_static_public_key(&[7; 32]).into_bytes(),
+            expected
+        );
     }
 }
 
