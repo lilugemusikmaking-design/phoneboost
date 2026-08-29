@@ -16,6 +16,13 @@ path = "src/bin/c04-lan-probe.rs"
 required-features = ["c04-test-probe"]
 
 [dependencies]
+blake3.workspace = true
+dbus.workspace = true
+pb-pbmux = { path = "../pb-pbmux" }
 pb-runtime-secure = { path = "../pb-runtime-secure" }
+pb-types = { path = "../pb-types" }
 rustix = { workspace = true, features = ["fs", "net", "process"] }
 serde_json.workspace = true
+
+[dev-dependencies]
+pb-worker-core = { path = "../pb-worker-core" }

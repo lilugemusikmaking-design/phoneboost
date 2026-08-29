@@ -2,13 +2,17 @@ use std::ffi::OsString;
 use std::io::{self, Write};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use pb_host::{
+    AutoUseController, AutoUseReason, AutoUseState, AvahiDiscovery, FixedDeviceDiscovery,
     ReadyRuntime, StartupOutcome, TransportCandidate, TransportManager, TransportState,
     host_startup, initialize_remote_secure, os_jitter_sample, retry_delay_ms, serve_local_client,
 };
 use pb_runtime_secure::{SecureRuntime, run_initiator_session};
+
+const AUTO_USE_STARTUP_TIMEOUT: Duration = Duration::from_secs(3);
+const AUTO_USE_STARTUP_POLL: Duration = Duration::from_millis(10);
 
 struct DaemonArguments {
     manual_endpoint: Option<SocketAddr>,
@@ -22,24 +26,62 @@ fn main() {
 
     match host_startup() {
         Ok(StartupOutcome::Ready(ready)) => {
-            if let Some(endpoint) = arguments.manual_endpoint {
-                let runtime = match initialize_remote_secure() {
-                    Ok(runtime) => runtime,
-                    Err(error) => {
-                        eprintln!(
-                            "C05_SECURE state=UNAVAILABLE reason={}",
-                            error.reason_code()
-                        );
-                        std::process::exit(1);
-                    }
-                };
+            let runtime = match initialize_remote_secure() {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    eprintln!(
+                        "C05_SECURE state=UNAVAILABLE reason={}",
+                        error.reason_code()
+                    );
+                    std::process::exit(1);
+                }
+            };
+            let mut auto_use = None;
+            if let Some(endpoint) = arguments.manual_endpoint
+                && runtime.snapshot().committed_peer_count == 0
+            {
                 if start_manual_transport(endpoint, runtime).is_err() {
                     eprintln!("C04_TRANSPORT state=UNAVAILABLE reason=THREAD_START_FAILED");
                     std::process::exit(1);
                 }
+            } else {
+                let discovery: Arc<dyn pb_host::DeviceDiscovery> =
+                    if let Some(endpoint) = arguments.manual_endpoint {
+                        Arc::new(FixedDeviceDiscovery::new(TransportCandidate::manual(
+                            endpoint,
+                        )))
+                    } else {
+                        Arc::new(AvahiDiscovery::new())
+                    };
+                let controller = match AutoUseController::new(runtime, discovery) {
+                    Ok(controller) => controller,
+                    Err(_) => {
+                        eprintln!("AUTO_USE state=UNAVAILABLE reason=THREAD_START_FAILED");
+                        std::process::exit(1);
+                    }
+                };
+                controller.enable();
+                let startup = wait_for_auto_use_startup(
+                    || {
+                        let status = controller.current_node_status();
+                        (status.state(), status.reason())
+                    },
+                    AUTO_USE_STARTUP_TIMEOUT,
+                );
+                let (report, ready) = auto_use_startup_report(startup);
+                if ready {
+                    println!("{report}");
+                    let _flush_result = io::stdout().flush();
+                } else {
+                    eprintln!("{report}");
+                }
+                auto_use = Some(controller);
             }
-            println!("READY");
-            let _flush_result = io::stdout().flush();
+            if auto_use.is_none() {
+                println!("READY");
+                let _flush_result = io::stdout().flush();
+            }
+            let _auto_use = auto_use;
             run_local_loop(ready);
         }
         Ok(outcome @ StartupOutcome::AlreadyRunning(_)) => {
@@ -49,6 +91,47 @@ fn main() {
             eprintln!("{error}");
             std::process::exit(1);
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AutoUseStartup {
+    Ready,
+    DiscoveryBackendUnavailable,
+    StatusTimeout,
+}
+
+fn wait_for_auto_use_startup(
+    mut status: impl FnMut() -> (AutoUseState, AutoUseReason),
+    timeout: Duration,
+) -> AutoUseStartup {
+    let deadline = Instant::now() + timeout;
+    loop {
+        let (state, reason) = status();
+        if reason == AutoUseReason::DiscoveryBackendUnavailable {
+            return AutoUseStartup::DiscoveryBackendUnavailable;
+        }
+        if state != AutoUseState::Discovering {
+            return AutoUseStartup::Ready;
+        }
+        if Instant::now() >= deadline {
+            return AutoUseStartup::StatusTimeout;
+        }
+        std::thread::sleep(AUTO_USE_STARTUP_POLL);
+    }
+}
+
+const fn auto_use_startup_report(startup: AutoUseStartup) -> (&'static str, bool) {
+    match startup {
+        AutoUseStartup::Ready => ("READY", true),
+        AutoUseStartup::DiscoveryBackendUnavailable => (
+            "AUTO_USE state=UNAVAILABLE reason=DISCOVERY_BACKEND_UNAVAILABLE",
+            false,
+        ),
+        AutoUseStartup::StatusTimeout => (
+            "AUTO_USE state=UNAVAILABLE reason=STARTUP_STATUS_TIMEOUT",
+            false,
+        ),
     }
 }
 
@@ -181,5 +264,27 @@ mod tests {
             ])
             .is_none()
         );
+    }
+
+    #[test]
+    fn unavailable_discovery_is_visible_and_never_reports_ready() {
+        let outcome = wait_for_auto_use_startup(
+            || {
+                (
+                    AutoUseState::Unavailable,
+                    AutoUseReason::DiscoveryBackendUnavailable,
+                )
+            },
+            Duration::ZERO,
+        );
+        assert_eq!(outcome, AutoUseStartup::DiscoveryBackendUnavailable);
+        assert_ne!(outcome, AutoUseStartup::Ready);
+        let (visible, ready) = auto_use_startup_report(outcome);
+        assert_eq!(
+            visible,
+            "AUTO_USE state=UNAVAILABLE reason=DISCOVERY_BACKEND_UNAVAILABLE"
+        );
+        assert!(!ready);
+        assert_ne!(visible, "READY");
     }
 }

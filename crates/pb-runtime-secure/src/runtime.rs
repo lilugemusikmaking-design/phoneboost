@@ -11,11 +11,14 @@ use pb_pbmux::{
     AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, DispatchMode, Frame,
     Header, PbmuxErrorKind, Reassembler, RemoteBufferRequest, RemoteBufferResponseKind,
     ResourceRequest, ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
-    build_command_ack_frame, build_compute_response_frame, build_remote_buffer_result_frames,
-    build_resource_result_frame, decode, encode, pair_confirm_frame, parse_command_ack_frame,
-    parse_command_frame, parse_compute_request_frame, parse_heartbeat_frame,
-    parse_remote_buffer_request_payload, parse_resource_request_frame, validate_pair_confirm,
-    validate_remote_buffer_request_fragment,
+    build_command_ack_frame, build_command_frame, build_compute_request_frame,
+    build_compute_response_frame, build_remote_buffer_request_frames,
+    build_remote_buffer_result_frames, build_resource_request_frame, build_resource_result_frame,
+    decode, encode, pair_confirm_frame, parse_command_ack_frame, parse_command_frame,
+    parse_compute_request_frame, parse_compute_response_frame, parse_heartbeat_frame,
+    parse_remote_buffer_request_payload, parse_remote_buffer_result_payload,
+    parse_resource_request_frame, parse_resource_result_frame, validate_pair_confirm,
+    validate_remote_buffer_request_fragment, validate_remote_buffer_result_fragment,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -28,6 +31,10 @@ use snow::{Builder, HandshakeState, TransportState, params::NoiseParams};
 
 use crate::storage::{Identity, PeerRecord, StateStore, StorageError, wall_clock_ms};
 use crate::wire::{SecureWireError, read_encrypted, read_record, write_encrypted, write_record};
+use crate::{
+    InitiatorClientError, InitiatorSessionDriver, initiator::InitiatorRequest,
+    initiator::InitiatorResponse, initiator::PendingInitiatorRequest,
+};
 
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 const SESSION_POLL: Duration = Duration::from_millis(20);
@@ -800,6 +807,22 @@ pub fn run_initiator_session(
     stream: &mut TcpStream,
     runtime: &SecureRuntime,
 ) -> Result<SessionOutcome, RuntimeError> {
+    run_initiator_session_internal(stream, runtime, None)
+}
+
+pub fn run_initiator_session_with_client(
+    stream: &mut TcpStream,
+    runtime: &SecureRuntime,
+    mut driver: InitiatorSessionDriver,
+) -> Result<SessionOutcome, RuntimeError> {
+    run_initiator_session_internal(stream, runtime, Some(&mut driver))
+}
+
+fn run_initiator_session_internal(
+    stream: &mut TcpStream,
+    runtime: &SecureRuntime,
+    mut initiator_driver: Option<&mut InitiatorSessionDriver>,
+) -> Result<SessionOutcome, RuntimeError> {
     let committed = runtime.one_committed_peer()?;
     if committed.is_none() {
         runtime.wait_for_begin()?;
@@ -818,6 +841,7 @@ pub fn run_initiator_session(
                 transport,
                 remote,
                 true,
+                initiator_driver.as_deref_mut(),
             )
         }
         None => {
@@ -829,6 +853,7 @@ pub fn run_initiator_session(
                 transport,
                 remote,
                 true,
+                initiator_driver.as_deref_mut(),
             )
         }
     }
@@ -858,10 +883,26 @@ pub fn run_responder_session_with_handler(
     let _session = SessionGuard { runtime };
     if xx {
         let (transport, remote) = responder_xx(stream, runtime, &first)?;
-        run_pairing_loop(stream, runtime, command_handler, transport, remote, false)
+        run_pairing_loop(
+            stream,
+            runtime,
+            command_handler,
+            transport,
+            remote,
+            false,
+            None,
+        )
     } else {
         let (transport, remote) = responder_ik(stream, runtime, &first)?;
-        run_committed_loop(stream, runtime, command_handler, transport, remote, false)
+        run_committed_loop(
+            stream,
+            runtime,
+            command_handler,
+            transport,
+            remote,
+            false,
+            None,
+        )
     }
 }
 
@@ -1051,6 +1092,7 @@ fn run_pairing_loop(
     mut transport: TransportState,
     remote: [u8; 32],
     initiator: bool,
+    mut initiator_driver: Option<&mut InitiatorSessionDriver>,
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut actor = PairingActor::new();
     let started = Instant::now();
@@ -1111,6 +1153,7 @@ fn run_pairing_loop(
                         send_sequence,
                         receive_sequence,
                         false,
+                        None,
                     );
                 }
                 Ok(ControlType::Pong) if committed && initiator => {
@@ -1126,6 +1169,7 @@ fn run_pairing_loop(
                         send_sequence,
                         receive_sequence,
                         true,
+                        initiator_driver.as_deref_mut(),
                     );
                 }
                 Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
@@ -1168,6 +1212,7 @@ fn run_committed_loop(
     mut transport: TransportState,
     remote: [u8; 32],
     initiator: bool,
+    mut initiator_driver: Option<&mut InitiatorSessionDriver>,
 ) -> Result<SessionOutcome, RuntimeError> {
     configure_session_stream(stream)?;
     let mut send_sequence = 0_u64;
@@ -1197,6 +1242,7 @@ fn run_committed_loop(
                         send_sequence,
                         receive_sequence,
                         true,
+                        initiator_driver.as_deref_mut(),
                     );
                 }
                 return Err(RuntimeError::Pbmux);
@@ -1224,6 +1270,7 @@ fn run_committed_loop(
                 send_sequence,
                 receive_sequence,
                 false,
+                None,
             );
         }
         std::thread::sleep(SESSION_POLL);
@@ -1239,9 +1286,13 @@ fn enter_authenticated_loop(
     send_sequence: u64,
     receive_sequence: SequenceTracker,
     initiator: bool,
+    mut initiator_driver: Option<&mut InitiatorSessionDriver>,
 ) -> Result<SessionOutcome, RuntimeError> {
     let scope = SessionScope::new();
     let verified_peer = runtime.mark_authenticated(&remote, &scope)?;
+    let initiator_generation = initiator_driver
+        .as_deref_mut()
+        .map(|driver| driver.begin_session(*verified_peer.peer_id()));
     runtime.heartbeat();
     let result = run_authenticated_loop(
         stream,
@@ -1252,8 +1303,13 @@ fn enter_authenticated_loop(
         send_sequence,
         receive_sequence,
         initiator,
+        initiator_driver.as_deref_mut(),
+        initiator_generation,
     );
     verified_peer.revoke();
+    if let Some(driver) = initiator_driver.as_deref_mut() {
+        driver.end_session();
+    }
     command_handler
         .authenticated_session_ended(&verified_peer)
         .map_err(|_| RuntimeError::CommandHandlerFailed)?;
@@ -1269,17 +1325,30 @@ fn run_authenticated_loop(
     mut send_sequence: u64,
     mut receive_sequence: SequenceTracker,
     initiator: bool,
+    mut initiator_driver: Option<&mut InitiatorSessionDriver>,
+    initiator_generation: Option<u64>,
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
     let mut last_authenticated_traffic = Instant::now();
-    let mut outstanding = None;
+    let mut heartbeat_outstanding = None;
+    let mut application_outstanding = None;
     let mut reassembler = Reassembler::default();
     loop {
+        if initiator_driver
+            .as_deref()
+            .is_some_and(InitiatorSessionDriver::cancelled)
+        {
+            return Ok(SessionOutcome::Cancelled);
+        }
         if last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT {
             verified_peer.revoke();
             return Err(RuntimeError::SessionLost);
         }
-        if initiator && Instant::now() >= next_heartbeat && outstanding.is_none() {
+        if initiator
+            && Instant::now() >= next_heartbeat
+            && heartbeat_outstanding.is_none()
+            && application_outstanding.is_none()
+        {
             let request = random_nonzero_u64()?;
             send_frame(
                 stream,
@@ -1287,8 +1356,17 @@ fn run_authenticated_loop(
                 &control_frame(ControlType::Ping, request, send_sequence),
             )?;
             send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
-            outstanding = Some(request);
+            heartbeat_outstanding = Some(request);
             next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
+        } else if initiator && heartbeat_outstanding.is_none() && application_outstanding.is_none()
+        {
+            if let (Some(driver), Some(generation)) =
+                (initiator_driver.as_deref_mut(), initiator_generation)
+                && let Some(pending) = driver.next_request(generation)
+            {
+                application_outstanding =
+                    start_initiator_request(stream, &mut transport, &mut send_sequence, pending)?;
+            }
         }
         if let Some(frame) = receive_frame_if_available(stream, &mut transport)? {
             receive_sequence
@@ -1309,11 +1387,14 @@ fn run_authenticated_loop(
                         runtime.heartbeat();
                     }
                     Ok(ControlType::Pong) if initiator => {
-                        if outstanding != Some(frame.header.request_id) {
+                        if heartbeat_outstanding != Some(frame.header.request_id) {
                             return Err(RuntimeError::Pbmux);
                         }
-                        outstanding = None;
+                        heartbeat_outstanding = None;
                         runtime.heartbeat();
+                        if let Some(driver) = initiator_driver.as_deref() {
+                            driver.mark_liveness();
+                        }
                     }
                     Ok(ControlType::Command) => {
                         let command = parse_authenticated_command(&frame)?;
@@ -1342,96 +1423,185 @@ fn run_authenticated_loop(
                         send_frame(stream, &mut transport, &ack_frame)?;
                     }
                     Ok(ControlType::CommandAck) => {
-                        parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                        let ack =
+                            parse_command_ack_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                        if initiator {
+                            let expected = take_initiator_outstanding(
+                                &mut application_outstanding,
+                                frame.header.request_id,
+                            )?;
+                            if !matches!(
+                                expected.expected,
+                                ExpectedInitiatorResponse::Command(command_seq)
+                                    if command_seq == ack.command_seq
+                            ) {
+                                return Err(RuntimeError::Pbmux);
+                            }
+                            expected.complete(InitiatorResponse::Command(ack));
+                        }
                     }
                     Ok(ControlType::SessionClose) => return Ok(SessionOutcome::Lost),
                     _ => return Err(RuntimeError::Pbmux),
                 }
             } else if frame.header.channel == Channel::Resource {
-                let request =
-                    parse_resource_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                let expected_kind = match &request {
-                    ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
-                    ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
-                    ResourceRequest::Release { .. } => ResourceResponseKind::Release,
-                };
-                let (kind, result) = command_handler
-                    .handle_authenticated_resource(verified_peer, frame.header.request_id, request)
-                    .map_err(handler_runtime_error)?;
-                if kind != expected_kind {
-                    return Err(RuntimeError::CommandHandlerFailed);
-                }
-                let response = build_resource_result_frame(
-                    kind,
-                    &result,
-                    frame.header.request_id,
-                    send_sequence,
-                )
-                .map_err(|_| RuntimeError::CommandHandlerFailed)?;
-                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
-                send_frame(stream, &mut transport, &response)?;
-            } else if frame.header.channel == Channel::RemoteBuffer {
-                validate_remote_buffer_request_fragment(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                let message_type = frame.header.message_type;
-                let request_id = frame.header.request_id;
-                if let Some(payload) = reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)? {
-                    let request = parse_remote_buffer_request_payload(message_type, &payload)
-                        .map_err(|_| RuntimeError::Pbmux)?;
+                if initiator {
+                    let (kind, result) =
+                        parse_resource_result_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    let expected = take_initiator_outstanding(
+                        &mut application_outstanding,
+                        frame.header.request_id,
+                    )?;
+                    if expected.expected != ExpectedInitiatorResponse::Resource(kind) {
+                        return Err(RuntimeError::Pbmux);
+                    }
+                    expected.complete(InitiatorResponse::Resource(result));
+                } else {
+                    let request =
+                        parse_resource_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
                     let expected_kind = match &request {
-                        RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
-                        RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
-                        RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
-                        RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
-                        RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
-                        RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+                        ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
+                        ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
+                        ResourceRequest::Release { .. } => ResourceResponseKind::Release,
                     };
                     let (kind, result) = command_handler
-                        .handle_authenticated_remote_buffer(verified_peer, request_id, request)
+                        .handle_authenticated_resource(
+                            verified_peer,
+                            frame.header.request_id,
+                            request,
+                        )
                         .map_err(handler_runtime_error)?;
                     if kind != expected_kind {
                         return Err(RuntimeError::CommandHandlerFailed);
                     }
-                    let responses =
-                        build_remote_buffer_result_frames(kind, &result, request_id, send_sequence)
-                            .map_err(|_| RuntimeError::CommandHandlerFailed)?;
-                    send_sequence = send_sequence
-                        .checked_add(responses.len() as u64)
+                    let response = build_resource_result_frame(
+                        kind,
+                        &result,
+                        frame.header.request_id,
+                        send_sequence,
+                    )
+                    .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                    send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                    send_frame(stream, &mut transport, &response)?;
+                }
+            } else if frame.header.channel == Channel::RemoteBuffer {
+                if initiator {
+                    validate_remote_buffer_result_fragment(&frame)
+                        .map_err(|_| RuntimeError::Pbmux)?;
+                    let message_type = frame.header.message_type;
+                    let request_id = frame.header.request_id;
+                    let expected = application_outstanding
+                        .as_ref()
                         .ok_or(RuntimeError::Pbmux)?;
-                    for response in responses {
-                        send_frame(stream, &mut transport, &response)?;
+                    if expected.request_id != request_id {
+                        return Err(RuntimeError::Pbmux);
+                    }
+                    if let Some(payload) =
+                        reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)?
+                    {
+                        let kind = remote_response_kind(message_type)?;
+                        let result = parse_remote_buffer_result_payload(kind, &payload)
+                            .map_err(|_| RuntimeError::Pbmux)?;
+                        let expected =
+                            take_initiator_outstanding(&mut application_outstanding, request_id)?;
+                        if expected.expected != ExpectedInitiatorResponse::RemoteBuffer(kind) {
+                            return Err(RuntimeError::Pbmux);
+                        }
+                        expected.complete(InitiatorResponse::RemoteBuffer(result));
+                    }
+                } else {
+                    validate_remote_buffer_request_fragment(&frame)
+                        .map_err(|_| RuntimeError::Pbmux)?;
+                    let message_type = frame.header.message_type;
+                    let request_id = frame.header.request_id;
+                    if let Some(payload) =
+                        reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)?
+                    {
+                        let request = parse_remote_buffer_request_payload(message_type, &payload)
+                            .map_err(|_| RuntimeError::Pbmux)?;
+                        let expected_kind = match &request {
+                            RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
+                            RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
+                            RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
+                            RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
+                            RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
+                            RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+                        };
+                        let (kind, result) = handle_remote_buffer_with_transport_liveness(
+                            stream,
+                            command_handler,
+                            verified_peer,
+                            request_id,
+                            request,
+                            last_authenticated_traffic,
+                        )?;
+                        if kind != expected_kind {
+                            return Err(RuntimeError::CommandHandlerFailed);
+                        }
+                        let responses = build_remote_buffer_result_frames(
+                            kind,
+                            &result,
+                            request_id,
+                            send_sequence,
+                        )
+                        .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                        send_sequence = send_sequence
+                            .checked_add(responses.len() as u64)
+                            .ok_or(RuntimeError::Pbmux)?;
+                        for response in responses {
+                            send_frame(stream, &mut transport, &response)?;
+                        }
                     }
                 }
             } else if frame.header.channel == Channel::Compute {
-                let request =
-                    parse_compute_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
-                let response = handle_compute_with_transport_liveness(
-                    stream,
-                    command_handler,
-                    verified_peer,
-                    frame.header.request_id,
-                    request,
-                    last_authenticated_traffic,
-                )?;
-                let valid_response_kind = matches!(
-                    (&request, &response),
-                    (ComputeRequest::Submit(_), ComputeResponse::Status(_))
-                        | (ComputeRequest::Submit(_), ComputeResponse::Result(_))
-                        | (ComputeRequest::Status(_), ComputeResponse::Status(_))
-                        | (ComputeRequest::Status(_), ComputeResponse::Result(_))
-                        | (ComputeRequest::Cancel(_), ComputeResponse::Cancel(_))
-                );
-                if !valid_response_kind {
-                    return Err(RuntimeError::CommandHandlerFailed);
+                if initiator {
+                    let response =
+                        parse_compute_response_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    let expected = take_initiator_outstanding(
+                        &mut application_outstanding,
+                        frame.header.request_id,
+                    )?;
+                    if !expected.expected.accepts_compute(&response) {
+                        return Err(RuntimeError::Pbmux);
+                    }
+                    expected.complete(InitiatorResponse::Compute(response));
+                } else {
+                    let request =
+                        parse_compute_request_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    let response = handle_compute_with_transport_liveness(
+                        stream,
+                        command_handler,
+                        verified_peer,
+                        frame.header.request_id,
+                        request,
+                        last_authenticated_traffic,
+                    )?;
+                    let valid_response_kind = matches!(
+                        (&request, &response),
+                        (ComputeRequest::Submit(_), ComputeResponse::Status(_))
+                            | (ComputeRequest::Submit(_), ComputeResponse::Result(_))
+                            | (ComputeRequest::Status(_), ComputeResponse::Status(_))
+                            | (ComputeRequest::Status(_), ComputeResponse::Result(_))
+                            | (ComputeRequest::Cancel(_), ComputeResponse::Cancel(_))
+                    );
+                    if !valid_response_kind {
+                        return Err(RuntimeError::CommandHandlerFailed);
+                    }
+                    let response = build_compute_response_frame(
+                        &response,
+                        frame.header.request_id,
+                        send_sequence,
+                    )
+                    .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                    send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                    send_frame(stream, &mut transport, &response)?;
                 }
-                let response =
-                    build_compute_response_frame(&response, frame.header.request_id, send_sequence)
-                        .map_err(|_| RuntimeError::CommandHandlerFailed)?;
-                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
-                send_frame(stream, &mut transport, &response)?;
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
                     parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
                     runtime.heartbeat();
+                    if let Some(driver) = initiator_driver.as_deref() {
+                        driver.mark_liveness();
+                    }
                 } else {
                     return Err(RuntimeError::Pbmux);
                 }
@@ -1441,6 +1611,207 @@ fn run_authenticated_loop(
         }
         std::thread::sleep(SESSION_POLL);
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExpectedInitiatorResponse {
+    Command(u64),
+    Resource(ResourceResponseKind),
+    RemoteBuffer(RemoteBufferResponseKind),
+    ComputeSubmit,
+    ComputeStatus([u8; 16]),
+    ComputeCancel([u8; 16]),
+}
+
+impl ExpectedInitiatorResponse {
+    fn accepts_compute(self, response: &ComputeResponse) -> bool {
+        match (self, response) {
+            (Self::ComputeSubmit, ComputeResponse::Status(_) | ComputeResponse::Result(_)) => true,
+            (Self::ComputeStatus(job_id), ComputeResponse::Status(status)) => {
+                status.job.as_ref().is_none_or(|job| job.job_id == job_id)
+            }
+            (Self::ComputeStatus(job_id), ComputeResponse::Result(result)) => {
+                result.job.as_ref().is_none_or(|job| job.job_id == job_id)
+            }
+            (Self::ComputeCancel(job_id), ComputeResponse::Cancel(status)) => {
+                status.job.as_ref().is_none_or(|job| job.job_id == job_id)
+            }
+            _ => false,
+        }
+    }
+}
+
+struct InitiatorOutstanding {
+    request_id: u64,
+    expected: ExpectedInitiatorResponse,
+    response: Option<std::sync::mpsc::SyncSender<Result<InitiatorResponse, InitiatorClientError>>>,
+}
+
+impl InitiatorOutstanding {
+    fn complete(mut self, response: InitiatorResponse) {
+        if let Some(sender) = self.response.take() {
+            let _ = sender.send(Ok(response));
+        }
+    }
+}
+
+impl Drop for InitiatorOutstanding {
+    fn drop(&mut self) {
+        if let Some(sender) = self.response.take() {
+            let _ = sender.send(Err(InitiatorClientError::UnknownAfterDisconnect));
+        }
+    }
+}
+
+fn start_initiator_request(
+    stream: &mut TcpStream,
+    transport: &mut TransportState,
+    send_sequence: &mut u64,
+    pending: PendingInitiatorRequest,
+) -> Result<Option<InitiatorOutstanding>, RuntimeError> {
+    let PendingInitiatorRequest {
+        request_id,
+        request,
+        response,
+        ..
+    } = pending;
+    let request_id = match request_id {
+        Some(0) => {
+            let _ = response.send(Err(InitiatorClientError::InvalidRequest));
+            return Ok(None);
+        }
+        Some(request_id) => request_id,
+        None => random_nonzero_u64()?,
+    };
+    let built = match request {
+        InitiatorRequest::Command(request) => {
+            build_command_frame(&request, request_id, *send_sequence).map(|frame| {
+                (
+                    vec![frame],
+                    ExpectedInitiatorResponse::Command(request.command_seq),
+                )
+            })
+        }
+        InitiatorRequest::Resource(request) => {
+            let expected = match &request {
+                ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
+                ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
+                ResourceRequest::Release { .. } => ResourceResponseKind::Release,
+            };
+            build_resource_request_frame(&request, request_id, *send_sequence)
+                .map(|frame| (vec![frame], ExpectedInitiatorResponse::Resource(expected)))
+        }
+        InitiatorRequest::RemoteBuffer(request) => {
+            let expected = match &request {
+                RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
+                RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
+                RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
+                RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
+                RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
+                RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+            };
+            build_remote_buffer_request_frames(&request, request_id, *send_sequence)
+                .map(|frames| (frames, ExpectedInitiatorResponse::RemoteBuffer(expected)))
+        }
+        InitiatorRequest::Compute(request) => {
+            let expected = match &request {
+                ComputeRequest::Submit(_) => ExpectedInitiatorResponse::ComputeSubmit,
+                ComputeRequest::Status(request) => {
+                    ExpectedInitiatorResponse::ComputeStatus(request.job_id)
+                }
+                ComputeRequest::Cancel(request) => {
+                    ExpectedInitiatorResponse::ComputeCancel(request.job_id)
+                }
+            };
+            build_compute_request_frame(&request, request_id, *send_sequence)
+                .map(|frame| (vec![frame], expected))
+        }
+    };
+    let (frames, expected) = match built {
+        Ok(built) => built,
+        Err(_) => {
+            let _ = response.send(Err(InitiatorClientError::InvalidRequest));
+            return Ok(None);
+        }
+    };
+    let frame_count = u64::try_from(frames.len()).map_err(|_| RuntimeError::Pbmux)?;
+    for frame in frames {
+        if let Err(error) = send_frame(stream, transport, &frame) {
+            let _ = response.send(Err(InitiatorClientError::UnknownAfterDisconnect));
+            return Err(error);
+        }
+    }
+    *send_sequence = send_sequence
+        .checked_add(frame_count)
+        .ok_or(RuntimeError::Pbmux)?;
+    Ok(Some(InitiatorOutstanding {
+        request_id,
+        expected,
+        response: Some(response),
+    }))
+}
+
+fn take_initiator_outstanding(
+    outstanding: &mut Option<InitiatorOutstanding>,
+    request_id: u64,
+) -> Result<InitiatorOutstanding, RuntimeError> {
+    if outstanding
+        .as_ref()
+        .is_none_or(|request| request.request_id != request_id)
+    {
+        return Err(RuntimeError::Pbmux);
+    }
+    outstanding.take().ok_or(RuntimeError::Pbmux)
+}
+
+fn remote_response_kind(message_type: u16) -> Result<RemoteBufferResponseKind, RuntimeError> {
+    match message_type {
+        2 => Ok(RemoteBufferResponseKind::AllocAck),
+        3 => Ok(RemoteBufferResponseKind::Put),
+        5 => Ok(RemoteBufferResponseKind::Data),
+        6 => Ok(RemoteBufferResponseKind::Free),
+        7 => Ok(RemoteBufferResponseKind::Stat),
+        8 => Ok(RemoteBufferResponseKind::Touch),
+        _ => Err(RuntimeError::Pbmux),
+    }
+}
+
+fn handle_remote_buffer_with_transport_liveness(
+    stream: &TcpStream,
+    command_handler: &dyn AuthenticatedCommandHandler,
+    verified_peer: &VerifiedPeerSession<'_>,
+    request_id: u64,
+    request: RemoteBufferRequest,
+    last_authenticated_traffic: Instant,
+) -> Result<(RemoteBufferResponseKind, BufferResult), RuntimeError> {
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    std::thread::scope(|scope| {
+        scope.spawn(move || {
+            let _ = sender.send(command_handler.handle_authenticated_remote_buffer(
+                verified_peer,
+                request_id,
+                request,
+            ));
+        });
+        loop {
+            if transport_loss_observed(stream)
+                || last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT
+            {
+                verified_peer.revoke();
+                let _ = stream.shutdown(Shutdown::Both);
+                return Err(RuntimeError::SessionLost);
+            }
+            match receiver.try_recv() {
+                Ok(result) => return result.map_err(handler_runtime_error),
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(SESSION_POLL);
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    return Err(RuntimeError::CommandHandlerFailed);
+                }
+            }
+        }
+    })
 }
 
 fn handle_compute_with_transport_liveness(
@@ -1593,7 +1964,7 @@ fn control_frame(message_type: ControlType, request_id: u64, sequence: u64) -> F
     }
 }
 
-fn random_nonzero_u64() -> Result<u64, RuntimeError> {
+pub(crate) fn random_nonzero_u64() -> Result<u64, RuntimeError> {
     for _ in 0..4 {
         let mut bytes = [0_u8; 8];
         File::open("/dev/urandom")
@@ -2310,5 +2681,44 @@ mod tests {
         assert_eq!(verified_session_mints(&observed_android), 0);
         assert_eq!(verified_peer_id(&observed_host), None);
         assert_eq!(verified_peer_id(&observed_android), None);
+    }
+
+    #[test]
+    fn initiator_correlates_compute_status_result_and_cancel_to_exact_job_id() {
+        let expected_job_id = [0x31; 16];
+        let wrong_job_id = [0x32; 16];
+        let status = |job_id| pb_pbmux::ComputeStatus {
+            state: pb_pbmux::ComputeJobState::Running,
+            reason: pb_pbmux::ComputeReason::None,
+            lease_id: [0x41; 16],
+            worker_incarnation_id: [0x42; 16],
+            job: Some(pb_pbmux::ComputeJobRef {
+                job_id,
+                provider_id: pb_pbmux::BLAKE3_PROVIDER_ID,
+                provider_version: pb_pbmux::BLAKE3_PROVIDER_VERSION,
+            }),
+        };
+        let result = |job_id| pb_pbmux::ComputeResult {
+            state: pb_pbmux::ComputeJobState::Completed,
+            reason: pb_pbmux::ComputeReason::None,
+            lease_id: [0x41; 16],
+            worker_incarnation_id: [0x42; 16],
+            job: Some(pb_pbmux::ComputeJobRef {
+                job_id,
+                provider_id: pb_pbmux::BLAKE3_PROVIDER_ID,
+                provider_version: pb_pbmux::BLAKE3_PROVIDER_VERSION,
+            }),
+            digest: Some([0x51; 32]),
+        };
+
+        let expected = ExpectedInitiatorResponse::ComputeStatus(expected_job_id);
+        assert!(expected.accepts_compute(&ComputeResponse::Status(status(expected_job_id))));
+        assert!(expected.accepts_compute(&ComputeResponse::Result(result(expected_job_id))));
+        assert!(!expected.accepts_compute(&ComputeResponse::Status(status(wrong_job_id))));
+        assert!(!expected.accepts_compute(&ComputeResponse::Result(result(wrong_job_id))));
+
+        let expected = ExpectedInitiatorResponse::ComputeCancel(expected_job_id);
+        assert!(expected.accepts_compute(&ComputeResponse::Cancel(status(expected_job_id))));
+        assert!(!expected.accepts_compute(&ComputeResponse::Cancel(status(wrong_job_id))));
     }
 }

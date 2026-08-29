@@ -1,10 +1,11 @@
 //! PhoneBoost host startup and local connection admission authority.
 //!
-//! This pass implements `HOST_STARTUP`, LC-001 through LC-004 admission, and
-//! bounded LC-005/LC-006 byte framing, and LC-007 request validation. C12
-//! dispatch is absent.
+//! This crate owns host startup/local admission plus the authenticated
+//! plug-and-boost controller and its logical BLAKE3 operation API.
 
 mod admission;
+mod auto_use;
+mod discovery;
 mod local_api;
 mod remote_secure;
 mod startup;
@@ -17,6 +18,11 @@ pub use admission::{
     LocalMethodClass, LocalValidationCause, LocalValidationError, LocalValidationErrorKind,
     LocalValidationScope, ValidatedLocalRequest,
 };
+pub use auto_use::{
+    AutoUseController, AutoUseError, AutoUseReason, AutoUseState, Blake3Execution, DeviceDiscovery,
+    DiscoveryError, ExecutionSource, FixedDeviceDiscovery, NodeStatus,
+};
+pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE_TYPE};
 pub use local_api::{
     A4_DEFERRED_HANDLER, LocalApiRequestEvent, LocalHandlerDomain, serve_local_client,
 };

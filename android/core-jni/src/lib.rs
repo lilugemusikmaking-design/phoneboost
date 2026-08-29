@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::ffi::c_void;
-use std::net::TcpStream;
+use std::net::{Shutdown, TcpStream};
 use std::os::fd::{FromRawFd, OwnedFd};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -43,6 +44,72 @@ fn worker_slot() -> &'static Mutex<Option<WorkerCore>> {
 fn secure_slot() -> &'static Mutex<Option<Arc<SecureRuntime>>> {
     static SECURE: OnceLock<Mutex<Option<Arc<SecureRuntime>>>> = OnceLock::new();
     SECURE.get_or_init(|| Mutex::new(None))
+}
+
+struct SecureTransportSessions {
+    accepting: bool,
+    next_token: u64,
+    sockets: HashMap<u64, TcpStream>,
+}
+
+fn secure_transport_sessions() -> &'static Mutex<SecureTransportSessions> {
+    static SESSIONS: OnceLock<Mutex<SecureTransportSessions>> = OnceLock::new();
+    SESSIONS.get_or_init(|| {
+        Mutex::new(SecureTransportSessions {
+            accepting: false,
+            next_token: 0,
+            sockets: HashMap::new(),
+        })
+    })
+}
+
+struct SecureTransportRegistration {
+    token: u64,
+}
+
+impl Drop for SecureTransportRegistration {
+    fn drop(&mut self) {
+        if let Ok(mut sessions) = secure_transport_sessions().lock() {
+            sessions.sockets.remove(&self.token);
+        }
+    }
+}
+
+fn start_secure_transport() -> JInt {
+    let Ok(mut sessions) = secure_transport_sessions().lock() else {
+        return ERROR_INTERNAL;
+    };
+    if !sessions.sockets.is_empty() {
+        return ERROR_SECURE_SESSION;
+    }
+    sessions.accepting = true;
+    RESULT_OK
+}
+
+fn stop_secure_transport() -> JInt {
+    let Ok(mut sessions) = secure_transport_sessions().lock() else {
+        return ERROR_INTERNAL;
+    };
+    sessions.accepting = false;
+    for socket in sessions.sockets.values() {
+        let _ = socket.shutdown(Shutdown::Both);
+    }
+    RESULT_OK
+}
+
+fn register_secure_transport(stream: &TcpStream) -> Result<SecureTransportRegistration, JInt> {
+    let cancellation = stream.try_clone().map_err(|_| ERROR_SECURE_SESSION)?;
+    let mut sessions = secure_transport_sessions()
+        .lock()
+        .map_err(|_| ERROR_INTERNAL)?;
+    if !sessions.accepting {
+        let _ = cancellation.shutdown(Shutdown::Both);
+        return Err(ERROR_SECURE_SESSION);
+    }
+    sessions.next_token = sessions.next_token.saturating_add(1).max(1);
+    let token = sessions.next_token;
+    sessions.sockets.insert(token, cancellation);
+    Ok(SecureTransportRegistration { token })
 }
 
 struct AndroidAuthenticatedCommandHandler;
@@ -250,6 +317,10 @@ fn accept_secure_fd(socket_fd: JInt, prefix_first: JInt, prefix_second: JInt) ->
     // SAFETY: Kotlin transfers a detached socket fd and relinquishes ownership.
     let socket = unsafe { OwnedFd::from_raw_fd(socket_fd) };
     let mut stream = TcpStream::from(socket);
+    let _registration = match register_secure_transport(&stream) {
+        Ok(registration) => registration,
+        Err(error) => return error,
+    };
     let prefix = if prefix_first < 0 {
         Vec::new()
     } else {
@@ -572,6 +643,22 @@ pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureInitialize(
 }
 
 #[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureTransportStart(
+    _env: JniEnv,
+    _object: JObject,
+) -> JInt {
+    int_boundary(start_secure_transport)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureTransportStop(
+    _env: JniEnv,
+    _object: JObject,
+) -> JInt {
+    int_boundary(stop_secure_transport)
+}
+
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_org_phoneboost_app_WorkerNative_secureAcceptFd(
     _env: JniEnv,
     _object: JObject,
@@ -633,7 +720,7 @@ mod tests {
     use std::net::{Shutdown, TcpListener};
     use std::os::unix::fs::DirBuilderExt;
     use std::path::PathBuf;
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
     use curve25519_dalek::montgomery::MontgomeryPoint;
     use pb_pbmux::{
@@ -661,6 +748,7 @@ mod tests {
     struct ResilienceHandler {
         session_ids: Mutex<Vec<VerifiedSessionId>>,
         fail_after_remote_request: AtomicU64,
+        ended_sessions: AtomicU64,
     }
 
     impl ResilienceHandler {
@@ -668,6 +756,7 @@ mod tests {
             Self {
                 session_ids: Mutex::new(Vec::new()),
                 fail_after_remote_request: AtomicU64::new(0),
+                ended_sessions: AtomicU64::new(0),
             }
         }
 
@@ -764,6 +853,188 @@ mod tests {
             &self,
             verified_session: &VerifiedPeerSession<'_>,
         ) -> Result<(), AuthenticatedCommandHandlerError> {
+            self.ended_sessions.fetch_add(1, Ordering::AcqRel);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.authenticated_session_ended(verified_session)
+        }
+    }
+
+    struct StopDuringComputeHandler {
+        entered: AtomicBool,
+        release: AtomicBool,
+        observed_live_after_stop: AtomicBool,
+        ended_sessions: AtomicU64,
+    }
+
+    struct StopDuringRemoteBufferHandler {
+        entered: AtomicBool,
+        observed_revoked: AtomicBool,
+        handler_completed: AtomicBool,
+        ended_sessions: AtomicU64,
+    }
+
+    impl StopDuringRemoteBufferHandler {
+        fn new() -> Self {
+            Self {
+                entered: AtomicBool::new(false),
+                observed_revoked: AtomicBool::new(false),
+                handler_completed: AtomicBool::new(false),
+                ended_sessions: AtomicU64::new(0),
+            }
+        }
+    }
+
+    impl AuthenticatedCommandHandler for StopDuringRemoteBufferHandler {
+        fn handle_authenticated_command(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            command: CommandPayload,
+        ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_command(
+                verified_session,
+                request_id,
+                command,
+            )
+        }
+
+        fn handle_authenticated_resource(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ResourceRequest,
+        ) -> Result<(ResourceResponseKind, ResourceResult), AuthenticatedCommandHandlerError>
+        {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_resource(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn handle_authenticated_remote_buffer(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: RemoteBufferRequest,
+        ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError>
+        {
+            if matches!(&request, RemoteBufferRequest::Put { .. }) {
+                self.entered.store(true, Ordering::Release);
+                while verified_session.is_live() {
+                    std::thread::yield_now();
+                }
+                self.observed_revoked.store(true, Ordering::Release);
+            }
+            let result = ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_remote_buffer(
+                verified_session,
+                request_id,
+                request,
+            );
+            if matches!(&result, Ok((_, response)) if response.completed) {
+                self.handler_completed.store(true, Ordering::Release);
+            }
+            result
+        }
+
+        fn handle_authenticated_compute(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ComputeRequest,
+        ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_compute(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn authenticated_session_ended(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+        ) -> Result<(), AuthenticatedCommandHandlerError> {
+            self.ended_sessions.fetch_add(1, Ordering::AcqRel);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.authenticated_session_ended(verified_session)
+        }
+    }
+
+    impl StopDuringComputeHandler {
+        fn new() -> Self {
+            Self {
+                entered: AtomicBool::new(false),
+                release: AtomicBool::new(false),
+                observed_live_after_stop: AtomicBool::new(true),
+                ended_sessions: AtomicU64::new(0),
+            }
+        }
+    }
+
+    impl AuthenticatedCommandHandler for StopDuringComputeHandler {
+        fn handle_authenticated_command(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            command: CommandPayload,
+        ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_command(
+                verified_session,
+                request_id,
+                command,
+            )
+        }
+
+        fn handle_authenticated_resource(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ResourceRequest,
+        ) -> Result<(ResourceResponseKind, ResourceResult), AuthenticatedCommandHandlerError>
+        {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_resource(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn handle_authenticated_remote_buffer(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: RemoteBufferRequest,
+        ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError>
+        {
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_remote_buffer(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn handle_authenticated_compute(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+            request_id: u64,
+            request: ComputeRequest,
+        ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
+            self.entered.store(true, Ordering::Release);
+            while !self.release.load(Ordering::Acquire) {
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+            self.observed_live_after_stop
+                .store(verified_session.is_live(), Ordering::Release);
+            ANDROID_AUTHENTICATED_COMMAND_HANDLER.handle_authenticated_compute(
+                verified_session,
+                request_id,
+                request,
+            )
+        }
+
+        fn authenticated_session_ended(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+        ) -> Result<(), AuthenticatedCommandHandlerError> {
+            self.ended_sessions.fetch_add(1, Ordering::AcqRel);
             ANDROID_AUTHENTICATED_COMMAND_HANDLER.authenticated_session_ended(verified_session)
         }
     }
@@ -1013,11 +1284,32 @@ mod tests {
         ProductionClient,
         std::thread::JoinHandle<pb_runtime_secure::RuntimeError>,
     ) {
+        connect_production_android_session_inner(
+            runtime,
+            host_private,
+            android_public,
+            handler,
+            false,
+        )
+    }
+
+    fn connect_production_android_session_inner(
+        runtime: Arc<SecureRuntime>,
+        host_private: &[u8; 32],
+        android_public: &[u8; 32],
+        handler: Arc<dyn AuthenticatedCommandHandler>,
+        cancellation_registered: bool,
+    ) -> (
+        ProductionClient,
+        std::thread::JoinHandle<pb_runtime_secure::RuntimeError>,
+    ) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let endpoint = listener.local_addr().unwrap();
         let responder_runtime = Arc::clone(&runtime);
         let responder = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
+            let _registration =
+                cancellation_registered.then(|| register_secure_transport(&stream).unwrap());
             run_responder_session_with_handler(
                 &mut stream,
                 &responder_runtime,
@@ -1442,6 +1734,250 @@ mod tests {
     fn reset() {
         let mut slot = worker_slot().lock().expect("worker test lock");
         *slot = None;
+        drop(slot);
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+    }
+
+    #[test]
+    fn secure_transport_stop_unblocks_pre_auth_transfer_and_is_idempotent() {
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_secure_transport(), RESULT_OK);
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let (registered, observed) = std::sync::mpsc::sync_channel(1);
+        let session = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _registration = register_secure_transport(&stream).unwrap();
+            registered.send(()).unwrap();
+            let mut byte = [0_u8; 1];
+            stream.read_exact(&mut byte)
+        });
+        let _client = TcpStream::connect(endpoint).unwrap();
+        observed.recv().unwrap();
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        assert!(session.join().unwrap().is_err());
+        assert!(
+            secure_transport_sessions()
+                .lock()
+                .unwrap()
+                .sockets
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn secure_transport_stop_revokes_authenticated_session_and_blocks_later_requests() {
+        let _test_guard = test_lock();
+        reset();
+        start_healthy_worker();
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        let handler = Arc::new(ResilienceHandler::new());
+        assert_eq!(start_secure_transport(), RESULT_OK);
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut client, responder) = connect_production_android_session_inner(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+            true,
+        );
+        let _lease = acquire_or_renew(&mut client, 91_000, None);
+        assert!(runtime.snapshot().authenticated);
+
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        assert_eq!(
+            responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        assert!(!runtime.snapshot().authenticated);
+        assert_eq!(handler.ended_sessions.load(Ordering::Acquire), 1);
+        let mut byte = [0_u8; 1];
+        assert!(matches!(client.stream.read(&mut byte), Ok(0) | Err(_)));
+        assert!(
+            secure_transport_sessions()
+                .lock()
+                .unwrap()
+                .sockets
+                .is_empty()
+        );
+        assert_eq!(start_secure_transport(), RESULT_OK);
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        reset();
+    }
+
+    #[test]
+    fn secure_transport_stop_during_c09_c10_revokes_before_blocked_compute_resumes() {
+        let _test_guard = test_lock();
+        start_healthy_worker();
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        let handler = Arc::new(StopDuringComputeHandler::new());
+        assert_eq!(start_secure_transport(), RESULT_OK);
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut client, responder) = connect_production_android_session_inner(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+            true,
+        );
+        let lease = acquire_or_renew(&mut client, 92_000, None);
+        let mut next_resource_request_id = 92_100;
+        let input = b"cancel during native operation";
+        let (buffer_id, _) =
+            create_ready_buffer(&mut client, &mut next_resource_request_id, lease, input);
+        let scratch = reserve_and_commit(
+            &mut client,
+            &mut next_resource_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::NativeOpScratchBytes,
+            1024,
+        );
+        client.send_compute_without_waiting(
+            92_200,
+            ComputeRequest::Submit(ComputeSubmit {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id: scratch,
+                provider_id: 1,
+                provider_version: 1,
+                input_kind: 1,
+                buffer_id,
+                input_offset: 0,
+                input_length: input.len() as u64,
+            }),
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !handler.entered.load(Ordering::Acquire) {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "compute did not enter"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        handler.release.store(true, Ordering::Release);
+        assert_eq!(
+            responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        assert!(!handler.observed_live_after_stop.load(Ordering::Acquire));
+        assert_eq!(handler.ended_sessions.load(Ordering::Acquire), 1);
+        assert_eq!(
+            client.receive_compute_delivery(),
+            HostDelivery::UnknownAfterDisconnect
+        );
+        assert!(!runtime.snapshot().authenticated);
+        assert!(
+            secure_transport_sessions()
+                .lock()
+                .unwrap()
+                .sockets
+                .is_empty()
+        );
+        reset();
+    }
+
+    #[test]
+    fn secure_transport_stop_during_active_c09_revokes_and_cleans_before_join() {
+        let _test_guard = test_lock();
+        start_healthy_worker();
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        let handler = Arc::new(StopDuringRemoteBufferHandler::new());
+        assert_eq!(start_secure_transport(), RESULT_OK);
+        let trait_handler: Arc<dyn AuthenticatedCommandHandler> = handler.clone();
+        let (mut client, responder) = connect_production_android_session_inner(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            trait_handler,
+            true,
+        );
+        let lease = acquire_or_renew(&mut client, 93_000, None);
+        let mut next_request_id = 93_100;
+        let data = b"stop while c09 put is inside the authenticated handler";
+        let reservation_id = reserve_and_commit(
+            &mut client,
+            &mut next_request_id,
+            lease.lease_id,
+            lease.incarnation,
+            WireResourceClass::RemoteBufferBytes,
+            data.len() as u64,
+        );
+        let alloc = client.remote(
+            next_request_id,
+            RemoteBufferRequest::Alloc {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id,
+                size_bytes: data.len() as u64,
+                allocation_flags: AllocationFlags::NONE,
+            },
+        );
+        next_request_id += 1;
+        assert!(alloc.completed);
+        let buffer_id = alloc.buffer.expect("allocated buffer").buffer_id;
+        client.send_remote_without_waiting(
+            next_request_id,
+            RemoteBufferRequest::Put {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                buffer_id,
+                offset: 0,
+                data: data.to_vec(),
+            },
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !handler.entered.load(Ordering::Acquire) {
+            assert!(std::time::Instant::now() < deadline, "C09 did not enter");
+            std::thread::yield_now();
+        }
+
+        assert_eq!(stop_secure_transport(), RESULT_OK);
+        assert_eq!(
+            responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        assert!(handler.observed_revoked.load(Ordering::Acquire));
+        assert_eq!(handler.ended_sessions.load(Ordering::Acquire), 1);
+        assert_eq!(
+            client.receive_remote_delivery(),
+            HostDelivery::UnknownAfterDisconnect
+        );
+        assert!(!runtime.snapshot().authenticated);
+        assert!(
+            secure_transport_sessions()
+                .lock()
+                .unwrap()
+                .sockets
+                .is_empty()
+        );
+
+        // The handler may finish its already-admitted local mutation after
+        // revocation, but no success can cross the closed transport and the
+        // session-ended hook must terminalize the buffer and release its hold.
+        assert!(handler.handler_completed.load(Ordering::Acquire));
+        let replacement_handler: Arc<dyn AuthenticatedCommandHandler> =
+            Arc::new(AndroidAuthenticatedCommandHandler);
+        let (mut replacement, replacement_responder) = connect_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            replacement_handler,
+        );
+        let replacement_lease = acquire_or_renew(&mut replacement, 93_200, Some(lease));
+        assert_full_budget_available(&mut replacement, &mut next_request_id, replacement_lease);
+        let _ = replacement.stream.shutdown(Shutdown::Both);
+        assert_eq!(
+            replacement_responder.join().unwrap(),
+            pb_runtime_secure::RuntimeError::SessionLost
+        );
+        reset();
     }
 
     #[test]

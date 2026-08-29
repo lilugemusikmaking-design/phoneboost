@@ -23,6 +23,7 @@ private const val LOG_TAG = "PhoneBoostC04"
 private const val MAX_ACTIVE_STREAMS = 2
 private const val PENDING_STREAMS = 2
 private const val PROBE_MAX_BYTES = 64
+private const val SESSION_JOIN_TIMEOUT_MS = 5_000L
 private val DEBUG_D0_PROBE = "PHONEBOOST-C04-D0".toByteArray(Charsets.US_ASCII)
 
 enum class LanPermissionState {
@@ -34,6 +35,7 @@ enum class LanPermissionState {
 enum class AndroidTransportState {
     UNAVAILABLE,
     LAN_UNAVAILABLE,
+    DISCOVERY_UNAVAILABLE,
     LISTENING,
     CONNECTED_UNAUTHENTICATED,
     LOST,
@@ -99,6 +101,12 @@ class LocalIpTransport(private val context: Context) {
     private var server: ServerSocket? = null
 
     @Volatile
+    private var dnsSdRegistration: PhoneBoostDnsSdRegistration? = null
+
+    @Volatile
+    private var terminalState = AndroidTransportState.UNAVAILABLE
+
+    @Volatile
     private var current = AndroidTransportSnapshot.unavailable(context.lanPermissionState())
 
     fun snapshot(): AndroidTransportSnapshot = current.copy(
@@ -107,8 +115,15 @@ class LocalIpTransport(private val context: Context) {
         transmittedBytes = transmittedBytes.get(),
     )
 
+    @Synchronized
     fun start(): Boolean {
         if (running) return true
+        threads.removeAll { thread -> !thread.isAlive }
+        if (threads.isNotEmpty()) {
+            current = current.copy(state = AndroidTransportState.LOST, port = null)
+            Log.e(LOG_TAG, "C04_LISTENER state=LOST reason=PRIOR_SESSION_NOT_CONVERGED")
+            return false
+        }
         val permission = context.lanPermissionState()
         if (permission == LanPermissionState.DENIED) {
             current = AndroidTransportSnapshot.unavailable(permission)
@@ -129,8 +144,15 @@ class LocalIpTransport(private val context: Context) {
             Log.e(LOG_TAG, "C04_LISTENER state=UNAVAILABLE reason=BIND_FAILED")
             return false
         }
+        if (WorkerNative.secureTransportStart() != WorkerNative.RESULT_OK) {
+            closeServerQuietly(listener)
+            current = AndroidTransportSnapshot.unavailable(permission)
+            Log.e(LOG_TAG, "C04_LISTENER state=UNAVAILABLE reason=SECURE_TRANSPORT_START_FAILED")
+            return false
+        }
         server = listener
         running = true
+        terminalState = AndroidTransportState.UNAVAILABLE
         val address = localLanIpv4()
         current = AndroidTransportSnapshot(
             state = AndroidTransportState.LISTENING,
@@ -147,6 +169,17 @@ class LocalIpTransport(private val context: Context) {
                 "port=${listener.localPort} permission=$permission max_active=$MAX_ACTIVE_STREAMS " +
                 "trust=NONE",
         )
+        val registration = PhoneBoostDnsSdRegistration(context) {
+            discoveryRegistrationFailed()
+        }
+        dnsSdRegistration = registration
+        if (!registration.start(listener.localPort)) {
+            stopInternal(
+                AndroidTransportState.DISCOVERY_UNAVAILABLE,
+                "DISCOVERY_BACKEND_UNAVAILABLE",
+            )
+            return false
+        }
         repeat(MAX_ACTIVE_STREAMS) { index ->
             startThread("phoneboost-c04-stream-$index") { workerLoop() }
         }
@@ -154,14 +187,27 @@ class LocalIpTransport(private val context: Context) {
         return true
     }
 
+    @Synchronized
     fun stop() {
-        if (!running && server == null) return
+        stopInternal(AndroidTransportState.UNAVAILABLE, "FGS_STOP")
+    }
+
+    @Synchronized
+    private fun discoveryRegistrationFailed() {
+        if (!running) return
+        stopInternal(
+            AndroidTransportState.DISCOVERY_UNAVAILABLE,
+            "DISCOVERY_BACKEND_UNAVAILABLE",
+        )
+    }
+
+    private fun stopInternal(state: AndroidTransportState, reason: String) {
+        terminalState = state
         running = false
-        try {
-            server?.close()
-        } catch (_: Exception) {
-            // The listener is already unusable, which is the required stop state.
-        }
+        dnsSdRegistration?.stop()
+        dnsSdRegistration = null
+        val nativeStop = WorkerNative.secureTransportStop()
+        closeServerQuietly(server)
         server = null
         while (true) {
             val queued = pending.poll() ?: break
@@ -172,16 +218,32 @@ class LocalIpTransport(private val context: Context) {
             active.clear()
         }
         threads.forEach(Thread::interrupt)
+        val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(SESSION_JOIN_TIMEOUT_MS)
         threads.forEach { thread ->
             try {
-                thread.join(250)
+                val remainingNanos = deadlineNanos - System.nanoTime()
+                if (remainingNanos > 0) {
+                    val millis = TimeUnit.NANOSECONDS.toMillis(remainingNanos)
+                    val nanos = (remainingNanos - TimeUnit.MILLISECONDS.toNanos(millis)).toInt()
+                    thread.join(millis, nanos)
+                }
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
         }
-        threads.clear()
-        current = current.copy(state = AndroidTransportState.UNAVAILABLE, port = null)
-        Log.i(LOG_TAG, "C04_LISTENER state=UNAVAILABLE reason=FGS_STOP trust=NONE")
+        threads.removeAll { thread -> !thread.isAlive }
+        if (nativeStop != WorkerNative.RESULT_OK || threads.isNotEmpty()) {
+            terminalState = AndroidTransportState.LOST
+            current = current.copy(state = AndroidTransportState.LOST, port = null)
+            Log.e(
+                LOG_TAG,
+                "C04_LISTENER state=LOST reason=NATIVE_SESSION_SHUTDOWN_NOT_CONVERGED " +
+                    "threads=${threads.size} native_result=$nativeStop trust=NONE",
+            )
+            return
+        }
+        current = current.copy(state = state, port = null)
+        Log.i(LOG_TAG, "C04_LISTENER state=$state reason=$reason trust=NONE")
     }
 
     private fun startThread(name: String, action: () -> Unit) {
@@ -234,7 +296,7 @@ class LocalIpTransport(private val context: Context) {
                 closeQuietly(socket)
                 current = current.copy(
                     state = when {
-                        !running -> AndroidTransportState.LOST
+                        !running -> terminalState
                         active.isNotEmpty() -> AndroidTransportState.CONNECTED_UNAUTHENTICATED
                         else -> AndroidTransportState.LISTENING
                     },
@@ -297,6 +359,14 @@ class LocalIpTransport(private val context: Context) {
             socket.close()
         } catch (_: Exception) {
             // Closing is best effort; the stream is never reused.
+        }
+    }
+
+    private fun closeServerQuietly(listener: ServerSocket?) {
+        try {
+            listener?.close()
+        } catch (_: Exception) {
+            // The listener is already unusable, which is the required stop state.
         }
     }
 }

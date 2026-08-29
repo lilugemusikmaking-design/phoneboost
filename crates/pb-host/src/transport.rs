@@ -40,15 +40,41 @@ pub enum TransportState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TransportCandidate {
     endpoint: SocketAddr,
+    interface_index: Option<u32>,
+    discovered_at: Instant,
 }
 
 impl TransportCandidate {
-    pub const fn manual(endpoint: SocketAddr) -> Self {
-        Self { endpoint }
+    pub fn manual(endpoint: SocketAddr) -> Self {
+        Self {
+            endpoint,
+            interface_index: None,
+            discovered_at: Instant::now(),
+        }
+    }
+
+    pub const fn discovered(
+        endpoint: SocketAddr,
+        interface_index: Option<u32>,
+        discovered_at: Instant,
+    ) -> Self {
+        Self {
+            endpoint,
+            interface_index,
+            discovered_at,
+        }
     }
 
     pub const fn endpoint(self) -> SocketAddr {
         self.endpoint
+    }
+
+    pub const fn interface_index(self) -> Option<u32> {
+        self.interface_index
+    }
+
+    pub const fn discovered_at(self) -> Instant {
+        self.discovered_at
     }
 
     pub const fn grants_trust(self) -> bool {

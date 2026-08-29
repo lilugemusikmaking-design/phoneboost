@@ -48,6 +48,8 @@ object WorkerNative {
     external fun workerHealthField(field: Int, nowMs: Long): Long
     external fun workerAuthorityState(field: Int): Int
     external fun secureInitialize(directoryFd: Int): Int
+    external fun secureTransportStart(): Int
+    external fun secureTransportStop(): Int
     external fun secureAcceptFd(
         socketFd: Int,
         prefixFirst: Int,
