@@ -75,6 +75,23 @@ pub enum AutoUseState {
     Unavailable,
 }
 
+impl AutoUseState {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "OFF",
+            Self::Discovering => "DISCOVERING",
+            Self::Connecting => "CONNECTING",
+            Self::Authenticating => "AUTHENTICATING",
+            Self::AcquiringAuthority => "ACQUIRING_AUTHORITY",
+            Self::CheckingReadiness => "CHECKING_READINESS",
+            Self::Available => "AVAILABLE",
+            Self::Degraded => "DEGRADED",
+            Self::Reconnecting => "RECONNECTING",
+            Self::Unavailable => "UNAVAILABLE",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AutoUseReason {
     Off,
@@ -90,11 +107,39 @@ pub enum AutoUseReason {
     Ready,
 }
 
+impl AutoUseReason {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "OFF",
+            Self::NoDevice => "NO_DEVICE",
+            Self::NotPaired => "NOT_PAIRED",
+            Self::AuthFailed => "AUTH_FAILED",
+            Self::LeaseUnavailable => "LEASE_UNAVAILABLE",
+            Self::WorkerUnhealthy => "WORKER_UNHEALTHY",
+            Self::ResourceRefused => "RESOURCE_REFUSED",
+            Self::TransportLost => "TRANSPORT_LOST",
+            Self::Reconnecting => "RECONNECTING",
+            Self::DiscoveryBackendUnavailable => "DISCOVERY_BACKEND_UNAVAILABLE",
+            Self::Ready => "READY",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExecutionSource {
     RemoteSuccess,
     LocalFallbackAfterRemoteUnavailable,
     LocalFallbackAfterAmbiguousRemote,
+}
+
+impl ExecutionSource {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::RemoteSuccess => "REMOTE_SUCCESS",
+            Self::LocalFallbackAfterRemoteUnavailable => "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE",
+            Self::LocalFallbackAfterAmbiguousRemote => "LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2052,6 +2097,79 @@ mod tests {
     use super::*;
 
     static TEST_DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+    #[test]
+    fn public_auto_use_string_mappings_are_exhaustive_and_exact() {
+        assert_eq!(
+            [
+                AutoUseState::Off,
+                AutoUseState::Discovering,
+                AutoUseState::Connecting,
+                AutoUseState::Authenticating,
+                AutoUseState::AcquiringAuthority,
+                AutoUseState::CheckingReadiness,
+                AutoUseState::Available,
+                AutoUseState::Degraded,
+                AutoUseState::Reconnecting,
+                AutoUseState::Unavailable,
+            ]
+            .map(AutoUseState::as_str),
+            [
+                "OFF",
+                "DISCOVERING",
+                "CONNECTING",
+                "AUTHENTICATING",
+                "ACQUIRING_AUTHORITY",
+                "CHECKING_READINESS",
+                "AVAILABLE",
+                "DEGRADED",
+                "RECONNECTING",
+                "UNAVAILABLE",
+            ]
+        );
+        assert_eq!(
+            [
+                AutoUseReason::Off,
+                AutoUseReason::NoDevice,
+                AutoUseReason::NotPaired,
+                AutoUseReason::AuthFailed,
+                AutoUseReason::LeaseUnavailable,
+                AutoUseReason::WorkerUnhealthy,
+                AutoUseReason::ResourceRefused,
+                AutoUseReason::TransportLost,
+                AutoUseReason::Reconnecting,
+                AutoUseReason::DiscoveryBackendUnavailable,
+                AutoUseReason::Ready,
+            ]
+            .map(AutoUseReason::as_str),
+            [
+                "OFF",
+                "NO_DEVICE",
+                "NOT_PAIRED",
+                "AUTH_FAILED",
+                "LEASE_UNAVAILABLE",
+                "WORKER_UNHEALTHY",
+                "RESOURCE_REFUSED",
+                "TRANSPORT_LOST",
+                "RECONNECTING",
+                "DISCOVERY_BACKEND_UNAVAILABLE",
+                "READY",
+            ]
+        );
+        assert_eq!(
+            [
+                ExecutionSource::RemoteSuccess,
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+                ExecutionSource::LocalFallbackAfterAmbiguousRemote,
+            ]
+            .map(ExecutionSource::as_str),
+            [
+                "REMOTE_SUCCESS",
+                "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE",
+                "LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE",
+            ]
+        );
+    }
 
     struct TestDirectory(PathBuf);
 

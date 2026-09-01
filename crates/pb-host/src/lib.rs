@@ -24,7 +24,8 @@ pub use auto_use::{
 };
 pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE_TYPE};
 pub use local_api::{
-    A4_DEFERRED_HANDLER, LocalApiRequestEvent, LocalHandlerDomain, serve_local_client,
+    A4_DEFERRED_HANDLER, LocalApiContext, LocalApiRequestEvent, LocalHandlerDomain,
+    serve_local_client,
 };
 pub use remote_secure::{
     initialize_remote_secure, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,

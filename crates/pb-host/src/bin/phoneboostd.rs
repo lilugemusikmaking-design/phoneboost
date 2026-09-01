@@ -6,8 +6,9 @@ use std::time::{Duration, Instant};
 
 use pb_host::{
     AutoUseController, AutoUseReason, AutoUseState, AvahiDiscovery, FixedDeviceDiscovery,
-    ReadyRuntime, StartupOutcome, TransportCandidate, TransportManager, TransportState,
-    host_startup, initialize_remote_secure, os_jitter_sample, retry_delay_ms, serve_local_client,
+    LocalApiContext, ReadyRuntime, StartupOutcome, TransportCandidate, TransportManager,
+    TransportState, host_startup, initialize_remote_secure, os_jitter_sample, retry_delay_ms,
+    serve_local_client,
 };
 use pb_runtime_secure::{SecureRuntime, run_initiator_session};
 
@@ -54,7 +55,7 @@ fn main() {
                         Arc::new(AvahiDiscovery::new())
                     };
                 let controller = match AutoUseController::new(runtime, discovery) {
-                    Ok(controller) => controller,
+                    Ok(controller) => Arc::new(controller),
                     Err(_) => {
                         eprintln!("AUTO_USE state=UNAVAILABLE reason=THREAD_START_FAILED");
                         std::process::exit(1);
@@ -81,8 +82,8 @@ fn main() {
                 println!("READY");
                 let _flush_result = io::stdout().flush();
             }
-            let _auto_use = auto_use;
-            run_local_loop(ready);
+            let local_api_context = Arc::new(LocalApiContext::new(auto_use));
+            run_local_loop(ready, local_api_context);
         }
         Ok(outcome @ StartupOutcome::AlreadyRunning(_)) => {
             println!("{}", outcome.as_str());
@@ -223,13 +224,14 @@ fn run_manual_transport(endpoint: SocketAddr, runtime: Arc<SecureRuntime>) -> ! 
     }
 }
 
-fn run_local_loop(ready: ReadyRuntime) -> ! {
+fn run_local_loop(ready: ReadyRuntime, context: Arc<LocalApiContext>) -> ! {
     loop {
         match ready.accept_local_client() {
             Ok(client) => {
+                let context = Arc::clone(&context);
                 let _worker = std::thread::Builder::new()
                     .name("phoneboost-local-client".to_owned())
-                    .spawn(move || serve_local_client(client));
+                    .spawn(move || serve_local_client(client, context));
             }
             Err(_) => std::thread::yield_now(),
         }
