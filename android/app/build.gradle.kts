@@ -36,3 +36,18 @@ android {
     }
 }
 
+tasks.register<JavaExec>("testControllerLeaseStateName") {
+    group = "verification"
+    description = "Runs the deterministic controller lease UI mapping test."
+    dependsOn("compileDebugUnitTestKotlin")
+    mainClass.set("org.phoneboost.app.ControllerLeaseStateNameTest")
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes",
+        ),
+        configurations.named("debugUnitTestRuntimeClasspath"),
+    )
+}

@@ -163,7 +163,7 @@ class MainActivity : Activity() {
             appendLine("Health scheduler: ACTIVE (2s)")
             appendLine("Health samples: ${health.samples.coerceAtLeast(0)}")
             appendLine("Health safety band: ${safetyName(health.safety)}")
-            appendLine("Controller lease: ${if (WorkerNative.workerAuthorityState(0) == 0) "NONE" else "ERROR"}")
+            appendLine("Controller lease: ${controllerLeaseStateName(WorkerNative.workerAuthorityState(0))}")
             appendLine("ResourceGuard: ${if (WorkerNative.workerAuthorityState(1) == 1) "ACTIVE" else "ERROR"}")
             appendLine("Remote control: INACTIVE_FOR_REMOTE_CONTROL")
             appendLine("Transport permission: ${transport.permission}")
