@@ -1,0 +1,12 @@
+{
+  "fixture_schema": "phoneboost.pairing.v1",
+  "local_confirmed": false,
+  "peer_confirmed": true,
+  "persist_commit": false,
+  "state": "PEER_CONFIRMED",
+  "state_changed": true,
+  "timeline": [
+    "SAS_PENDING",
+    "PAIR_CONFIRM_RECEIVED"
+  ]
+}

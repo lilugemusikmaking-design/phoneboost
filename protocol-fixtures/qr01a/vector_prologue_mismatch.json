@@ -1,0 +1,11 @@
+{
+  "changed_byte_index": 0,
+  "expected": "no successful XX / no SAS",
+  "fixture_schema": "phoneboost.qr01a.prologue_mismatch.v1",
+  "initiator_prologue_hex": "50686f6e65426f6f73747c636f72653d317c70626d75783d317c726f6c653d6c696e75782d696e69746961746f722f616e64726f69642d726573706f6e646572",
+  "noise_pattern": "Noise_XX_25519_ChaChaPoly_SHA256",
+  "responder_prologue_hex": "51686f6e65426f6f73747c636f72653d317c70626d75783d317c726f6c653d6c696e75782d696e69746961746f722f616e64726f69642d726573706f6e646572",
+  "sas_emitted": false,
+  "successful_xx": false,
+  "xor_mask": 1
+}

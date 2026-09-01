@@ -1,0 +1,18 @@
+[package]
+name = "linux-replay"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+hex.workspace = true
+pb-fixture-gen = { path = "../../tools/pb-fixture-gen" }
+pb-pbmux = { path = "../../crates/pb-pbmux" }
+pb-secure = { path = "../../crates/pb-secure" }
+pb-types = { path = "../../crates/pb-types" }
+serde_json.workspace = true
+sha2.workspace = true
+snow.workspace = true
+

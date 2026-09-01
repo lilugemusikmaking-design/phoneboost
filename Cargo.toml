@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pb-types",
+    "crates/pb-pbmux",
+    "crates/pb-secure",
+    "crates/pb-runtime-secure",
+    "crates/pb-host",
+    "crates/pb-cli",
+    "crates/pb-worker-core",
+    "android/core-jni",
+    "tools/pb-fixture-gen",
+    "tools/pb-fixture-check",
+    "tests/linux-replay",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+blake3 = { version = "=1.8.6", default-features = false, features = ["std"] }
+hex = "0.4.3"
+rand_core = "0.6.4"
+serde_json = "1.0.149"
+sha2 = "0.10.9"
+snow = "=0.9.6"
+rustix = "=1.1.4"
+curve25519-dalek = "=4.1.3"
+dbus = { version = "=0.9.12", features = ["vendored"] }

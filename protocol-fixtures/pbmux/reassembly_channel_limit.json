@@ -1,0 +1,13 @@
+{
+  "accepted_full_messages": 2,
+  "bytes_after_rejected_start": 8388608,
+  "bytes_before_rejected_start": 8388608,
+  "channel_limit_bytes": 8388608,
+  "count_after_rejected_start": 16,
+  "count_before_rejected_start": 16,
+  "data_inflight_limit": 16,
+  "fixture_schema": "phoneboost.pbmux.reassembly_limit.v1",
+  "logical_message_max": 4194304,
+  "seventeenth_start_rejected": true,
+  "third_full_start_rejected": true
+}
