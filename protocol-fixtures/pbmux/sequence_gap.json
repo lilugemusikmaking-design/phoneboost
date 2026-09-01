@@ -1,8 +1,0 @@
-{
-  "action": "close_session",
-  "error_kind": "SequenceMismatch",
-  "error_scope": "SESSION",
-  "expected_sequence": 1,
-  "fixture_schema": "phoneboost.pbmux.sequence.v1",
-  "received_sequence": 2
-}

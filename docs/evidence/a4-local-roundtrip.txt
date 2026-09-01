@@ -1,9 +1,0 @@
-Terminal 1:
-$ phoneboostd --foreground
-READY
-
-Terminal 2:
-$ phoneboostctl status
-PhoneBoost: READY
-Local API: ACTIVE
-Android worker: NOT_CONFIGURED

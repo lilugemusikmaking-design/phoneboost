@@ -1,9 +1,0 @@
-{
-  "atomic_rename_and_directory_fsync_complete": true,
-  "false_loss_of_trust": false,
-  "fixture_schema": "phoneboost.pairing.recovery.v1",
-  "process_crashed": true,
-  "reconstructed_state": "PAIRED",
-  "restart_record": "COMMITTED",
-  "ui_success_displayed": false
-}

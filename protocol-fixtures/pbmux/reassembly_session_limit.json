@@ -1,8 +1,0 @@
-{
-  "accepted_full_messages": 4,
-  "bytes_after_rejected_start": 16777216,
-  "bytes_before_rejected_start": 16777216,
-  "fifth_full_start_rejected": true,
-  "fixture_schema": "phoneboost.pbmux.reassembly_limit.v1",
-  "session_limit_bytes": 16777216
-}
