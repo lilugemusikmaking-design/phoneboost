@@ -1,0 +1,98 @@
+PhoneBoost C07-C12 P0 remote compute closure physical evidence
+
+Evidence date
+- 2026-09-02
+
+Production baseline exercised
+- 290767a19b52fb0713d514641169a14b2a4148d5
+- Add P0 remote compute closure workflow
+
+Evidence provenance
+- Operator-observed physical execution of
+  scripts/prove_p0_remote_compute_closure_physical.sh
+- Real Android worker and production phoneboostd/phoneboostctl path
+- This record transcribes the operator-observed terminal states and verdicts.
+- This record is not a packet capture and does not independently prove the Noise IK
+  handshake bytes. The production implementation uses the locked Noise IK reconnect
+  path for the already-paired, durably committed peer exercised by this run.
+
+PHASE 1 — authenticated production remote compute
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Remote BLAKE3: AVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: REMOTE_SUCCESS
+Auto-use reason: READY
+
+C12_AUTO_USE_BLAKE3_PHYSICAL_PROOF PASS
+AUTHENTICATED_RECONNECT PASS
+C07_CONTROLLER_LEASE PASS
+RESOURCE_GUARD_READINESS PASS
+REMOTE_CLEANUP PASS
+
+PHASE 2 — Android Wi-Fi deliberately disconnected
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: NOT_CONFIGURED
+Auto-use: RECONNECTING
+Auto-use reason: RECONNECTING
+Remote BLAKE3: UNAVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE
+Auto-use reason: RECONNECTING
+
+DISCONNECT_SOURCE LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE
+NO_FALSE_REMOTE_SUCCESS PASS
+
+PHASE 3 — Android Wi-Fi restored and authenticated recovery completed
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Remote BLAKE3: AVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: REMOTE_SUCCESS
+Auto-use reason: READY
+
+C12_AUTO_USE_BLAKE3_PHYSICAL_PROOF PASS
+AUTHENTICATED_RECONNECT PASS
+C07_CONTROLLER_LEASE PASS
+RESOURCE_GUARD_READINESS PASS
+REMOTE_CLEANUP PASS
+
+Final verdict
+- P0_REMOTE_COMPUTE_CLOSURE PASS
+
+What this physical run proves
+- Production authenticated reconnect reached the real Android worker before the
+  first remote operation and again after deliberate Wi-Fi loss.
+- AVAILABLE / READY was observed with the production C07 controller authority and
+  ResourceGuard readiness invariants satisfied.
+- The canonical three-byte fixture traversed the production remote compute path and
+  returned the expected digest with REMOTE_SUCCESS.
+- Deliberate connectivity loss removed remote availability and produced the same
+  correct digest only through the explicit local fallback.
+- The disconnected phase never reported remote success.
+- Restored connectivity recovered authentication and produced a second
+  REMOTE_SUCCESS.
+
+Scope limits
+- No packet-level Noise IK handshake capture was produced by this workflow.
+- No unrelated provider, arbitrary input, throughput, capacity gain, browser UI, or
+  transparent RAM/swap/CPU pooling behavior is evidenced by this run.

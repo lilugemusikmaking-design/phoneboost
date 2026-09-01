@@ -2,8 +2,10 @@
 
 ## Release identity
 
-- Validation date: 2026-09-01
-- Audited production baseline: `162539c2ec3721f1aa45557900988e2a4291202f`
+- Validation date: 2026-09-02
+- Physical closure baseline: `290767a19b52fb0713d514641169a14b2a4148d5`
+  (`Add P0 remote compute closure workflow`)
+- Production path audited at: `162539c2ec3721f1aa45557900988e2a4291202f`
   (`Expose production auto-use BLAKE3`)
 - Toolchain: Rust 1.98.0, pinned by `rust-toolchain.toml`
 - Scope: non-production Linux x86-64 and Android ARM64 proof of concept
@@ -86,9 +88,10 @@ truth, and its `ResourceGuard` remains the final admission authority.
   isolation and forbidden-authority-export scans passed.
 - Android debug APK: offline `:app:assembleDebug` passed (36 Gradle tasks
   up-to-date).
-- Repository physical-device captures record earlier A5 worker, A6
-  lease/`ResourceGuard`, C04 transport, and C05/C06 secure-pairing runs under
-  `docs/evidence/`. Those files are evidence snapshots, not current live UI.
+- Repository physical-device captures record A5 worker, A6
+  lease/`ResourceGuard`, C04 transport, C05/C06 secure pairing, and the completed
+  C07-C12 P0 remote-compute closure under `docs/evidence/`. Those files are
+  evidence snapshots, not current live UI.
 
 ## Implemented components
 
@@ -104,7 +107,7 @@ truth, and its `ResourceGuard` remains the final admission authority.
   Android-local health sampling, controller-lease state machine, and
   single-writer `ResourceGuard` admission logic.
 
-## P0 closure audit and remaining physical proof
+## P0 remote-compute physical closure
 
 The read-only P0 trace at `162539c` found no missing production boundary from
 the CLI through C12, auto-use, authenticated PBMUX, Android JNI, C07, C08, C09,
@@ -112,26 +115,27 @@ C10, result correlation, or cleanup. The earlier roadmap statements for those
 boundaries are superseded by the production implementations and regression
 tests listed above.
 
-This is implementation evidence, not a claim that the complete path has been
-observed on the current physical phone. The following still require one
-recorded physical run:
+The bounded production workflow
+`scripts/prove_p0_remote_compute_closure_physical.sh` was subsequently completed
+against the real Android worker. The operator-observed record is
+`docs/evidence/c07-c12-p0-remote-compute-physical.txt`.
 
-- committed-peer reconnect reaches authenticated auto-use readiness on the
-  actual Android worker;
-- C07 lease and Android `ResourceGuard` admit the readiness and compute work;
-- `phoneboostctl compute blake3 c10-abc-v1` reports the expected digest with
-  `REMOTE_SUCCESS`;
-- disconnect removes readiness and yields an explicit local fallback, never a
-  false remote success;
-- restored connectivity reacquires authority and again reaches real remote
-  success.
+The run physically proved authenticated production reconnect, C07 controller
+authority and ResourceGuard readiness through the `AVAILABLE / READY` invariant,
+the expected BLAKE3 digest with `REMOTE_SUCCESS`, removal of remote availability
+after deliberate Android Wi-Fi loss, explicit
+`LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE` with
+`NO_FALSE_REMOTE_SUCCESS PASS`, authenticated recovery after Wi-Fi restoration,
+and a second `REMOTE_SUCCESS` with terminal cleanup.
 
-The bounded operator workflow is
-`scripts/prove_p0_remote_compute_closure_physical.sh`. It uses only the running
-production daemon and `phoneboostctl`; it does not use ADB, tunnels, manual
-endpoints, fake state, worker internals, or fabricated authority. A PASS from a
-future physical run may be recorded as physical evidence. The script has not
-been physically run by this documentation update.
+For the already-paired, durably committed peer, the implementation selects the
+locked Noise IK reconnect path. The physical observation proves the production
+authenticated reconnect behavior; it is not an independent packet-level capture
+of the Noise IK handshake bytes.
+
+No P0 physical blocker remains for the locked `c10-abc-v1` BLAKE3 closure
+profile. This evidence does not extend to arbitrary inputs, other providers,
+performance or capacity claims, or unrelated product surfaces.
 
 The browser control center and its live native bridge remain roadmap. No
 browser should report a device, authentication, lease, admissibility, provider

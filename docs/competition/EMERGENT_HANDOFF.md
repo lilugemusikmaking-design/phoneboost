@@ -76,10 +76,11 @@ visually distinct.
   full peer ID, PBMUX sequence, worker incarnation, and lease details behind a
   judge-facing details panel.
 - **Evidence:** current test totals, C07 fixture/oracle results, Android build
-  results, and links to checked-in evidence. Mark this entire view
-  `RECORDED EVIDENCE`.
-- **Roadmap:** production authorization seam, lease-command execution,
-  `RemoteBuffer`, compute providers, and any benchmark/capacity claims.
+  results, and links to checked-in evidence, including the operator-observed
+  C07-C12 P0 remote-compute closure. Mark this entire view `RECORDED EVIDENCE`.
+- **Roadmap:** the browser-to-native live runtime bridge, providers beyond the
+  locked BLAKE3 profile, arbitrary compute inputs, and any benchmark/capacity
+  claims.
 
 Prefer a serious, compact visual system: neutral surfaces, one restrained
 accent, readable state labels, and evidence-first details. Avoid sci-fi glow,
@@ -98,8 +99,9 @@ Installer polish is secondary to truthful state and evidence presentation.
   unredacted diagnostics.
 - Do not add accounts, payments, a cloud control plane, AI product features, or
   unrelated platform architecture for competition polish.
-- Do not claim the C05-to-C07 authorization bridge, lease mutation path,
-  `RemoteBuffer`, or compute providers are complete.
+- Do not generalize the recorded `c10-abc-v1` BLAKE3 physical proof to other
+  providers, arbitrary inputs, benchmark results, capacity gains, or a live
+  browser bridge.
 
 ## Judge-demo acceptance checks
 
