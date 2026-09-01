@@ -530,16 +530,16 @@ function Capabilities() {
         <CapabilityCard
           icon={Boxes}
           title="Remote capacity"
-          desc="Bounded, volatile storage held on the remote node only."
-          tone="roadmap"
-          statusLabel="Roadmap"
+          desc="RemoteBuffer: bounded, volatile remote object. Wire protocol locked; end-to-end path still gated."
+          tone="unavailable"
+          statusLabel="Wire-locked · e2e roadmap"
         />
         <CapabilityCard
           icon={Cpu}
           title="Remote compute"
-          desc="Explicit remote jobs, always worker-authoritative."
-          tone="roadmap"
-          statusLabel="Roadmap"
+          desc="Explicit worker-authoritative jobs, incl. auto-use BLAKE3. Wire locked; end-to-end gated."
+          tone="unavailable"
+          statusLabel="Wire-locked · e2e roadmap"
         />
         <CapabilityCard
           icon={FileCheck2}
@@ -978,8 +978,8 @@ export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch
             <div className="flex min-w-0 items-center gap-3">
               <Pill tone="evidence" testId="mode-badge">Recorded evidence</Pill>
               <span className="hidden truncate font-mono text-[10px] text-neutral-500 md:inline">
-                native <span className="text-neutral-300">{snapshot.release.native_baseline.slice(0, 12)}</span>
-                {" · "}toolchain <span className="text-neutral-300">{snapshot.release.toolchain}</span>
+                master <span className="text-neutral-300">{snapshot.release.head.slice(0, 10)}</span>
+                {" · "}baseline <span className="text-neutral-300">{snapshot.release.native_baseline.slice(0, 10)}</span>
                 {" · "}validated <span className="text-neutral-300">{snapshot.release.validation_date}</span>
               </span>
             </div>

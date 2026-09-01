@@ -12,8 +12,9 @@ runtime state. It exposes:
   - GET /api/release           -> Release identity (repo anchor)
 
 Values come from files checked in at /app/backend/phoneboost_data, sourced
-from the PhoneBoost repository release-candidate tag competition-rc-20260824
-(HEAD 51accc1a). No number here is invented.
+from the PhoneBoost repository. Current GitHub master HEAD 162539c
+("Expose production auto-use BLAKE3"). The Rust workspace test totals were
+validated at baseline 052471ed on 2026-08-24. No number here is invented.
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ DATA_DIR = ROOT_DIR / "phoneboost_data"
 EVIDENCE_DIR = DATA_DIR / "evidence"
 FIXTURES_DIR = DATA_DIR / "fixtures"
 
-app = FastAPI(title="PhoneBoost Control Center", version="rc-20260824")
+app = FastAPI(title="PhoneBoost Control Center", version="master-162539c")
 api = APIRouter(prefix="/api")
 
 # ---------------------------------------------------------------------------
@@ -43,7 +44,7 @@ api = APIRouter(prefix="/api")
 RELEASE = {
     "product": "PhoneBoost",
     "tag": "competition-rc-20260824",
-    "head": "51accc1a8fed188f2254f085004504735368b539",
+    "head": "162539c2ec3721f1aa45557900988e2a4291202f",
     "native_baseline": "052471ed3cdbbe66a6c1f7b255f1d70580d91fcc",
     "toolchain": "Rust 1.98.0",
     "validation_date": "2026-08-24",
@@ -70,6 +71,40 @@ C07_CHECKER = {
     "heartbeat_vectors": 8,
     "oracle_mutations": 5,
     "expected_verdicts": "all matched",
+}
+
+# From docs/protocol/c08_c09_wire_v0_1_vectors_001/README.md (LOCKED 001)
+C08_C09_CHECKER = {
+    "final_verdict": "C08/C09 wire vectors LOCKED — independent oracle PASS",
+    "c08_vectors": 12,
+    "c09_vectors": 16,
+    "total_vectors": 28,
+    "includes": "4 MiB fragmented PUT reassembled from 69 PBMUX plaintext frames",
+    "checker": "scripts/check_c08_c09_wire_addendum_001.py regenerates every byte without importing PhoneBoost crates",
+    "verdict_classes": ["PASS", "REJECT", "REQUEST_ID_CONFLICT"],
+    "scope": "RemoteBuffer reservation + storage frames (host↔worker). Wire layout only; not an end-to-end product path.",
+}
+
+# From docs/protocol/c10_wire_v0_1_vectors_001/README.md (LOCKED 001)
+C10_CHECKER = {
+    "final_verdict": "C10 compute wire vectors LOCKED — independent oracle PASS",
+    "total_vectors": 17,
+    "checker": "scripts/check_c10_wire_addendum_001.py — Python stdlib only; regenerates and parses every byte",
+    "verdict_classes": [
+        "PASS", "REJECT", "UNSUPPORTED_PROVIDER", "REQUEST_ID_CONFLICT",
+        "REPLAY", "RESERVATION_INVALID", "NON_RESURRECTED",
+    ],
+    "scope": "SUBMIT/STATUS/RESULT/CANCEL compute frames incl. BLAKE3(abc) result. Wire layout only; not an end-to-end product path.",
+}
+
+# From docs/protocol/PHONEBOOST_C12_AUTO_USE_BLAKE3_PROFILE_V0_1_LOCKED_20260901.md
+C12_AUTOUSE = {
+    "profile": "C12 Auto-Use BLAKE3 Profile V0.1 — LOCKED 2026-09-01",
+    "path": "Local C12 compute.submit (synchronous terminal request/response)",
+    "operation": "pb.native.blake3/1",
+    "fixture": "c10-abc-v1",
+    "status": "IMPLEMENTED · locked profile · no checked-in physical run",
+    "note": "Exposes the existing AutoUseController::execute_blake3 path over the local authenticated C12 API. Adds no transport, trust authority, worker provider, or test endpoint.",
 }
 
 ANDROID_BUILD = {
@@ -118,26 +153,27 @@ ROADMAP = {
         "Linux phoneboostd user-mode daemon + private 0600 Unix control socket",
         "Local peer-credential admission + bounded C12 request framing",
         "system.status endpoint via phoneboostctl",
-        "Local-IP Linux↔Android transport (physical: PASS)",
+        "Local-IP Linux↔Android transport (physical: PASS) + hardened resilience/reconnect",
         "Noise XX pairing + QR-01A SAS + PBMUX CONTROL/8 PAIR_CONFIRM + atomic commit",
         "Noise IK reconnect against pinned static peer key",
         "PBMUX authenticated framing, sequencing, quotas, fragmentation, fail-closed dispatch",
-        "C07 COMMAND / COMMAND_ACK / METRICS/1 HEARTBEAT codecs + oracle checker",
-        "Canonical 256-bit peer IDs (SHA-256 of static public key)",
-        "Android foreground worker + Rust/JNI panic boundary + worker incarnation",
-        "Android-local health sampling (memory / thermal / battery / power)",
+        "Verified peer/session identity preserved across the authenticated runtime",
+        "Authenticated C07 COMMAND / COMMAND_ACK / METRICS/1 HEARTBEAT frames reach + validated by runtime",
+        "C08/C09 RemoteBuffer wire protocol LOCKED — 28 golden vectors + independent oracle",
+        "C10 compute wire protocol LOCKED — 17 golden vectors + independent oracle",
+        "Production RemoteBuffer and remote BLAKE3 modules implemented",
+        "Plug-and-Boost auto-use controller + local C12 compute.submit BLAKE3 exposure (locked profile)",
         "ControllerLeaseManager + single-writer ResourceGuard admission logic",
     ],
     "next": [
-        "C05→C07 production authorization seam (no-cycle bridge design + review)",
-        "Apply authenticated C07 commands to ControllerLeaseManager + ResourceGuard",
-        "Publish authenticated-session → controller-lease authority path",
+        "Define + review the no-cycle C05→C07 authorization seam (intentionally closed today)",
+        "Apply authenticated C07 commands to lease mutation (currently validated, not mutating state)",
+        "Bridge authenticated Noise-session authority to ControllerLeaseManager + ResourceGuard",
     ],
     "future": [
-        "RemoteBuffer storage + operations (bounded, volatile, remote-only)",
-        "Native compute providers (explicit remote jobs, worker-authoritative)",
-        "End-to-end capacity/compute product paths + benchmark evidence",
-        "Native browser bridge for a live Control Center over local socket",
+        "End-to-end RemoteBuffer + compute product paths over a live authenticated session",
+        "Physical end-to-end proof: live lease mutation, RemoteBuffer, remote BLAKE3, full Plug-and-Boost",
+        "Native browser bridge for a live Control Center over the local socket",
     ],
 }
 
@@ -179,6 +215,33 @@ EVIDENCE_CARDS = [
         "kind": "protocol-oracle",
         "source": "scripts/check_c07_wire_addendum_002.py",
         "detail_key": "c07",
+    },
+    {
+        "id": "c08-c09-checker",
+        "title": "C08/C09 RemoteBuffer wire vectors",
+        "summary": "28 golden vectors LOCKED (12 C08 + 16 C09) · includes 4 MiB fragmented PUT (69 frames) · independent oracle PASS",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "protocol-oracle",
+        "source": "scripts/check_c08_c09_wire_addendum_001.py",
+        "detail_key": "c08_c09",
+    },
+    {
+        "id": "c10-checker",
+        "title": "C10 compute wire vectors",
+        "summary": "17 golden vectors LOCKED · SUBMIT/STATUS/RESULT/CANCEL + replay/stale/reservation oracles · independent checker PASS",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "protocol-oracle",
+        "source": "scripts/check_c10_wire_addendum_001.py",
+        "detail_key": "c10",
+    },
+    {
+        "id": "c12-auto-use-blake3",
+        "title": "C12 auto-use BLAKE3 profile",
+        "summary": "Locked 2026-09-01 · synchronous local compute.submit exposes production auto-use BLAKE3 (pb.native.blake3/1)",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "protocol-lock",
+        "source": "docs/protocol/PHONEBOOST_C12_AUTO_USE_BLAKE3_PROFILE_V0_1_LOCKED_20260901.md",
+        "detail_key": "c12",
     },
     {
         "id": "android-arm64-build",
@@ -249,6 +312,9 @@ EVIDENCE_DETAILS: dict[str, Any] = {
     "workspace": TEST_TOTALS,
     "crates": TEST_TOTALS["crates"],
     "c07": C07_CHECKER,
+    "c08_c09": C08_C09_CHECKER,
+    "c10": C10_CHECKER,
+    "c12": C12_AUTOUSE,
     "android_build": {
         "arm64_production_core": ANDROID_BUILD["arm64_production_core"],
         "fixture_isolation": ANDROID_BUILD["fixture_isolation"],
@@ -315,9 +381,9 @@ def _snapshot_recorded() -> dict[str, Any]:
         "remote_capability": {
             "admitted_capacity": {"value": "None", "state": "NO_LEASE"},
             "reserved": {"value": "None", "state": "NO_RESERVATION"},
-            "active_remote_buffer": {"value": "None", "state": "ROADMAP"},
-            "active_remote_job": {"value": "None", "state": "ROADMAP"},
-            "note": "RemoteBuffer and compute providers are ROADMAP items; identity or authentication does not create capacity.",
+            "active_remote_buffer": {"value": "Module implemented · wire LOCKED · not end-to-end", "state": "ROADMAP"},
+            "active_remote_job": {"value": "Compute + BLAKE3 implemented · wire LOCKED · not end-to-end", "state": "ROADMAP"},
+            "note": "RemoteBuffer (C08/C09) and compute (C10) wire protocols are LOCKED with recorded golden-vector evidence and their modules are implemented, but the authenticated-session → controller-lease authorization seam is intentionally closed, so no end-to-end capacity or compute path runs yet. Identity or authentication does not create capacity.",
         },
         "controller": {
             "lease": {"value": "None", "state": "NO_LEASE"},

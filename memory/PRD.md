@@ -46,6 +46,28 @@ fact must carry provenance LIVE / RECORDED EVIDENCE / ROADMAP; no silent fallbac
 - Frontend: 15/15 UI expectations verified end-to-end on public preview URL.
 - No fabricated LIVE data was observed anywhere.
 
+## Truth/status/evidence refresh — 2026-06 (to GitHub master 162539c, verified)
+- Refreshed the presentation layer to reflect current PhoneBoost master
+  `162539c` ("Expose production auto-use BLAKE3") WITHOUT importing the native
+  Rust/Android source tree into this workspace.
+- Reviewed origin/master read-only (log 3f6f943..162539c): verified peer/session
+  identity, authenticated C07 controller authority wiring, C08/C09 + C10 wire
+  protocol locks, production RemoteBuffer + remote BLAKE3 modules, hardened
+  transport resilience, Plug-and-Boost auto-use, Android lease-status fix.
+- Truth model held strictly. Physical evidence set UNCHANGED (a4/a5/a6/c04/
+  c05-c06). Per README@HEAD, C07 frames validate but do NOT mutate lease state;
+  C05→C07 authorization seam is intentionally closed; RemoteBuffer/compute
+  end-to-end remain ROADMAP and are NOT physically proven.
+- backend/server.py: RELEASE.head → 162539c (baseline 052471ed kept as the
+  validated test baseline); added evidence cards c08-c09-checker (28 vectors),
+  c10-checker (17 vectors), c12-auto-use-blake3 (locked profile); updated
+  ROADMAP (working/next/future) and remote_capability note.
+- frontend/src/pages/Dashboard.js: banner relabeled master/baseline/validated;
+  Remote capacity + Remote compute capability chips now "Wire-locked · e2e
+  roadmap" (not Available/green). Evidence grid now 13 cards.
+- Verified: production `yarn build` PASS; frontend E2E 100% (11/11), see
+  /app/test_reports/iteration_4.json. NOT pushed, NOT republished.
+
 ## Final product-first pass — 2026-06 (presentation-only, verified)
 - Reframed as a simple product: hero now "Your phone becomes a secure compute node
   for your Linux PC. / Plug it in. PhoneBoost puts it to work." Technical clarifier

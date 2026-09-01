@@ -1,0 +1,21 @@
+{
+  "summary": "Frontend-only truth/evidence refresh verified on public URL. All 11 requested behaviors pass. Provenance banner shows master 162539c2ec, baseline 052471ed, validated 2026-08-24; sidebar release anchor also shows head 162539c and competition-rc-20260824. Old 51accc1a is absent. Hero renders 'PhoneBoost' + tagline with chips 'Live · unavailable' and 'Recorded evidence · available'. Enable panel shows 'Off · Unavailable' with control aria-disabled=true and non-mutating. At-a-glance cards render honest values (Offline in browser / No phone connected / All gates unavailable / Evidence available). Topology visually separates Linux PC (LOCAL, not_running_in_hosted_browser), Secure link (NOT_ESTABLISHED, Noise XX + PBMUX fail-closed), and Android phone (REMOTE NODE, NOT_CONNECTED / trusted worker). Capability chips: Remote capacity + Remote compute now read 'Wire-locked · e2e roadmap' (not Available/green), Secure link 'Implemented · not established', Recorded evidence 'Available'. Evidence grid renders exactly 13 cards including the three new ones: evidence-card-c08-c09-checker, evidence-card-c10-checker, evidence-card-c12-auto-use-blake3. Drawers verified: C10 drawer shows title 'C10 compute wire vectors', final_verdict includes 'LOCKED — independent oracle PASS' and total_vectors 17; C08/C09 drawer shows 28 total vectors; C12 drawer shows locked profile with operation pb.native.blake3/1; evidence-drawer-close closes drawer. Five gates (paired, authenticated, controller_lease, resource_admissible, provider_ready) render independently all UNAVAILABLE, no <progress>/role=progressbar element. Roadmap-working contains 'C08/C09 RemoteBuffer wire protocol LOCKED — 28 golden vectors' and 'C10 compute wire protocol LOCKED — 17 golden vectors' and Plug-and-Boost items; roadmap-next contains 'no-cycle C05→C07 authorization seam' and 'lease mutation (currently validated, not mutating state)'; roadmap-future contains 'Physical end-to-end proof: live lease mutation, RemoteBuffer, remote BLAKE3, full Plug-and-Boost' and 'Native browser bridge'. Side-nav has all 5 items and nav-evidence updates URL hash to #evidence. No console/page errors observed.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Dashboard.js remains a single large file — recommend splitting into per-section components for maintainability.",
+    "EvidenceDrawer axios GET still lacks a user-facing error state (silent empty drawer on failure). Not user-visible here because all fetches succeeded."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped per request)", "frontend": "100%" },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Truth/evidence refresh at HEAD 162539c is intact end-to-end in UI. If further changes touch backend endpoints (/api/system/snapshot, /api/evidence/index, /api/evidence/{id}, /api/roadmap), re-run drawer + banner + evidence-grid assertions. Note: 'live-curtain-reason' testid was not found via query_selector on this run; the enable-why-toggle button is present and clickable — main agent should confirm testid on the collapsible content matches the requirement spec if strict testid coverage is required. All truth-model invariants (no fabricated LIVE/connected/ready, 5 independent gates, LOCAL vs REMOTE separation, Remote capacity/compute NOT shown as live/available) verified."
+}
