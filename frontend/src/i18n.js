@@ -201,6 +201,31 @@ export const COPY = {
   },
 };
 
+export const LANGUAGE_STORAGE_KEY = "phoneboost.language";
+
+export function normalizeLanguage(language) {
+  return language === "en" ? "en" : "fr";
+}
+
+export function loadLanguagePreference(windowObject) {
+  try {
+    return normalizeLanguage(windowObject?.localStorage?.getItem(LANGUAGE_STORAGE_KEY));
+  } catch {
+    return "fr";
+  }
+}
+
+export function storeLanguagePreference(windowObject, language) {
+  const normalized = normalizeLanguage(language);
+  try {
+    // Persist presentation preference only. Bridge capabilities remain memory-only.
+    windowObject?.localStorage?.setItem(LANGUAGE_STORAGE_KEY, normalized);
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+  return normalized;
+}
+
 export const GATE_COPY = {
   paired: { fr: "Appairé", en: "Paired" },
   authenticated: { fr: "Authentifié", en: "Authenticated" },

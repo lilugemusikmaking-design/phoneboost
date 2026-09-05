@@ -1,4 +1,13 @@
-import { COPY, GATE_COPY, copyFor, stateLabel } from "./i18n";
+import {
+  COPY,
+  GATE_COPY,
+  LANGUAGE_STORAGE_KEY,
+  copyFor,
+  loadLanguagePreference,
+  normalizeLanguage,
+  stateLabel,
+  storeLanguagePreference,
+} from "./i18n";
 
 test("French is the safe default and English is selectable", () => {
   expect(copyFor()).toBe(COPY.fr);
@@ -27,4 +36,55 @@ test("five gate identifiers retain their canonical mapping", () => {
   expect(GATE_COPY.controller_lease.en).toBe("Controller lease");
   expect(GATE_COPY.resource_admissible.fr).toBe("Dernière preuve d’admission/readiness");
   expect(GATE_COPY.provider_ready.en).toBe("Provider ready");
+});
+
+test("language preference accepts only the two supported values", () => {
+  expect(normalizeLanguage("fr")).toBe("fr");
+  expect(normalizeLanguage("en")).toBe("en");
+  expect(normalizeLanguage("EN")).toBe("fr");
+  expect(normalizeLanguage("de")).toBe("fr");
+  expect(normalizeLanguage(null)).toBe("fr");
+});
+
+test("language preference reloads from its dedicated storage key", () => {
+  const getItem = jest.fn(() => "en");
+
+  expect(loadLanguagePreference({ localStorage: { getItem } })).toBe("en");
+  expect(getItem).toHaveBeenCalledWith(LANGUAGE_STORAGE_KEY);
+});
+
+test("invalid or unavailable language storage fails safely to French", () => {
+  expect(
+    loadLanguagePreference({ localStorage: { getItem: () => "unsupported" } })
+  ).toBe("fr");
+  expect(
+    loadLanguagePreference({
+      get localStorage() {
+        throw new Error("storage unavailable");
+      },
+    })
+  ).toBe("fr");
+  expect(loadLanguagePreference(null)).toBe("fr");
+});
+
+test("only a normalized language preference is persisted", () => {
+  const setItem = jest.fn();
+  const storageWindow = { localStorage: { setItem } };
+
+  expect(storeLanguagePreference(storageWindow, "en")).toBe("en");
+  expect(setItem).toHaveBeenLastCalledWith(LANGUAGE_STORAGE_KEY, "en");
+  expect(storeLanguagePreference(storageWindow, "unsupported")).toBe("fr");
+  expect(setItem).toHaveBeenLastCalledWith(LANGUAGE_STORAGE_KEY, "fr");
+});
+
+test("language persistence remains usable when writes are blocked", () => {
+  const blocked = {
+    localStorage: {
+      setItem() {
+        throw new Error("storage unavailable");
+      },
+    },
+  };
+
+  expect(storeLanguagePreference(blocked, "en")).toBe("en");
 });

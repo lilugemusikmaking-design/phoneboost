@@ -18,6 +18,7 @@ import {
   RECORDED_ROADMAP,
   RECORDED_SNAPSHOT,
 } from "@/recordedData";
+import { loadLanguagePreference, storeLanguagePreference } from "@/i18n";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const RECORDED_API = BACKEND_URL ? `${BACKEND_URL}/api` : null;
@@ -27,7 +28,9 @@ const COMPUTE_ACTION_UNAVAILABLE = "COMPUTE_ACTION_UNAVAILABLE";
 
 export default function App() {
   const recordedApiBase = BRIDGE_CAPABILITY ? null : RECORDED_API;
-  const [language, setLanguage] = useState("fr");
+  const [language, setLanguage] = useState(() =>
+    loadLanguagePreference(typeof window === "undefined" ? null : window)
+  );
 
   const [snapshot, setSnapshot] = useState(RECORDED_SNAPSHOT);
   const [live, setLive] = useState(HOSTED_LIVE_UNAVAILABLE);
@@ -108,6 +111,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    storeLanguagePreference(typeof window === "undefined" ? null : window, language);
   }, [language]);
 
   const runCompute = useCallback(async () => {
