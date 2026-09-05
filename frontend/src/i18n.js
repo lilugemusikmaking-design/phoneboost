@@ -19,9 +19,9 @@ export const STRINGS = {
     hero_headline_a: "Prolongez la durée de vie",
     hero_headline_b: "de votre parc informatique.",
     hero_para:
-      "Utilisez intelligemment les ressources de smartphones Android déjà disponibles pour prolonger l’utilité de vos PC Linux — sans prétendre transformer le téléphone en RAM ou CPU local.",
+      "Utilisez intelligemment les ressources de smartphones Android déjà disponibles pour prolonger la durée de vie utile de vos PC Linux — sans prétendre transformer le téléphone en RAM ou CPU local.",
     hero_support:
-      "Moins de matériel remplacé prématurément. Plus de valeur tirée du parc existant.",
+      "Réduire les remplacements prématurés. Tirer davantage de valeur du parc existant.",
     cta_primary: "Découvrir PhoneBoost",
     cta_secondary: "Voir comment ça fonctionne",
     chip_live: "Live · indisponible",
