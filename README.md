@@ -55,14 +55,21 @@ object, not Linux-addressable memory.
   `docs/evidence/p1-live-bridge-local-browser-physical.txt`: fresh LIVE state,
   remote success, deliberate disconnect with explicit browser fallback and no
   false remote success, then authenticated recovery and a second remote success.
+- The bounded P2 passive-observability proof is recorded at
+  `docs/evidence/p2-passive-gate-observability-physical.txt`: one production
+  transition exposed the exact fresh discovery, controller-lease, and latest
+  admission/readiness observations together; later passive reads showed the
+  discovery and proof expiring fail-closed.
 
 ### Implemented and physically browser-proven
 
 - The P1 browser bridge and frontend truth model have automated coverage and a
   bounded operator-observed browser proof against the production daemon and
-  Android worker. Discovery, controller lease, and `ResourceGuard` remain
-  `UNKNOWN` in the live browser view because C12 does not expose those gates
-  independently.
+  Android worker. P2 adds passive, expiring observations for discovery, the C07
+  controller lease, and the latest C08/C09/C10 admission/readiness proof; it does
+  not infer them from authenticated state or create remote work from status
+  reads. The P2 production transition and expiry behavior are physically
+  recorded without claiming a durable ResourceGuard grant.
 
 ### Roadmap
 

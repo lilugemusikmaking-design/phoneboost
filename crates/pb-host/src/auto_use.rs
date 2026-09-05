@@ -27,6 +27,12 @@ const RENEWAL_INTERVAL: Duration = Duration::from_secs(20);
 const FRESH_LIVENESS: Duration = Duration::from_secs(10);
 const COMPUTE_STATUS_POLL: Duration = Duration::from_millis(25);
 const SCRATCH_BYTES: u64 = 1_024;
+/// P2 is passive: this only bounds how long an already-observed discovery hint
+/// may be reported. It never schedules discovery.
+const DISCOVERY_OBSERVATION_MAX_AGE: Duration = Duration::from_secs(30);
+/// A readiness proof is request-specific, not durable ResourceGuard authority.
+/// This bounds the display of an already-completed production proof only.
+const ADMISSION_PROOF_MAX_AGE: Duration = Duration::from_secs(2);
 
 pub trait DeviceDiscovery: Send + Sync + 'static {
     fn start(&self) -> Result<(), DiscoveryError> {
@@ -235,6 +241,127 @@ struct LeaseContext {
     lease_id: [u8; 16],
     incarnation: [u8; 16],
     next_command_seq: u64,
+    /// Conservative local bound calculated before the C07 command is sent.
+    not_after: Instant,
+}
+
+/// Sanitized P2 observation. These strings are deliberately the entire public
+/// surface: no endpoint, peer identity, lease id, incarnation, TTL, or error
+/// diagnostics leave the controller.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GateObservation {
+    state: &'static str,
+    reason: &'static str,
+}
+
+impl GateObservation {
+    const fn new(state: &'static str, reason: &'static str) -> Self {
+        Self { state, reason }
+    }
+
+    pub const fn state(self) -> &'static str {
+        self.state
+    }
+
+    pub const fn reason(self) -> &'static str {
+        self.reason
+    }
+}
+
+/// Passive, fail-closed snapshot for C12 status consumers.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GateObservations {
+    discovery_observation: GateObservation,
+    controller_lease: GateObservation,
+    resource_guard_admission_proof: GateObservation,
+}
+
+/// Atomic local projection used by C12. Node status and P2 observations are
+/// captured under the same controller-data lock and evaluated at one instant.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ControllerObservabilitySnapshot {
+    node_status: NodeStatus,
+    gate_observations: GateObservations,
+}
+
+impl ControllerObservabilitySnapshot {
+    pub const fn node_status(self) -> NodeStatus {
+        self.node_status
+    }
+
+    pub const fn gate_observations(self) -> GateObservations {
+        self.gate_observations
+    }
+}
+
+impl GateObservations {
+    pub const fn not_observed() -> Self {
+        Self {
+            discovery_observation: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+            controller_lease: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+            resource_guard_admission_proof: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+        }
+    }
+
+    pub const fn discovery_observation(self) -> GateObservation {
+        self.discovery_observation
+    }
+
+    pub const fn controller_lease(self) -> GateObservation {
+        self.controller_lease
+    }
+
+    pub const fn resource_guard_admission_proof(self) -> GateObservation {
+        self.resource_guard_admission_proof
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TimedObservation {
+    observation: GateObservation,
+    observed_at: Instant,
+}
+
+#[derive(Clone, Copy)]
+struct LeaseObservation {
+    observation: GateObservation,
+    identity: Option<SessionIdentity>,
+    lease_id: Option<[u8; 16]>,
+    incarnation: Option<[u8; 16]>,
+    not_after: Option<Instant>,
+}
+
+impl LeaseObservation {
+    const fn not_observed() -> Self {
+        Self {
+            observation: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+            identity: None,
+            lease_id: None,
+            incarnation: None,
+            not_after: None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct AdmissionProofObservation {
+    observation: GateObservation,
+    observed_at: Option<Instant>,
+    identity: Option<SessionIdentity>,
+    lease_id: Option<[u8; 16]>,
+    incarnation: Option<[u8; 16]>,
+}
+
+impl AdmissionProofObservation {
+    const fn not_observed() -> Self {
+        Self {
+            observation: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+            observed_at: None,
+            identity: None,
+            lease_id: None,
+            incarnation: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -294,6 +421,10 @@ struct ControllerData {
     session_client: Option<InitiatorSessionClient>,
     session_identity: Option<SessionIdentity>,
     active: Option<ActiveContext>,
+    discovery_observation: Option<TimedObservation>,
+    discovery_unknown: GateObservation,
+    lease_observation: LeaseObservation,
+    admission_proof_observation: AdmissionProofObservation,
 }
 
 struct Shared {
@@ -337,6 +468,10 @@ impl AutoUseController {
                 session_client: None,
                 session_identity: None,
                 active: None,
+                discovery_observation: None,
+                discovery_unknown: GateObservation::new("UNKNOWN", "NOT_OBSERVED"),
+                lease_observation: LeaseObservation::not_observed(),
+                admission_proof_observation: AdmissionProofObservation::not_observed(),
             }),
             changed: Condvar::new(),
             operation: Mutex::new(()),
@@ -367,6 +502,7 @@ impl AutoUseController {
             None,
             None,
         );
+        clear_observations_for_epoch(&mut data);
         self.shared.changed.notify_all();
     }
 
@@ -383,6 +519,10 @@ impl AutoUseController {
         data.status = node_status(AutoUseState::Off, AutoUseReason::Off, None, None);
         data.active = None;
         data.session_identity = None;
+        data.discovery_observation = None;
+        data.discovery_unknown = GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED");
+        data.lease_observation = unavailable_lease("AUTO_USE_DISABLED");
+        data.admission_proof_observation = unknown_admission_proof("AUTO_USE_DISABLED");
         self.shared.changed.notify_all();
     }
 
@@ -392,6 +532,22 @@ impl AutoUseController {
 
     pub fn current_node_status(&self) -> NodeStatus {
         lock_data(&self.shared).status
+    }
+
+    /// Read-only P2 projection. It takes no network action and performs no
+    /// discovery, lease operation, readiness proof, compute, or cleanup.
+    pub fn current_gate_observations(&self) -> GateObservations {
+        gate_observations(&lock_data(&self.shared), Instant::now())
+    }
+
+    /// Read one coherent, passive observability snapshot for C12 consumers.
+    pub fn current_observability_snapshot(&self) -> ControllerObservabilitySnapshot {
+        let data = lock_data(&self.shared);
+        let now = Instant::now();
+        ControllerObservabilitySnapshot {
+            node_status: data.status,
+            gate_observations: gate_observations(&data, now),
+        }
     }
 
     pub fn execute_blake3(&self, input: &[u8]) -> Blake3Execution {
@@ -477,6 +633,188 @@ impl Drop for AutoUseController {
     }
 }
 
+fn unavailable_lease(reason: &'static str) -> LeaseObservation {
+    LeaseObservation {
+        observation: GateObservation::new("UNAVAILABLE", reason),
+        identity: None,
+        lease_id: None,
+        incarnation: None,
+        not_after: None,
+    }
+}
+
+fn unknown_admission_proof(reason: &'static str) -> AdmissionProofObservation {
+    AdmissionProofObservation {
+        observation: GateObservation::new("UNKNOWN", reason),
+        observed_at: None,
+        identity: None,
+        lease_id: None,
+        incarnation: None,
+    }
+}
+
+fn clear_observations_for_epoch(data: &mut ControllerData) {
+    data.discovery_observation = None;
+    data.discovery_unknown = GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED");
+    data.lease_observation = LeaseObservation::not_observed();
+    data.admission_proof_observation = AdmissionProofObservation::not_observed();
+}
+
+fn record_discovery_observation(
+    shared: &Shared,
+    expected_epoch: u64,
+    observation: GateObservation,
+) -> bool {
+    let mut data = lock_data(shared);
+    if data.enabled && data.epoch == expected_epoch {
+        data.discovery_observation = Some(TimedObservation {
+            observation,
+            observed_at: Instant::now(),
+        });
+        data.discovery_unknown = GateObservation::new("UNKNOWN", "NOT_OBSERVED");
+        shared.changed.notify_all();
+        true
+    } else {
+        false
+    }
+}
+
+fn record_lease_active(shared: &Shared, identity: SessionIdentity, lease: LeaseContext) {
+    let mut data = lock_data(shared);
+    if data.enabled && data.session_identity == Some(identity) {
+        data.lease_observation = LeaseObservation {
+            observation: GateObservation::new("ACTIVE", "C07_ACK_FRESH"),
+            identity: Some(identity),
+            lease_id: Some(lease.lease_id),
+            incarnation: Some(lease.incarnation),
+            not_after: Some(lease.not_after),
+        };
+        shared.changed.notify_all();
+    }
+}
+
+fn record_lease_unavailable(shared: &Shared, identity: SessionIdentity, reason: &'static str) {
+    let mut data = lock_data(shared);
+    if data.enabled && data.session_identity == Some(identity) {
+        data.lease_observation = unavailable_lease(reason);
+        shared.changed.notify_all();
+    }
+}
+
+fn record_admission_proof(
+    shared: &Shared,
+    identity: SessionIdentity,
+    lease: LeaseContext,
+    passed: bool,
+) {
+    let mut data = lock_data(shared);
+    if data.enabled && data.session_identity == Some(identity) {
+        data.admission_proof_observation = AdmissionProofObservation {
+            observation: GateObservation::new(
+                if passed { "FRESH_PASS" } else { "FAILED" },
+                if passed {
+                    "C08_C09_C10_PROBE_PASSED"
+                } else {
+                    "C08_C09_C10_PROBE_FAILED"
+                },
+            ),
+            observed_at: Some(Instant::now()),
+            identity: Some(identity),
+            lease_id: Some(lease.lease_id),
+            incarnation: Some(lease.incarnation),
+        };
+        shared.changed.notify_all();
+    }
+}
+
+fn gate_observations(data: &ControllerData, now: Instant) -> GateObservations {
+    if !data.enabled {
+        return GateObservations {
+            discovery_observation: GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED"),
+            controller_lease: GateObservation::new("UNAVAILABLE", "AUTO_USE_DISABLED"),
+            resource_guard_admission_proof: GateObservation::new("UNKNOWN", "AUTO_USE_DISABLED"),
+        };
+    }
+
+    let discovery_observation =
+        data.discovery_observation
+            .map_or(data.discovery_unknown, |entry| {
+                if now.saturating_duration_since(entry.observed_at) <= DISCOVERY_OBSERVATION_MAX_AGE
+                {
+                    entry.observation
+                } else {
+                    GateObservation::new("STALE", "OBSERVATION_EXPIRED")
+                }
+            });
+
+    let controller_lease = current_lease_observation(data, now);
+    let resource_guard_admission_proof = current_admission_proof_observation(data, now);
+    GateObservations {
+        discovery_observation,
+        controller_lease,
+        resource_guard_admission_proof,
+    }
+}
+
+fn session_is_current(data: &ControllerData, identity: SessionIdentity) -> bool {
+    data.session_identity == Some(identity)
+        && data
+            .session_client
+            .as_ref()
+            .is_some_and(|client| client.snapshot().authenticated)
+}
+
+fn current_lease_observation(data: &ControllerData, now: Instant) -> GateObservation {
+    let entry = data.lease_observation;
+    if entry.observation.state != "ACTIVE" {
+        return entry.observation;
+    }
+    let Some(identity) = entry.identity else {
+        return GateObservation::new("UNAVAILABLE", "SESSION_INVALIDATED");
+    };
+    if !session_is_current(data, identity) {
+        return GateObservation::new("UNAVAILABLE", "SESSION_INVALIDATED");
+    }
+    if entry.not_after.is_none_or(|not_after| now >= not_after) {
+        return GateObservation::new("EXPIRED", "ACK_TTL_ELAPSED");
+    }
+    entry.observation
+}
+
+fn current_admission_proof_observation(data: &ControllerData, now: Instant) -> GateObservation {
+    let entry = data.admission_proof_observation;
+    let Some(observed_at) = entry.observed_at else {
+        return entry.observation;
+    };
+    let Some(identity) = entry.identity else {
+        return GateObservation::new("UNKNOWN", "SESSION_INVALIDATED");
+    };
+    if data.session_identity != Some(identity) {
+        return GateObservation::new(
+            "UNKNOWN",
+            if data.session_identity.is_some() {
+                "IDENTITY_OR_INCARNATION_CHANGED"
+            } else {
+                "SESSION_INVALIDATED"
+            },
+        );
+    }
+    if !session_is_current(data, identity) {
+        return GateObservation::new("UNKNOWN", "SESSION_INVALIDATED");
+    }
+    let lease = data.lease_observation;
+    if current_lease_observation(data, now).state != "ACTIVE"
+        || lease.lease_id != entry.lease_id
+        || lease.incarnation != entry.incarnation
+    {
+        return GateObservation::new("UNKNOWN", "LEASE_INVALIDATED");
+    }
+    if now.saturating_duration_since(observed_at) > ADMISSION_PROOF_MAX_AGE {
+        return GateObservation::new("STALE", "PROOF_EXPIRED");
+    }
+    entry.observation
+}
+
 fn manager_loop(shared: Arc<Shared>) {
     loop {
         let Some(epoch) = wait_for_enable(&shared) else {
@@ -503,6 +841,11 @@ fn run_enabled(shared: &Shared, epoch: u64) {
     let mut authenticated_once = false;
     while is_current(shared, epoch) {
         if shared.discovery.start().is_err() {
+            record_discovery_observation(
+                shared,
+                epoch,
+                GateObservation::new("BACKEND_UNAVAILABLE", "DISCOVERY_BACKEND_UNAVAILABLE"),
+            );
             set_phase(
                 shared,
                 epoch,
@@ -547,8 +890,20 @@ fn run_enabled(shared: &Shared, epoch: u64) {
             None,
         );
         let candidate = match shared.discovery.discover() {
-            Ok(Some(candidate)) => candidate,
+            Ok(Some(candidate)) => {
+                record_discovery_observation(
+                    shared,
+                    epoch,
+                    GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED"),
+                );
+                candidate
+            }
             Ok(None) => {
+                record_discovery_observation(
+                    shared,
+                    epoch,
+                    GateObservation::new("NO_HINT", "C04_NO_CANDIDATE"),
+                );
                 set_phase(
                     shared,
                     epoch,
@@ -564,6 +919,11 @@ fn run_enabled(shared: &Shared, epoch: u64) {
             }
             Err(DiscoveryError::BackendUnavailable) => {
                 shared.discovery.stop();
+                record_discovery_observation(
+                    shared,
+                    epoch,
+                    GateObservation::new("BACKEND_UNAVAILABLE", "DISCOVERY_BACKEND_UNAVAILABLE"),
+                );
                 set_phase(
                     shared,
                     epoch,
@@ -733,7 +1093,10 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
             };
         }
         match acquire_lease(&access) {
-            Ok(lease) => break lease,
+            Ok(lease) => {
+                record_lease_active(shared, identity, lease);
+                break lease;
+            }
             Err(failure) if failure.transport_lost => {
                 client.cancel_session();
                 let _ = session.join();
@@ -741,6 +1104,7 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
                 return ConnectionEnd::AuthenticatedLost;
             }
             Err(_) => {
+                record_lease_unavailable(shared, identity, "C07_ACQUIRE_FAILED");
                 set_phase(
                     shared,
                     epoch,
@@ -845,12 +1209,14 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
             match renew_lease(&access, lease) {
                 Ok(renewed) => {
                     lease = renewed;
+                    record_lease_active(shared, identity, lease);
                     if lock_data(shared).status.state == AutoUseState::Available {
                         publish_available(shared, identity, client.clone(), peer_id, lease);
                     }
                     next_renewal = Instant::now() + shared.timing.renewal_interval;
                 }
                 Err(_) => {
+                    record_lease_unavailable(shared, identity, "C07_RENEW_FAILED");
                     client.cancel_session();
                     mark_connection_lost_identity(shared, identity, peer_id);
                     let _ = session.join();
@@ -959,20 +1325,22 @@ impl SessionAccess<'_> {
 }
 
 fn acquire_lease(access: &SessionAccess<'_>) -> Result<LeaseContext, RemoteFailure> {
+    let sent_at = Instant::now();
     let ack = access.command(controller_command(1, None, 0))?;
-    lease_from_ack(ack, None)
+    lease_from_ack(ack, None, sent_at)
 }
 
 fn renew_lease(
     access: &SessionAccess<'_>,
     lease: LeaseContext,
 ) -> Result<LeaseContext, RemoteFailure> {
+    let sent_at = Instant::now();
     let ack = access.command(controller_command(
         2,
         Some(lease.lease_id),
         lease.next_command_seq,
     ))?;
-    lease_from_ack(ack, Some(lease))
+    lease_from_ack(ack, Some(lease), sent_at)
 }
 
 fn release_lease(access: &SessionAccess<'_>, lease: LeaseContext) -> Result<(), RemoteFailure> {
@@ -1012,6 +1380,7 @@ fn controller_command(
 fn lease_from_ack(
     ack: pb_pbmux::AckPayload,
     previous: Option<LeaseContext>,
+    sent_at: Instant,
 ) -> Result<LeaseContext, RemoteFailure> {
     let expected_command_seq = previous.map_or(0, |lease| lease.next_command_seq);
     if ack.ack_state != 2
@@ -1032,6 +1401,7 @@ fn lease_from_ack(
         lease_id: ack.lease_id,
         incarnation: ack.worker_incarnation,
         next_command_seq: ack.next_command_seq,
+        not_after: sent_at + Duration::from_millis(u64::from(ack.ttl_remaining_ms)),
     })
 }
 
@@ -1100,7 +1470,13 @@ fn readiness_with_purge_proof(
     if cleanup_ledger_is_full_with_superseded_entries(access.shared) {
         prove_purge_with_known_superseded_reservation(access, peer_id, lease)?;
     }
-    readiness_probe(access, peer_id, lease)?;
+    match readiness_probe(access, peer_id, lease) {
+        Ok(()) => record_admission_proof(access.shared, access.identity, lease, true),
+        Err(failure) => {
+            record_admission_proof(access.shared, access.identity, lease, false);
+            return Err(failure);
+        }
+    }
     resolve_superseded_cleanup_after_purge_proof(access.shared, peer_id, lease);
     Ok(())
 }
@@ -2030,6 +2406,10 @@ fn clear_session(shared: &Shared, identity: SessionIdentity) {
         data.session_client = None;
         data.session_identity = None;
         data.active = None;
+        data.discovery_observation = None;
+        data.discovery_unknown = GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED");
+        data.lease_observation = unavailable_lease("SESSION_INVALIDATED");
+        data.admission_proof_observation = unknown_admission_proof("SESSION_INVALIDATED");
         shared.changed.notify_all();
     }
 }
@@ -3044,6 +3424,197 @@ mod tests {
     }
 
     #[test]
+    fn p2_gate_status_reads_are_passive_and_cannot_create_remote_work() {
+        let (_directory, host, android) = paired_runtimes();
+        let worker = TestWorker::healthy();
+        let device = TestDevice::start(android, worker.clone());
+        let discovery = device.discovery();
+        let controller = controller(host, discovery.clone());
+        controller.enable();
+        wait_for(&controller, |status| {
+            status.state() == AutoUseState::Available
+        });
+
+        let discovery_before = discovery.calls.load(Ordering::Acquire);
+        let remote_before = worker.remote_request_count.load(Ordering::Acquire);
+        for _ in 0..8 {
+            let gates = controller.current_gate_observations();
+            assert_eq!(
+                gates.discovery_observation(),
+                GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED")
+            );
+            assert_eq!(
+                gates.controller_lease(),
+                GateObservation::new("ACTIVE", "C07_ACK_FRESH")
+            );
+            assert_eq!(
+                gates.resource_guard_admission_proof(),
+                GateObservation::new("FRESH_PASS", "C08_C09_C10_PROBE_PASSED")
+            );
+        }
+        assert_eq!(discovery.calls.load(Ordering::Acquire), discovery_before);
+        assert_eq!(
+            worker.remote_request_count.load(Ordering::Acquire),
+            remote_before
+        );
+    }
+
+    #[test]
+    fn p2_observations_expire_fail_closed_without_a_refresh_operation() {
+        let (_directory, runtime) = host_with_dummy_pin();
+        let discovery = Arc::new(TestDiscovery {
+            candidate: TransportCandidate::manual("127.0.0.1:9".parse().unwrap()),
+            present: Arc::new(AtomicBool::new(false)),
+            calls: AtomicUsize::new(0),
+        });
+        let controller = controller(runtime, discovery);
+        {
+            let mut data = lock_data(&controller.shared);
+            // Do not notify the sleeping manager: this is a pure projection test.
+            data.enabled = true;
+            data.discovery_observation = Some(TimedObservation {
+                observation: GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED"),
+                observed_at: Instant::now()
+                    - DISCOVERY_OBSERVATION_MAX_AGE
+                    - Duration::from_millis(1),
+            });
+        }
+        let gates = controller.current_gate_observations();
+        assert_eq!(
+            gates.discovery_observation(),
+            GateObservation::new("STALE", "OBSERVATION_EXPIRED")
+        );
+        assert_eq!(
+            gates.resource_guard_admission_proof(),
+            GateObservation::new("UNKNOWN", "NOT_OBSERVED")
+        );
+    }
+
+    #[test]
+    fn p2_discovery_observations_require_the_initiating_epoch() {
+        let (_directory, runtime) = host_with_dummy_pin();
+        let discovery = Arc::new(TestDiscovery {
+            candidate: TransportCandidate::manual("127.0.0.1:9".parse().unwrap()),
+            present: Arc::new(AtomicBool::new(false)),
+            calls: AtomicUsize::new(0),
+        });
+        let controller = controller(runtime, discovery.clone());
+        controller.shared.shutdown.store(true, Ordering::Release);
+        {
+            let mut data = lock_data(&controller.shared);
+            data.enabled = true;
+            data.epoch = 41;
+            clear_observations_for_epoch(&mut data);
+        }
+
+        assert!(record_discovery_observation(
+            &controller.shared,
+            41,
+            GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED")
+        ));
+        assert_eq!(
+            controller
+                .current_gate_observations()
+                .discovery_observation(),
+            GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED")
+        );
+
+        {
+            let mut data = lock_data(&controller.shared);
+            data.epoch = 42;
+            clear_observations_for_epoch(&mut data);
+        }
+        assert!(!record_discovery_observation(
+            &controller.shared,
+            41,
+            GateObservation::new("NO_HINT", "C04_NO_CANDIDATE")
+        ));
+        assert_eq!(
+            controller
+                .current_gate_observations()
+                .discovery_observation(),
+            GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED")
+        );
+
+        controller.disable();
+        assert!(!record_discovery_observation(
+            &controller.shared,
+            42,
+            GateObservation::new("FRESH_HINT", "C04_CANDIDATE_OBSERVED")
+        ));
+        assert_eq!(
+            controller
+                .current_gate_observations()
+                .discovery_observation(),
+            GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED")
+        );
+        assert_eq!(discovery.calls.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn p2_observability_snapshot_is_coherent_and_passive() {
+        let (_directory, runtime) = host_with_dummy_pin();
+        let discovery = Arc::new(TestDiscovery {
+            candidate: TransportCandidate::manual("127.0.0.1:9".parse().unwrap()),
+            present: Arc::new(AtomicBool::new(false)),
+            calls: AtomicUsize::new(0),
+        });
+        let controller = controller(runtime, discovery.clone());
+        let snapshot = controller.current_observability_snapshot();
+        assert_eq!(snapshot.node_status().state(), AutoUseState::Off);
+        assert_eq!(snapshot.node_status().reason(), AutoUseReason::Off);
+        assert_eq!(
+            snapshot.gate_observations().discovery_observation(),
+            GateObservation::new("UNKNOWN", "EPOCH_INVALIDATED")
+        );
+        assert_eq!(
+            snapshot.gate_observations().controller_lease(),
+            GateObservation::new("UNAVAILABLE", "AUTO_USE_DISABLED")
+        );
+        assert_eq!(discovery.calls.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn p2_snapshot_evaluates_admission_proof_after_controller_data_lock() {
+        let (_directory, host, android) = paired_runtimes();
+        let worker = TestWorker::healthy();
+        let device = TestDevice::start(android, worker.clone());
+        let discovery = device.discovery();
+        let mut timing = test_timing();
+        timing.renewal_interval = Duration::from_secs(30);
+        let controller = Arc::new(
+            AutoUseController::with_timing(host, discovery.clone(), timing).expect("controller"),
+        );
+        controller.enable();
+        wait_for(&controller, |status| {
+            status.state() == AutoUseState::Available
+        });
+
+        let discovery_before = discovery.calls.load(Ordering::Acquire);
+        let remote_before = worker.remote_request_count.load(Ordering::Acquire);
+        let mut data = lock_data(&controller.shared);
+        data.admission_proof_observation.observed_at = Some(Instant::now());
+
+        let reader = Arc::clone(&controller);
+        let reader = thread::spawn(move || reader.current_observability_snapshot());
+        thread::sleep(ADMISSION_PROOF_MAX_AGE + Duration::from_millis(50));
+        drop(data);
+
+        let snapshot = reader.join().expect("snapshot reader");
+        assert_eq!(
+            snapshot
+                .gate_observations()
+                .resource_guard_admission_proof(),
+            GateObservation::new("STALE", "PROOF_EXPIRED")
+        );
+        assert_eq!(discovery.calls.load(Ordering::Acquire), discovery_before);
+        assert_eq!(
+            worker.remote_request_count.load(Ordering::Acquire),
+            remote_before
+        );
+    }
+
+    #[test]
     fn discovery_backend_failure_is_explicit_and_disable_stops_browsing() {
         let (_directory, runtime) = host_with_dummy_pin();
         let discovery = Arc::new(UnavailableDiscovery {
@@ -3398,6 +3969,7 @@ mod tests {
             lease_id: [0x61; 16],
             incarnation: [0x62; 16],
             next_command_seq: 1,
+            not_after: Instant::now() + Duration::from_secs(1),
         };
         let peer_id = PeerId::from_sha256_digest([0x63; 32]);
         {
@@ -3659,6 +4231,7 @@ mod tests {
             lease_id: [0x31; 16],
             incarnation: [0x42; 16],
             next_command_seq: 0,
+            not_after: Instant::now() + Duration::from_secs(1),
         };
         let failed = |reason| pb_pbmux::ResourceResult {
             state: ResourceResultState::Failed,

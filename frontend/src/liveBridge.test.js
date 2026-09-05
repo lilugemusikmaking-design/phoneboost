@@ -11,10 +11,10 @@ function snapshot(overrides = {}) {
     observed_at_unix_ms: 10_000,
     max_age_ms: 3000,
     local_daemon: { state: "REACHABLE", runtime_state: "READY", local_api_state: "ACTIVE" },
-    discovery: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    discovery_observation: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
     authenticated_session: { state: "AUTHENTICATED", remote_worker_state: "AUTHENTICATED" },
     controller_lease: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
-    resource_guard: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    resource_guard_admission_proof: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
     provider_readiness: { provider: "pb.native.blake3/1", state: "AVAILABLE" },
     auto_use: { state: "AVAILABLE", reason: "READY" },
     remote_blake3_available: true,
@@ -53,12 +53,65 @@ test("capability is accepted only as 256-bit lowercase hex and removed from the 
   ).toBeNull();
 });
 
-test("fresh native snapshot is LIVE and independently preserves unknown gates", () => {
+test("fresh native snapshot is LIVE and independently preserves unknown P2 observations", () => {
   const state = normalizeLiveSnapshot(snapshot(), 11_000);
   expect(state.provenance).toBe("LIVE");
   expect(state.runtime.authenticated_session.state).toBe("AUTHENTICATED");
   expect(state.runtime.controller_lease.state).toBe("UNKNOWN");
-  expect(state.runtime.resource_guard.state).toBe("UNKNOWN");
+  expect(state.runtime.resource_guard_admission_proof.state).toBe("UNKNOWN");
+});
+
+const P2_PAIR_CASES = [
+  ["discovery_observation", [
+    ["FRESH_HINT", "C04_CANDIDATE_OBSERVED"],
+    ["NO_HINT", "C04_NO_CANDIDATE"],
+    ["BACKEND_UNAVAILABLE", "DISCOVERY_BACKEND_UNAVAILABLE"],
+    ["STALE", "OBSERVATION_EXPIRED"],
+    ["UNKNOWN", "EPOCH_INVALIDATED"],
+    ["UNKNOWN", "NOT_OBSERVED"],
+    ["UNKNOWN", "NOT_EXPOSED_BY_C12"],
+  ]],
+  ["controller_lease", [
+    ["ACTIVE", "C07_ACK_FRESH"],
+    ["EXPIRED", "ACK_TTL_ELAPSED"],
+    ["UNAVAILABLE", "C07_ACQUIRE_FAILED"],
+    ["UNAVAILABLE", "C07_RENEW_FAILED"],
+    ["UNAVAILABLE", "SESSION_INVALIDATED"],
+    ["UNAVAILABLE", "IDENTITY_OR_INCARNATION_CHANGED"],
+    ["UNAVAILABLE", "AUTO_USE_DISABLED"],
+    ["UNKNOWN", "NOT_OBSERVED"],
+    ["UNKNOWN", "NOT_EXPOSED_BY_C12"],
+  ]],
+  ["resource_guard_admission_proof", [
+    ["FRESH_PASS", "C08_C09_C10_PROBE_PASSED"],
+    ["FAILED", "C08_C09_C10_PROBE_FAILED"],
+    ["STALE", "PROOF_EXPIRED"],
+    ["UNKNOWN", "SESSION_INVALIDATED"],
+    ["UNKNOWN", "LEASE_INVALIDATED"],
+    ["UNKNOWN", "IDENTITY_OR_INCARNATION_CHANGED"],
+    ["UNKNOWN", "AUTO_USE_DISABLED"],
+    ["UNKNOWN", "NOT_OBSERVED"],
+    ["UNKNOWN", "NOT_EXPOSED_BY_C12"],
+  ]],
+];
+
+test("every exact P2 state/reason pair is accepted", () => {
+  for (const [field, pairs] of P2_PAIR_CASES) {
+    for (const [state, reason] of pairs) {
+      expect(normalizeLiveSnapshot(snapshot({ [field]: { state, reason } }), 10_000).provenance)
+        .toBe("LIVE");
+    }
+  }
+});
+
+test.each([
+  ["discovery_observation", "FRESH_HINT", "C04_NO_CANDIDATE"],
+  ["controller_lease", "ACTIVE", "ACK_TTL_ELAPSED"],
+  ["resource_guard_admission_proof", "FRESH_PASS", "C08_C09_C10_PROBE_FAILED"],
+  ["resource_guard_admission_proof", "UNKNOWN", "PROOF_EXPIRED"],
+])("cross-pair %s / %s / %s is fail-closed", (field, state, reason) => {
+  expect(normalizeLiveSnapshot(snapshot({ [field]: { state, reason } }), 10_000).provenance)
+    .toBe("UNAVAILABLE");
 });
 
 test("old, malformed, or inconsistent snapshots are never LIVE", () => {

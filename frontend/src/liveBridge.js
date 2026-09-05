@@ -29,6 +29,37 @@ const AUTO_USE_REASONS = new Set([
   "DISCOVERY_BACKEND_UNAVAILABLE",
   "READY",
 ]);
+const DISCOVERY_PAIRS = new Set([
+  "FRESH_HINT/C04_CANDIDATE_OBSERVED",
+  "NO_HINT/C04_NO_CANDIDATE",
+  "BACKEND_UNAVAILABLE/DISCOVERY_BACKEND_UNAVAILABLE",
+  "STALE/OBSERVATION_EXPIRED",
+  "UNKNOWN/EPOCH_INVALIDATED",
+  "UNKNOWN/NOT_OBSERVED",
+  "UNKNOWN/NOT_EXPOSED_BY_C12",
+]);
+const CONTROLLER_LEASE_PAIRS = new Set([
+  "ACTIVE/C07_ACK_FRESH",
+  "EXPIRED/ACK_TTL_ELAPSED",
+  "UNAVAILABLE/C07_ACQUIRE_FAILED",
+  "UNAVAILABLE/C07_RENEW_FAILED",
+  "UNAVAILABLE/SESSION_INVALIDATED",
+  "UNAVAILABLE/IDENTITY_OR_INCARNATION_CHANGED",
+  "UNAVAILABLE/AUTO_USE_DISABLED",
+  "UNKNOWN/NOT_OBSERVED",
+  "UNKNOWN/NOT_EXPOSED_BY_C12",
+]);
+const ADMISSION_PROOF_PAIRS = new Set([
+  "FRESH_PASS/C08_C09_C10_PROBE_PASSED",
+  "FAILED/C08_C09_C10_PROBE_FAILED",
+  "STALE/PROOF_EXPIRED",
+  "UNKNOWN/SESSION_INVALIDATED",
+  "UNKNOWN/LEASE_INVALIDATED",
+  "UNKNOWN/IDENTITY_OR_INCARNATION_CHANGED",
+  "UNKNOWN/AUTO_USE_DISABLED",
+  "UNKNOWN/NOT_OBSERVED",
+  "UNKNOWN/NOT_EXPOSED_BY_C12",
+]);
 
 export function consumeBridgeToken(locationObject, historyObject) {
   const hash = locationObject?.hash || "";
@@ -57,6 +88,12 @@ function stringAt(value, ...path) {
   return typeof current === "string" ? current : null;
 }
 
+function hasExactPair(value, path, pairs) {
+  const state = stringAt(value, ...path, "state");
+  const reason = stringAt(value, ...path, "reason");
+  return Boolean(state && reason && pairs.has(`${state}/${reason}`));
+}
+
 export function normalizeLiveSnapshot(value, now = Date.now()) {
   const observed = value?.observed_at_unix_ms;
   const maxAge = value?.max_age_ms;
@@ -69,11 +106,8 @@ export function normalizeLiveSnapshot(value, now = Date.now()) {
     stringAt(value, "local_daemon", "state"),
     stringAt(value, "local_daemon", "runtime_state"),
     stringAt(value, "local_daemon", "local_api_state"),
-    stringAt(value, "discovery", "state"),
     stringAt(value, "authenticated_session", "state"),
     stringAt(value, "authenticated_session", "remote_worker_state"),
-    stringAt(value, "controller_lease", "state"),
-    stringAt(value, "resource_guard", "state"),
     stringAt(value, "provider_readiness", "state"),
     stringAt(value, "auto_use", "state"),
     stringAt(value, "auto_use", "reason"),
@@ -89,12 +123,9 @@ export function normalizeLiveSnapshot(value, now = Date.now()) {
     typeof remoteAvailable === "boolean" &&
     requiredStrings.every(Boolean) &&
     value.local_daemon.state === "REACHABLE" &&
-    value.discovery.state === "UNKNOWN" &&
-    value.discovery.reason === "NOT_EXPOSED_BY_C12" &&
-    value.controller_lease.state === "UNKNOWN" &&
-    value.controller_lease.reason === "NOT_EXPOSED_BY_C12" &&
-    value.resource_guard.state === "UNKNOWN" &&
-    value.resource_guard.reason === "NOT_EXPOSED_BY_C12" &&
+    hasExactPair(value, ["discovery_observation"], DISCOVERY_PAIRS) &&
+    hasExactPair(value, ["controller_lease"], CONTROLLER_LEASE_PAIRS) &&
+    hasExactPair(value, ["resource_guard_admission_proof"], ADMISSION_PROOF_PAIRS) &&
     authenticatedState === (remoteWorkerState === "AUTHENTICATED" ? "AUTHENTICATED" : "UNAVAILABLE") &&
     AUTO_USE_STATES.has(autoUseState) &&
     AUTO_USE_REASONS.has(autoUseReason) &&

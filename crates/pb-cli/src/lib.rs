@@ -53,6 +53,32 @@ pub struct StatusView {
     auto_use_state: String,
     auto_use_reason: String,
     remote_blake3_available: bool,
+    discovery_observation: GateView,
+    controller_lease: GateView,
+    resource_guard_admission_proof: GateView,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GateView {
+    state: String,
+    reason: String,
+}
+
+impl GateView {
+    fn not_exposed() -> Self {
+        Self {
+            state: "UNKNOWN".to_owned(),
+            reason: "NOT_EXPOSED_BY_C12".to_owned(),
+        }
+    }
+
+    pub fn state(&self) -> &str {
+        &self.state
+    }
+
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -94,6 +120,21 @@ impl fmt::Display for StatusView {
         writeln!(formatter, "Android worker: {}", self.remote_worker_state)?;
         writeln!(formatter, "Auto-use: {}", self.auto_use_state)?;
         writeln!(formatter, "Auto-use reason: {}", self.auto_use_reason)?;
+        writeln!(
+            formatter,
+            "Discovery observation: {} ({})",
+            self.discovery_observation.state, self.discovery_observation.reason
+        )?;
+        writeln!(
+            formatter,
+            "Controller lease: {} ({})",
+            self.controller_lease.state, self.controller_lease.reason
+        )?;
+        writeln!(
+            formatter,
+            "Latest admission/readiness proof: {} ({})",
+            self.resource_guard_admission_proof.state, self.resource_guard_admission_proof.reason
+        )?;
         write!(
             formatter,
             "Remote BLAKE3: {}",
@@ -151,6 +192,18 @@ impl StatusView {
 
     pub const fn remote_blake3_available(&self) -> bool {
         self.remote_blake3_available
+    }
+
+    pub fn discovery_observation(&self) -> &GateView {
+        &self.discovery_observation
+    }
+
+    pub fn controller_lease(&self) -> &GateView {
+        &self.controller_lease
+    }
+
+    pub fn resource_guard_admission_proof(&self) -> &GateView {
+        &self.resource_guard_admission_proof
     }
 }
 
@@ -274,7 +327,79 @@ fn status_over_stream(stream: &mut UnixStream, request_id: Value) -> Result<Stat
         auto_use_state,
         auto_use_reason,
         remote_blake3_available,
+        discovery_observation: gate_view(result, "discovery_observation", valid_discovery_pair)?,
+        controller_lease: gate_view(result, "controller_lease", valid_controller_lease_pair)?,
+        resource_guard_admission_proof: gate_view(
+            result,
+            "resource_guard_admission_proof",
+            valid_resource_guard_admission_proof_pair,
+        )?,
     })
+}
+
+fn gate_view(
+    result: &serde_json::Map<String, Value>,
+    field: &str,
+    valid_pair: fn(&str, &str) -> bool,
+) -> Result<GateView, CliError> {
+    let Some(value) = result.get(field) else {
+        // Additive API-1 migration: absent means no claim, never a positive
+        // approximation. A present object is strict and must be exact.
+        return Ok(GateView::not_exposed());
+    };
+    let object = value.as_object().ok_or(CliError::MalformedResponse)?;
+    if object.len() != 2 {
+        return Err(CliError::MalformedResponse);
+    }
+    let state = required_string(object, "state")?;
+    let reason = required_string(object, "reason")?;
+    if !valid_pair(&state, &reason) {
+        return Err(CliError::MalformedResponse);
+    }
+    Ok(GateView { state, reason })
+}
+
+pub fn valid_discovery_pair(state: &str, reason: &str) -> bool {
+    matches!(
+        (state, reason),
+        ("FRESH_HINT", "C04_CANDIDATE_OBSERVED")
+            | ("NO_HINT", "C04_NO_CANDIDATE")
+            | ("BACKEND_UNAVAILABLE", "DISCOVERY_BACKEND_UNAVAILABLE")
+            | ("STALE", "OBSERVATION_EXPIRED")
+            | ("UNKNOWN", "EPOCH_INVALIDATED")
+            | ("UNKNOWN", "NOT_OBSERVED")
+            | ("UNKNOWN", "NOT_EXPOSED_BY_C12")
+    )
+}
+
+pub fn valid_controller_lease_pair(state: &str, reason: &str) -> bool {
+    matches!(
+        (state, reason),
+        ("ACTIVE", "C07_ACK_FRESH")
+            | ("EXPIRED", "ACK_TTL_ELAPSED")
+            | ("UNAVAILABLE", "C07_ACQUIRE_FAILED")
+            | ("UNAVAILABLE", "C07_RENEW_FAILED")
+            | ("UNAVAILABLE", "SESSION_INVALIDATED")
+            | ("UNAVAILABLE", "IDENTITY_OR_INCARNATION_CHANGED")
+            | ("UNAVAILABLE", "AUTO_USE_DISABLED")
+            | ("UNKNOWN", "NOT_OBSERVED")
+            | ("UNKNOWN", "NOT_EXPOSED_BY_C12")
+    )
+}
+
+pub fn valid_resource_guard_admission_proof_pair(state: &str, reason: &str) -> bool {
+    matches!(
+        (state, reason),
+        ("FRESH_PASS", "C08_C09_C10_PROBE_PASSED")
+            | ("FAILED", "C08_C09_C10_PROBE_FAILED")
+            | ("STALE", "PROOF_EXPIRED")
+            | ("UNKNOWN", "SESSION_INVALIDATED")
+            | ("UNKNOWN", "LEASE_INVALIDATED")
+            | ("UNKNOWN", "IDENTITY_OR_INCARNATION_CHANGED")
+            | ("UNKNOWN", "AUTO_USE_DISABLED")
+            | ("UNKNOWN", "NOT_OBSERVED")
+            | ("UNKNOWN", "NOT_EXPOSED_BY_C12")
+    )
 }
 
 fn compute_blake3_over_stream(
@@ -499,8 +624,65 @@ mod tests {
             "remote_worker_state": "AUTHENTICATED",
             "auto_use_state": "AVAILABLE",
             "auto_use_reason": "READY",
-            "remote_blake3_available": true
+            "remote_blake3_available": true,
+            "discovery_observation": {"state": "UNKNOWN", "reason": "NOT_EXPOSED_BY_C12"},
+            "controller_lease": {"state": "UNKNOWN", "reason": "NOT_EXPOSED_BY_C12"},
+            "resource_guard_admission_proof": {"state": "UNKNOWN", "reason": "NOT_EXPOSED_BY_C12"}
         })
+    }
+
+    #[test]
+    fn p2_compatibility_tables_accept_every_exact_pair_and_reject_cross_pairs() {
+        let discovery = [
+            ("FRESH_HINT", "C04_CANDIDATE_OBSERVED"),
+            ("NO_HINT", "C04_NO_CANDIDATE"),
+            ("BACKEND_UNAVAILABLE", "DISCOVERY_BACKEND_UNAVAILABLE"),
+            ("STALE", "OBSERVATION_EXPIRED"),
+            ("UNKNOWN", "EPOCH_INVALIDATED"),
+            ("UNKNOWN", "NOT_OBSERVED"),
+            ("UNKNOWN", "NOT_EXPOSED_BY_C12"),
+        ];
+        let lease = [
+            ("ACTIVE", "C07_ACK_FRESH"),
+            ("EXPIRED", "ACK_TTL_ELAPSED"),
+            ("UNAVAILABLE", "C07_ACQUIRE_FAILED"),
+            ("UNAVAILABLE", "C07_RENEW_FAILED"),
+            ("UNAVAILABLE", "SESSION_INVALIDATED"),
+            ("UNAVAILABLE", "IDENTITY_OR_INCARNATION_CHANGED"),
+            ("UNAVAILABLE", "AUTO_USE_DISABLED"),
+            ("UNKNOWN", "NOT_OBSERVED"),
+            ("UNKNOWN", "NOT_EXPOSED_BY_C12"),
+        ];
+        let proof = [
+            ("FRESH_PASS", "C08_C09_C10_PROBE_PASSED"),
+            ("FAILED", "C08_C09_C10_PROBE_FAILED"),
+            ("STALE", "PROOF_EXPIRED"),
+            ("UNKNOWN", "SESSION_INVALIDATED"),
+            ("UNKNOWN", "LEASE_INVALIDATED"),
+            ("UNKNOWN", "IDENTITY_OR_INCARNATION_CHANGED"),
+            ("UNKNOWN", "AUTO_USE_DISABLED"),
+            ("UNKNOWN", "NOT_OBSERVED"),
+            ("UNKNOWN", "NOT_EXPOSED_BY_C12"),
+        ];
+        for (state, reason) in discovery {
+            assert!(valid_discovery_pair(state, reason));
+        }
+        for (state, reason) in lease {
+            assert!(valid_controller_lease_pair(state, reason));
+        }
+        for (state, reason) in proof {
+            assert!(valid_resource_guard_admission_proof_pair(state, reason));
+        }
+        assert!(!valid_discovery_pair("FRESH_HINT", "C04_NO_CANDIDATE"));
+        assert!(!valid_controller_lease_pair("ACTIVE", "ACK_TTL_ELAPSED"));
+        assert!(!valid_resource_guard_admission_proof_pair(
+            "FRESH_PASS",
+            "C08_C09_C10_PROBE_FAILED"
+        ));
+        assert!(!valid_resource_guard_admission_proof_pair(
+            "UNKNOWN",
+            "PROOF_EXPIRED"
+        ));
     }
 
     fn compute_result(source: &str, reason: &str) -> Value {
@@ -545,7 +727,7 @@ mod tests {
         .expect("status roundtrip succeeds");
         assert_eq!(
             view.to_string(),
-            "PhoneBoost: READY\nLocal API: ACTIVE\nAndroid worker: AUTHENTICATED\nAuto-use: AVAILABLE\nAuto-use reason: READY\nRemote BLAKE3: AVAILABLE"
+            "PhoneBoost: READY\nLocal API: ACTIVE\nAndroid worker: AUTHENTICATED\nAuto-use: AVAILABLE\nAuto-use reason: READY\nDiscovery observation: UNKNOWN (NOT_EXPOSED_BY_C12)\nController lease: UNKNOWN (NOT_EXPOSED_BY_C12)\nLatest admission/readiness proof: UNKNOWN (NOT_EXPOSED_BY_C12)\nRemote BLAKE3: AVAILABLE"
         );
     }
 

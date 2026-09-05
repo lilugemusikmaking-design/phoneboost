@@ -3,10 +3,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::{
-    AuthenticatedLocalClient, AutoUseController, AutoUseReason, AutoUseState, ExecutionSource,
-    FramedLocalClient, LocalFrameOutcome, LocalMethod, LocalValidationError,
-    LocalValidationErrorKind, ValidatedLocalRequest, remote_pairing_begin, remote_pairing_cancel,
-    remote_pairing_confirm, remote_status,
+    AuthenticatedLocalClient, AutoUseController, AutoUseReason, AutoUseState,
+    ControllerObservabilitySnapshot, ExecutionSource, FramedLocalClient, GateObservations,
+    LocalFrameOutcome, LocalMethod, LocalValidationError, LocalValidationErrorKind,
+    ValidatedLocalRequest, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,
+    remote_status,
 };
 use pb_runtime_secure::PairingActionResult;
 
@@ -42,13 +43,24 @@ impl LocalApiContext {
         Self { auto_use }
     }
 
-    fn auto_use_status(&self) -> (AutoUseState, AutoUseReason, bool) {
+    fn auto_use_status(&self) -> (AutoUseState, AutoUseReason, bool, GateObservations) {
         let Some(controller) = self.auto_use.as_deref() else {
-            return (AutoUseState::Off, AutoUseReason::Off, false);
+            return (
+                AutoUseState::Off,
+                AutoUseReason::Off,
+                false,
+                GateObservations::not_observed(),
+            );
         };
-        let status = controller.current_node_status();
+        let snapshot: ControllerObservabilitySnapshot = controller.current_observability_snapshot();
+        let status = snapshot.node_status();
         let available = remote_blake3_is_available(status.state(), status.reason());
-        (status.state(), status.reason(), available)
+        (
+            status.state(),
+            status.reason(),
+            available,
+            snapshot.gate_observations(),
+        )
     }
 }
 
@@ -236,7 +248,8 @@ fn system_status(
     }
 
     let limits = framed.limits();
-    let (auto_use_state, auto_use_reason, remote_blake3_available) = context.auto_use_status();
+    let (auto_use_state, auto_use_reason, remote_blake3_available, gates) =
+        context.auto_use_status();
     C12Response::success(
         request.id().clone(),
         json!({
@@ -254,7 +267,19 @@ fn system_status(
             },
             "auto_use_state": auto_use_state.as_str(),
             "auto_use_reason": auto_use_reason.as_str(),
-            "remote_blake3_available": remote_blake3_available
+            "remote_blake3_available": remote_blake3_available,
+            "discovery_observation": {
+                "state": gates.discovery_observation().state(),
+                "reason": gates.discovery_observation().reason()
+            },
+            "controller_lease": {
+                "state": gates.controller_lease().state(),
+                "reason": gates.controller_lease().reason()
+            },
+            "resource_guard_admission_proof": {
+                "state": gates.resource_guard_admission_proof().state(),
+                "reason": gates.resource_guard_admission_proof().reason()
+            }
         }),
     )
 }
@@ -682,7 +707,12 @@ mod tests {
         let absent = LocalApiContext::default();
         assert_eq!(
             absent.auto_use_status(),
-            (AutoUseState::Off, AutoUseReason::Off, false)
+            (
+                AutoUseState::Off,
+                AutoUseReason::Off,
+                false,
+                GateObservations::not_observed()
+            )
         );
         let unavailable = response_value(compute_submit(
             &request(
@@ -699,9 +729,23 @@ mod tests {
 
         let (present, directory) = context_with_off_controller();
         assert!(present.auto_use.is_some());
+        let controller_snapshot = present
+            .auto_use
+            .as_deref()
+            .expect("controller")
+            .current_observability_snapshot();
+        let (state, reason, available, gates) = present.auto_use_status();
         assert_eq!(
-            present.auto_use_status(),
-            (AutoUseState::Off, AutoUseReason::Off, false)
+            (state, reason, available, gates),
+            (
+                controller_snapshot.node_status().state(),
+                controller_snapshot.node_status().reason(),
+                remote_blake3_is_available(
+                    controller_snapshot.node_status().state(),
+                    controller_snapshot.node_status().reason()
+                ),
+                controller_snapshot.gate_observations()
+            )
         );
         let fallback = response_value(compute_submit(
             &request(
@@ -843,8 +887,20 @@ mod tests {
         assert_eq!(status["result"]["auto_use_state"], "OFF");
         assert_eq!(status["result"]["auto_use_reason"], "OFF");
         assert_eq!(status["result"]["remote_blake3_available"], false);
+        assert_eq!(
+            status["result"]["discovery_observation"],
+            json!({"state": "UNKNOWN", "reason": "NOT_OBSERVED"})
+        );
+        assert_eq!(
+            status["result"]["controller_lease"],
+            json!({"state": "UNKNOWN", "reason": "NOT_OBSERVED"})
+        );
+        assert_eq!(
+            status["result"]["resource_guard_admission_proof"],
+            json!({"state": "UNKNOWN", "reason": "NOT_OBSERVED"})
+        );
         let result = status["result"].as_object().expect("status result object");
-        assert_eq!(result.len(), 11);
+        assert_eq!(result.len(), 14);
         for forbidden in [
             "device",
             "phone_connected",

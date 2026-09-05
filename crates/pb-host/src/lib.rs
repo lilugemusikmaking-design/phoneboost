@@ -19,8 +19,9 @@ pub use admission::{
     LocalValidationScope, ValidatedLocalRequest,
 };
 pub use auto_use::{
-    AutoUseController, AutoUseError, AutoUseReason, AutoUseState, Blake3Execution, DeviceDiscovery,
-    DiscoveryError, ExecutionSource, FixedDeviceDiscovery, NodeStatus,
+    AutoUseController, AutoUseError, AutoUseReason, AutoUseState, Blake3Execution,
+    ControllerObservabilitySnapshot, DeviceDiscovery, DiscoveryError, ExecutionSource,
+    FixedDeviceDiscovery, GateObservation, GateObservations, NodeStatus,
 };
 pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE_TYPE};
 pub use local_api::{

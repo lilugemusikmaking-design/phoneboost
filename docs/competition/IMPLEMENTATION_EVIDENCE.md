@@ -2,7 +2,9 @@
 
 ## Release identity
 
-- Validation date: 2026-09-02
+- Historical P0 evidence-record validation date: 2026-09-02
+- Historical P1 automated validation and physical/browser proof date: 2026-09-05
+- Current P2 automated and physical/bridge validation date: 2026-09-05
 - Evidence-record baseline: `b53ea3b84a4085ab45de58385f115f1cbd9176ed`
   (`Record physical P0 remote compute closure`)
 - Physical workflow baseline exercised: `290767a19b52fb0713d514641169a14b2a4148d5`
@@ -150,8 +152,9 @@ the current C12-backed snapshot and the locked `c10-abc-v1` BLAKE3 action.
 The browser labels a snapshot `LIVE` only while its validated observation is no
 more than three seconds old. Failure or expiry removes that label. The three C12
 fields for auto-use readiness and the exact execution source are preserved;
-fallback is never rendered as remote success. Discovery, controller lease, and
-`ResourceGuard` are `UNKNOWN` because C12 does not expose them independently.
+fallback is never rendered as remote success. At the time of the P1 proof,
+discovery, controller lease, and `ResourceGuard` were `UNKNOWN` because C12 did
+not expose them independently.
 
 The security boundary and limits are frozen in
 `docs/competition/PHONEBOOST_LIVE_BRIDGE_SECURITY_MODEL_V0_1.md`. The bounded,
@@ -183,3 +186,29 @@ actionable issues. The proof does not establish LAN access, generic RPC,
 arbitrary compute, other providers, throughput, capacity, or C12-unexposed
 discovery, controller-lease, or ResourceGuard state. Those browser gates remain
 `UNKNOWN` unless independently exposed by C12.
+
+## P2 passive gate-observability implementation status
+
+P2 adds passive, event-derived C12 observations for a discovery hint, a C07
+lease, and the latest C08/C09/C10 admission/readiness proof. It does not add
+active status polling, probing, or remote mutation.
+
+The bounded workflow
+`scripts/prove_p2_passive_gate_observability_physical.sh` completed against the
+production daemon and real Android worker. Its durable record is
+`docs/evidence/p2-passive-gate-observability-physical.txt`. The workflow first
+validated matching fresh CLI and capability-authenticated loopback bridge
+observations. After an operator-triggered production Android app restart, a
+passive bridge snapshot captured the exact positive trio together:
+`FRESH_HINT / C04_CANDIDATE_OBSERVED`, `ACTIVE / C07_ACK_FRESH`, and
+`FRESH_PASS / C08_C09_C10_PROBE_PASSED`. The workflow terminated with
+`P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS`.
+
+Later passive browser/bridge observations showed discovery and the latest
+admission/readiness proof becoming `STALE / OBSERVATION_EXPIRED` and
+`STALE / PROOF_EXPIRED`, while the controller lease remained independently
+`ACTIVE / C07_ACK_FRESH`. No durable screenshot of the two-second fresh proof
+window was retained; the exact fresh trio is grounded in the sanitized bridge
+response, while the browser visibly demonstrated the P2 fields and their
+fail-closed expiry rendering. No capability token or token-bearing URL is
+recorded.

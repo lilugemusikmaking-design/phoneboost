@@ -204,7 +204,10 @@ function Runtime({ live, snapshot, arch, language, t }) {
   const current = runtime || {};
   const fields = [
     [t.runtime.daemon, current.local_daemon?.runtime_state || "UNAVAILABLE"],
+    [t.runtime.discovery, current.discovery_observation?.state || "UNAVAILABLE"],
     [t.runtime.authenticated, current.authenticated_session?.state || "UNAVAILABLE"],
+    [t.runtime.lease, current.controller_lease?.state || "UNAVAILABLE"],
+    [t.runtime.latestAdmissionProof, current.resource_guard_admission_proof?.state || "UNAVAILABLE"],
     [t.runtime.provider, current.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE"],
     [t.runtime.autoUse, current.auto_use?.state || "UNAVAILABLE"],
   ];
@@ -256,8 +259,8 @@ function GateLadder({ live, snapshot, language, t }) {
   const observed = {
     paired: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
     authenticated: { state: runtime?.authenticated_session?.state || "UNAVAILABLE", reason: runtime?.authenticated_session?.remote_worker_state || "UNAVAILABLE" },
-    controller_lease: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
-    resource_admissible: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    controller_lease: runtime?.controller_lease || { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    resource_admissible: runtime?.resource_guard_admission_proof || { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
     provider_ready: { state: runtime?.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE", reason: "pb.native.blake3/1" },
   };
   return (

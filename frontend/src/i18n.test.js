@@ -15,6 +15,9 @@ test("runtime labels translate presentation without changing canonical values", 
   expect(stateLabel("LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE", "fr")).toBe(
     "Fallback local après résultat distant ambigu"
   );
+  expect(stateLabel("FRESH_HINT", "en")).toBe("Fresh hint");
+  expect(stateLabel("FRESH_PASS", "fr")).toBe("Dernière preuve réussie");
+  expect(stateLabel("STALE", "en")).toBe("Stale");
   expect(stateLabel("UNRECOGNIZED_CANONICAL_STATE", "fr")).toBe("UNRECOGNIZED_CANONICAL_STATE");
 });
 
@@ -22,6 +25,6 @@ test("five gate identifiers retain their canonical mapping", () => {
   expect(GATE_COPY.paired.fr).toBe("Appairé");
   expect(GATE_COPY.authenticated.en).toBe("Authenticated");
   expect(GATE_COPY.controller_lease.en).toBe("Controller lease");
-  expect(GATE_COPY.resource_admissible.fr).toBe("Ressource admissible");
+  expect(GATE_COPY.resource_admissible.fr).toBe("Dernière preuve d’admission/readiness");
   expect(GATE_COPY.provider_ready.en).toBe("Provider ready");
 });

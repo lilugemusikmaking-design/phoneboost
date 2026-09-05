@@ -1,0 +1,65 @@
+PhoneBoost P2 passive gate-observability physical/bridge proof
+
+Evidence provenance
+- Operator-triggered bounded proof using the production phoneboostd daemon,
+  production phoneboostctl and phoneboost-web-bridge, and the real Android
+  worker.
+- The checked-in workflow was
+  scripts/prove_p2_passive_gate_observability_physical.sh.
+- A private browser window consumed the transient capability URL and displayed
+  the P2 runtime fields. No capability token or capability URL is recorded here.
+- This record is a truthful summary of confirmed observations, not an
+  automatically captured raw transcript.
+
+Fresh production transition
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Discovery observation: FRESH_HINT (C04_CANDIDATE_OBSERVED)
+Controller lease: ACTIVE (C07_ACK_FRESH)
+Latest admission/readiness proof: FRESH_PASS (C08_C09_C10_PROBE_PASSED)
+Remote BLAKE3: AVAILABLE
+
+The exact three positive P2 observations were captured together from a
+capability-authenticated, loopback-only bridge snapshot immediately after the
+operator reopened the production Android app. The checked-in workflow had also
+validated matching fresh CLI and bridge observations before presenting its
+confirmation prompt.
+
+Expiry behavior
+
+The browser runtime view and a later passive bridge snapshot showed the
+time-bounded observations expiring without inference or refresh:
+
+Discovery observation: STALE (OBSERVATION_EXPIRED)
+Controller lease: ACTIVE (C07_ACK_FRESH)
+Latest admission/readiness proof: STALE (PROOF_EXPIRED)
+
+The proof window is intentionally short. No durable screenshot of the exact
+fresh positive trio was retained; the fresh trio above comes from the exact
+sanitized bridge response, while the browser visibly demonstrated the same P2
+fields and their fail-closed expiry rendering.
+
+Passivity
+- Status and bridge snapshot reads remained passive.
+- The operator-triggered Android app restart caused the normal production
+  authentication/readiness transition.
+- The proof script's status and snapshot reads did not initiate discovery,
+  lease operations, probes, compute, cleanup, ADB, tunnels, or network
+  mutation; the normal daemon transition remained the source of observations.
+
+Final verdict
+- P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS
+
+Scope limits
+- This proves the bounded P2 C12/CLI/bridge projection and expiry behavior for
+  the observed production transition only.
+- A discovery hint is not identity or authority, an observed lease ACK is not
+  permanent authority, and a fresh admission/readiness proof is not a durable
+  ResourceGuard grant.
+- This proof does not establish arbitrary compute, other providers, LAN access,
+  generic RPC, performance, capacity, raw protocol traces, packet captures, or
+  unrelated product behavior.

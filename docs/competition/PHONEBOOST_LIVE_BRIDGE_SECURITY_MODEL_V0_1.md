@@ -10,8 +10,9 @@ lease, admission, discovery, or provider authority. It consumes only the existin
 typed `pb-cli` client for C12 `system.status` and the locked synchronous
 `compute.submit` profile for `pb.native.blake3/1` with fixture `c10-abc-v1`.
 
-It does not change C12, Noise, PBMUX, C07, C08, C09, C10, Android, JNI,
-`ResourceGuard`, or worker state. It exposes no generic RPC or Unix-socket proxy.
+The bridge itself does not change Noise, PBMUX, C07, C08, C09, C10, Android,
+JNI, `ResourceGuard`, or worker state. The separate locked P2 C12 profile adds
+only passive status observations; it exposes no generic RPC or Unix-socket proxy.
 
 ## Listener and browser model
 
@@ -77,13 +78,18 @@ The bridge exposes the following independently:
 - authenticated session: exact C12 `remote_worker_state`;
 - provider readiness: exact C12 `remote_blake3_available` for the locked provider;
 - auto-use state and reason: exact closed C12 strings;
+- discovery observation, controller lease, and latest admission/readiness proof:
+  exact P2 state/reason pairs only;
 - last execution source: exact result of a bridge-initiated locked action, with its
   observation time.
 
-C12 does not separately expose discovery/reachability, controller-lease state, or
-`ResourceGuard` readiness. Those gates are therefore returned as `UNKNOWN`; the
-bridge does not infer them from aggregate readiness. Recorded physical evidence is
-shown separately and never substituted for LIVE state.
+P2 observations are passive and event-driven. A snapshot read never triggers
+discovery, C07 operations, C08/C09/C10 probes, compute, cleanup, or remote
+mutation. Discovery is only a recent untrusted hint; the proof is explicitly the
+latest fresh admission/readiness proof, never a durable ResourceGuard claim.
+Expired, missing, malformed, or incompatible pairs fail closed. The bridge does
+not infer any gate from aggregate readiness. Recorded physical evidence is shown
+separately and never substituted for LIVE state.
 
 The compute response preserves exactly one of:
 
@@ -113,3 +119,14 @@ window consumed the current fragment-delivered capability in a clean page contex
 The script emitted that URL transiently for operator use; the evidence records
 neither the capability nor its URL, and neither is persisted in repository files,
 documentation, committed logs, or the handoff.
+
+`scripts/prove_p2_passive_gate_observability_physical.sh` performs only bounded
+passive C12/bridge reads and was completed against the production daemon and
+real Android worker. Its record is
+`docs/evidence/p2-passive-gate-observability-physical.txt`. A normal,
+operator-triggered Android app restart produced the observed transition; the
+script itself performed no discovery, C07 operation, C08/C09/C10 probe, compute,
+cleanup, ADB, tunnel, or network mutation. The exact fresh trio was captured in
+one sanitized loopback bridge snapshot, and later browser/bridge observations
+showed the short-lived discovery and admission/readiness observations expiring
+fail-closed. No capability token or capability URL is retained.

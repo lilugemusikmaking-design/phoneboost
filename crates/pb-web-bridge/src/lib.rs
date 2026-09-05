@@ -80,6 +80,12 @@ struct NativeStatus {
     auto_use_state: String,
     auto_use_reason: String,
     remote_blake3_available: bool,
+    discovery_observation_state: String,
+    discovery_observation_reason: String,
+    controller_lease_state: String,
+    controller_lease_reason: String,
+    resource_guard_admission_proof_state: String,
+    resource_guard_admission_proof_reason: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -109,6 +115,18 @@ impl NativeBackend for ProductionNative {
             auto_use_state: view.auto_use_state().to_owned(),
             auto_use_reason: view.auto_use_reason().to_owned(),
             remote_blake3_available: view.remote_blake3_available(),
+            discovery_observation_state: view.discovery_observation().state().to_owned(),
+            discovery_observation_reason: view.discovery_observation().reason().to_owned(),
+            controller_lease_state: view.controller_lease().state().to_owned(),
+            controller_lease_reason: view.controller_lease().reason().to_owned(),
+            resource_guard_admission_proof_state: view
+                .resource_guard_admission_proof()
+                .state()
+                .to_owned(),
+            resource_guard_admission_proof_reason: view
+                .resource_guard_admission_proof()
+                .reason()
+                .to_owned(),
         })
     }
 
@@ -215,6 +233,25 @@ impl<N: NativeBackend> Bridge<N> {
                 );
             }
         };
+        if !pb_cli::valid_discovery_pair(
+            &status.discovery_observation_state,
+            &status.discovery_observation_reason,
+        ) || !pb_cli::valid_controller_lease_pair(
+            &status.controller_lease_state,
+            &status.controller_lease_reason,
+        ) || !pb_cli::valid_resource_guard_admission_proof_pair(
+            &status.resource_guard_admission_proof_state,
+            &status.resource_guard_admission_proof_reason,
+        ) {
+            return Response::json(
+                503,
+                json!({
+                    "provenance": "UNAVAILABLE",
+                    "observed_at_unix_ms": observed_at_unix_ms,
+                    "reason": "LOCAL_RUNTIME_UNAVAILABLE"
+                }),
+            );
+        }
         let authenticated = status.remote_worker_state == "AUTHENTICATED";
         let provider_state = if status.remote_blake3_available {
             "AVAILABLE"
@@ -241,21 +278,21 @@ impl<N: NativeBackend> Bridge<N> {
                     "runtime_state": status.runtime_state,
                     "local_api_state": status.local_api_state,
                 },
-                "discovery": {
-                    "state": "UNKNOWN",
-                    "reason": "NOT_EXPOSED_BY_C12"
+                "discovery_observation": {
+                    "state": status.discovery_observation_state,
+                    "reason": status.discovery_observation_reason
                 },
                 "authenticated_session": {
                     "state": if authenticated { "AUTHENTICATED" } else { "UNAVAILABLE" },
                     "remote_worker_state": status.remote_worker_state,
                 },
                 "controller_lease": {
-                    "state": "UNKNOWN",
-                    "reason": "NOT_EXPOSED_BY_C12"
+                    "state": status.controller_lease_state,
+                    "reason": status.controller_lease_reason
                 },
-                "resource_guard": {
-                    "state": "UNKNOWN",
-                    "reason": "NOT_EXPOSED_BY_C12"
+                "resource_guard_admission_proof": {
+                    "state": status.resource_guard_admission_proof_state,
+                    "reason": status.resource_guard_admission_proof_reason
                 },
                 "provider_readiness": {
                     "provider": "pb.native.blake3/1",
@@ -677,6 +714,12 @@ mod tests {
             auto_use_state: "AVAILABLE".to_owned(),
             auto_use_reason: "READY".to_owned(),
             remote_blake3_available: true,
+            discovery_observation_state: "UNKNOWN".to_owned(),
+            discovery_observation_reason: "NOT_EXPOSED_BY_C12".to_owned(),
+            controller_lease_state: "UNKNOWN".to_owned(),
+            controller_lease_reason: "NOT_EXPOSED_BY_C12".to_owned(),
+            resource_guard_admission_proof_state: "UNKNOWN".to_owned(),
+            resource_guard_admission_proof_reason: "NOT_EXPOSED_BY_C12".to_owned(),
         }
     }
 
@@ -743,7 +786,7 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_exposes_current_truth_and_unknown_unexposed_gates() {
+    fn snapshot_exposes_current_truth_and_typed_p2_observations() {
         let mut bridge = bridge(fake_native());
         let response = bridge.handle(request("GET", "/bridge/v1/snapshot", &[], b""));
         let body = json_body(&response);
@@ -752,9 +795,13 @@ mod tests {
         assert_eq!(body["max_age_ms"], SNAPSHOT_MAX_AGE_MS);
         assert_eq!(body["local_daemon"]["state"], "REACHABLE");
         assert_eq!(body["authenticated_session"]["state"], "AUTHENTICATED");
-        assert_eq!(body["discovery"]["state"], "UNKNOWN");
+        assert_eq!(body["discovery_observation"]["state"], "UNKNOWN");
+        assert_eq!(
+            body["discovery_observation"]["reason"],
+            "NOT_EXPOSED_BY_C12"
+        );
         assert_eq!(body["controller_lease"]["state"], "UNKNOWN");
-        assert_eq!(body["resource_guard"]["state"], "UNKNOWN");
+        assert_eq!(body["resource_guard_admission_proof"]["state"], "UNKNOWN");
         assert_eq!(body["provider_readiness"]["state"], "AVAILABLE");
         assert_eq!(bridge.native.status_calls.get(), 1);
     }
@@ -763,6 +810,22 @@ mod tests {
     fn daemon_absent_is_never_live() {
         let mut native = fake_native();
         native.status = Err(NativeUnavailable);
+        let mut bridge = bridge(native);
+        let response = bridge.handle(request("GET", "/bridge/v1/snapshot", &[], b""));
+        let body = json_body(&response);
+        assert_eq!(response.status, 503);
+        assert_eq!(body["provenance"], "UNAVAILABLE");
+        assert_eq!(body["reason"], "LOCAL_RUNTIME_UNAVAILABLE");
+    }
+
+    #[test]
+    fn incompatible_p2_cross_pair_is_never_forwarded_as_live() {
+        let mut native = fake_native();
+        native.status = Ok(NativeStatus {
+            controller_lease_state: "ACTIVE".to_owned(),
+            controller_lease_reason: "ACK_TTL_ELAPSED".to_owned(),
+            ..ready_status()
+        });
         let mut bridge = bridge(native);
         let response = bridge.handle(request("GET", "/bridge/v1/snapshot", &[], b""));
         let body = json_body(&response);
