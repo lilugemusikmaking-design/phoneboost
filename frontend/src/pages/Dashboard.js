@@ -1,1120 +1,402 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
-  Cpu,
-  Smartphone,
-  ShieldCheck,
-  ChevronRight,
-  ChevronDown,
-  Github,
-  GitBranch,
-  X,
-  ExternalLink,
-  Radio,
-  Copy,
+  ArrowRight,
   Check,
-  Layers,
-  ListChecks,
+  ChevronDown,
+  ChevronRight,
   FileCheck2,
-  Route,
-  LayoutGrid,
-  Terminal,
-  PlugZap,
-  Boxes,
-  Gauge,
+  Github,
+  Layers,
+  Leaf,
+  Radio,
+  ShieldCheck,
+  X,
 } from "lucide-react";
+import { copyFor, GATE_COPY, stateLabel } from "../i18n";
 
-const GATE_LABELS = {
-  paired: "Paired",
-  authenticated: "Authenticated",
-  controller_lease: "Controller lease",
-  resource_admissible: "Resource admissible",
-  provider_ready: "Provider ready",
-};
+const NAV = ["overview", "why", "runtime", "ladder", "evidence", "roadmap"];
 
-const NAV = [
-  { id: "overview", label: "Overview", icon: LayoutGrid },
-  { id: "how", label: "How it works", icon: Route },
-  { id: "ladder", label: "Trust & control", icon: ListChecks },
-  { id: "evidence", label: "Evidence", icon: FileCheck2 },
-  { id: "roadmap", label: "Roadmap", icon: Layers },
-];
+export function liveBadgeTone(live) {
+  return live.fresh
+    ? "border-primary/30 bg-primary/10 text-primary"
+    : "border-amber-500/30 bg-amber-500/10 text-amber-200";
+}
 
-/* ------------------------------------------------------------------ */
-/* Primitives                                                          */
-/* ------------------------------------------------------------------ */
-
-function Pill({ children, tone = "unavailable", dot = true, testId, className = "" }) {
-  const tones = {
-    live: "border-[#39FF14]/40 bg-[#39FF14]/10 text-[#8dff77]",
-    unavailable: "border-neutral-700/70 bg-neutral-800/40 text-neutral-400",
-    warn: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-    evidence: "border-[#39FF14]/40 bg-[#39FF14]/10 text-[#8dff77]",
-    roadmap: "border-neutral-700/60 bg-transparent text-neutral-500 border-dashed",
-    neutral: "border-neutral-700/70 bg-neutral-800/40 text-neutral-300",
-  };
-  const dots = {
-    live: "bg-[#39FF14] dot-glow-green",
-    unavailable: "bg-neutral-500",
-    warn: "bg-amber-400",
-    evidence: "bg-[#39FF14] dot-glow-green",
-    roadmap: "bg-neutral-600",
-    neutral: "bg-neutral-400",
-  };
+function CanonicalState({ state, language, className = "" }) {
+  const canonical = state || "UNAVAILABLE";
+  const translated = stateLabel(canonical, language);
+  const tone = ["READY", "ACTIVE", "AVAILABLE", "AUTHENTICATED", "REMOTE_SUCCESS"].includes(canonical)
+    ? "border-primary/40 bg-primary/10 text-primary"
+    : canonical === "UNKNOWN"
+      ? "border-zinc-700 bg-zinc-900 text-zinc-300"
+      : "border-amber-500/40 bg-amber-500/10 text-amber-200";
   return (
-    <span
-      data-testid={testId}
-      className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] ${tones[tone]} ${className}`}
-    >
-      {dot && <span className={`h-1.5 w-1.5 rounded-full ${dots[tone]}`} />}
-      {children}
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${tone} ${className}`} title={canonical}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span>{translated}</span>
+      {translated !== canonical && <span className="text-[9px] opacity-70">· {canonical}</span>}
     </span>
   );
 }
 
-function StateChip({ state, testId }) {
-  const s = (state || "").toUpperCase();
-  const isRoadmap = s === "ROADMAP";
-  const isLive = ["ACTIVE", "AUTHENTICATED", "AVAILABLE", "READY", "REACHABLE", "REMOTE_SUCCESS"].includes(s);
-  const isUnknown = s.startsWith("UNKNOWN");
-  return (
-    <Pill
-      tone={isRoadmap ? "roadmap" : isLive ? "live" : isUnknown ? "warn" : "unavailable"}
-      dot={!isRoadmap}
-      testId={testId}
-      className="max-w-full truncate"
-    >
-      <span className="truncate">{isRoadmap ? "Roadmap" : state}</span>
-    </Pill>
-  );
+function Card({ children, className = "" }) {
+  return <div className={`rounded-2xl border border-white/10 bg-zinc-950/75 p-5 shadow-2xl shadow-black/20 ${className}`}>{children}</div>;
 }
 
-function Card({ children, className = "", testId }) {
+function SectionHeading({ kicker, title, body }) {
   return (
-    <div
-      data-testid={testId}
-      className={`rounded-lg border border-neutral-800 bg-[#111111] bg-grain ${className}`}
-    >
-      {children}
+    <div className="mb-8 max-w-3xl">
+      <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-primary">{kicker}</p>
+      <h2 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">{title}</h2>
+      <p className="mt-3 text-base leading-7 text-zinc-400">{body}</p>
     </div>
   );
 }
 
-function SectionHeading({ index, kicker, title, sub, right }) {
+function LanguageToggle({ language, setLanguage, t }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <div className="mb-2 flex items-center gap-2.5">
-          <span className="font-mono text-[11px] font-semibold tracking-[0.2em] text-[#39FF14]/70">
-            {index}
-          </span>
-          <span className="h-px w-8 bg-neutral-700" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
-            {kicker}
-          </span>
-        </div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-[1.7rem]">
-          {title}
-        </h2>
-        {sub && <p className="mt-1.5 max-w-2xl text-sm text-neutral-400">{sub}</p>}
-      </div>
-      {right}
-    </div>
-  );
-}
-
-function KV({ k, v, testId }) {
-  return (
-    <div
-      className="flex items-center justify-between gap-4 border-t border-neutral-800/70 py-2.5 first:border-t-0"
-      data-testid={testId}
-    >
-      <span className="shrink-0 text-xs text-neutral-500">{k}</span>
-      <StateChip state={v} />
-    </div>
-  );
-}
-
-function Collapsible({ title, icon: Icon, testId, right, defaultOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <Card className="overflow-hidden">
-      <button
-        data-testid={testId}
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
-      >
-        <div className="flex items-center gap-2.5">
-          {Icon && <Icon className="h-4 w-4 text-neutral-500" strokeWidth={1.75} />}
-          <span className="font-display text-sm font-semibold text-white">{title}</span>
-          {right}
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-neutral-500 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && <div className="border-t border-neutral-800 px-5 py-4">{children}</div>}
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Sidebar                                                             */
-/* ------------------------------------------------------------------ */
-
-function Sidebar({ active, snapshot, onCopy, copied }) {
-  return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-neutral-800 bg-[#0a0a0a] bg-grain lg:flex">
-      <div className="flex items-center gap-3 border-b border-neutral-800 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded border border-[#39FF14]/40 bg-[#39FF14]/5 font-display text-sm font-black text-[#39FF14] text-glow-green">
-          PB
-        </div>
-        <div className="leading-none">
-          <div className="font-display text-sm font-bold tracking-wide text-white">PhoneBoost</div>
-          <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-500">
-            Control Center
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 px-3 py-5" data-testid="side-nav">
-        <div className="mb-3 px-2 font-mono text-[9px] uppercase tracking-[0.24em] text-neutral-600">
-          Sections
-        </div>
-        <ul className="space-y-1">
-          {NAV.map((n) => {
-            const on = active === n.id;
-            const Icon = n.icon;
-            return (
-              <li key={n.id}>
-                <a
-                  href={`#${n.id}`}
-                  data-testid={`nav-${n.id}`}
-                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] transition-colors ${
-                    on ? "bg-neutral-800/60 text-white" : "text-neutral-500 hover:bg-neutral-800/30 hover:text-neutral-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full transition-all ${
-                      on ? "bg-[#39FF14] dot-glow-green" : "bg-transparent"
-                    }`}
-                  />
-                  <Icon
-                    className={`h-4 w-4 shrink-0 ${on ? "text-[#39FF14]" : "text-neutral-600 group-hover:text-neutral-400"}`}
-                    strokeWidth={1.75}
-                  />
-                  {n.label}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="border-t border-neutral-800 px-4 py-4">
-        <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-600">
-          Release anchor
-        </div>
-        <div className="space-y-1 font-mono text-[10px] text-neutral-500">
-          <div className="truncate">
-            tag <span className="text-neutral-300">{snapshot.release.tag}</span>
-          </div>
-          <div className="truncate">
-            head <span className="text-neutral-300">{snapshot.release.head.slice(0, 10)}</span>
-          </div>
-        </div>
+    <div className="inline-flex rounded-lg border border-white/10 bg-zinc-900 p-1" aria-label={t.labels.languageSelector}>
+      {["fr", "en"].map((choice) => (
         <button
-          data-testid="copy-repo-anchor"
-          onClick={onCopy}
-          className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded border border-neutral-800 bg-neutral-900/60 px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400 transition-colors hover:border-[#39FF14]/40 hover:text-[#8dff77]"
+          className={`rounded-md px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider transition ${language === choice ? "bg-primary text-black" : "text-zinc-400 hover:text-white"}`}
+          key={choice}
+          onClick={() => setLanguage(choice)}
+          type="button"
+          aria-pressed={language === choice}
         >
-          {copied ? <Check className="h-3 w-3 text-[#39FF14]" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy anchor"}
+          {choice}
         </button>
+      ))}
+    </div>
+  );
+}
+
+export function Sidebar({ active, language, setLanguage, t }) {
+  return (
+    <aside className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-zinc-950/90 px-4 py-3 backdrop-blur lg:inset-y-0 lg:right-auto lg:w-72 lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
+      <div className="flex items-center justify-between lg:block">
+        <a href="#overview" className="group flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-lg font-bold text-black">PB</span>
+          <span>
+            <span className="block font-display text-lg font-semibold tracking-tight text-white">PhoneBoost</span>
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500 sm:block">{t.controlCenter}</span>
+          </span>
+        </a>
+        <LanguageToggle language={language} setLanguage={setLanguage} t={t} />
+      </div>
+      <nav className="mt-6 hidden space-y-1 lg:block" aria-label={t.labels.primaryNavigation}>
+        {NAV.map((item, index) => (
+          <a
+            className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition ${active === item ? "bg-primary/10 text-primary" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
+            href={`#${item}`}
+            key={item}
+          >
+            <span>{t.navigation[item]}</span>
+            <span className="font-mono text-[10px] text-zinc-600">0{index + 1}</span>
+          </a>
+        ))}
+      </nav>
+      <div className="mt-auto hidden rounded-xl border border-white/10 bg-white/[0.03] p-4 lg:block">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">Local-first</p>
+        <p className="mt-2 text-sm leading-5 text-zinc-400">Linux x86-64 ↔ Android ARM64</p>
       </div>
     </aside>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Enable control (truthful — cannot fake LIVE)                         */
-/* ------------------------------------------------------------------ */
-
-function LiveControl({ live, expanded, onToggleWhy, compute, onCompute }) {
+export function LiveControl({ live, compute, onCompute, language, t }) {
   const runtime = live.fresh ? live.runtime : null;
-  const remoteAvailable = runtime?.remote_blake3_available === true;
+  const canCompute = Boolean(runtime && !compute.running);
   const source = compute.result?.execution_source;
   return (
-    <div
-      className={`w-full max-w-sm rounded-xl border bg-[#111111] bg-grain p-5 ${runtime ? "border-[#39FF14]/25" : "border-amber-500/25"}`}
-      data-testid="enable-phoneboost-panel"
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${runtime ? "border-[#39FF14]/30 bg-[#39FF14]/5" : "border-amber-500/30 bg-amber-500/5"}`}>
-            <Cpu className={`h-5 w-5 ${runtime ? "text-[#39FF14]" : "text-amber-400"}`} strokeWidth={1.75} />
+    <Card className="relative overflow-hidden">
+      <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
+      <div className="relative flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{t.labels.lockedFixture}</p>
+            <h3 className="mt-1 font-display text-xl font-semibold text-white">pb.native.blake3/1</h3>
           </div>
-          <div className="leading-tight">
-            <div className="font-display text-sm font-semibold text-white">Locked BLAKE3 fixture</div>
-            <div className={`font-mono text-[10px] uppercase tracking-[0.18em] ${runtime ? "text-[#8dff77]" : "text-amber-300/80"}`}>
-              {runtime ? (remoteAvailable ? "Live · remote available" : "Live · remote unavailable") : "Unavailable"}
+          <CanonicalState state={runtime?.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE"} language={language} />
+        </div>
+        <p className="text-sm leading-6 text-zinc-400">{t.labels.fixedAction}</p>
+        <button
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-black transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+          type="button"
+          onClick={onCompute}
+          disabled={!canCompute}
+          data-testid="run-blake3-control"
+        >
+          {compute.running ? t.labels.running : t.labels.runFixture}
+          {!compute.running && <ArrowRight size={16} />}
+        </button>
+        {!runtime && <p className="text-xs leading-5 text-amber-200">{t.labels.runtimeUnavailable}</p>}
+        {compute.error && <p className="text-xs leading-5 text-amber-200">{t.labels.computeError}</p>}
+        {compute.result && (
+          <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">{t.labels.lastAction}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <CanonicalState state={source} language={language} />
+              <span className="font-mono text-xs text-zinc-400" title={compute.result.auto_use_reason}>{compute.result.auto_use_reason}</span>
             </div>
+            <p className="mt-2 break-all font-mono text-xs leading-5 text-zinc-300">{compute.result.digest_blake3_hex}</p>
           </div>
-        </div>
-        <StateChip state={runtime?.auto_use?.state || "UNAVAILABLE"} />
+        )}
       </div>
-      <button
-        data-testid="run-blake3-control"
-        disabled={!runtime || compute.running}
-        onClick={onCompute}
-        className="mt-4 w-full rounded border border-[#39FF14]/35 bg-[#39FF14]/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8dff77] disabled:cursor-not-allowed disabled:border-neutral-700 disabled:bg-neutral-800 disabled:text-neutral-500"
-      >
-        {compute.running ? "Production path running…" : "Run c10-abc-v1"}
-      </button>
-      {!runtime && <p className="mt-3 text-xs leading-relaxed text-amber-100/80">{live.reason}</p>}
-      {source && (
-        <div className="mt-3 rounded border border-neutral-800 bg-black/30 p-3" data-testid="compute-result">
-          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-500">
-            Last browser action · observed result
-          </div>
-          <div className={`mt-1 break-all font-mono text-[11px] ${source === "REMOTE_SUCCESS" ? "text-[#8dff77]" : "text-amber-300"}`}>
-            {source}
-          </div>
-          <div className="mt-2 break-all font-mono text-[9px] text-neutral-500">{compute.result.digest_blake3_hex}</div>
-          <div className="mt-1 font-mono text-[9px] text-neutral-600">
-            {new Date(compute.result.observed_at_unix_ms).toISOString()}
-          </div>
-        </div>
-      )}
-      {compute.error && <p className="mt-3 text-xs text-amber-300">{compute.error}</p>}
-      <button
-        data-testid="enable-why-toggle"
-        onClick={onToggleWhy}
-        className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400 transition-colors hover:text-amber-200"
-      >
-        {expanded ? "Hide boundary details" : "Why are some gates unknown?"}
-        <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
-      </button>
-      {expanded && (
-        <div data-testid="live-curtain" className="mt-3 border-t border-neutral-800 pt-3">
-          <p className="text-xs leading-relaxed text-amber-100/70">
-            C12 exposes authentication, auto-use, and locked-provider readiness. Discovery, controller lease, and ResourceGuard are shown as UNKNOWN because C12 does not expose them independently.
-          </p>
-          <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-600">
-            This button can only invoke the fixed c10-abc-v1 production action.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Hero                                                                */
-/* ------------------------------------------------------------------ */
-
-function Hero({ snapshot, live, whyOpen, onToggleWhy, compute, onCompute }) {
-  const runtime = live.fresh ? live.runtime : null;
-  return (
-    <section id="overview" className="reveal relative overflow-hidden border-b border-neutral-800">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#39FF14]/5 blur-3xl" />
-      <div className="relative px-6 py-10 sm:px-10 sm:py-14">
-        <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
-          <div className="max-w-xl">
-            <div className="mb-4 flex items-center gap-2.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#39FF14] dot-glow-green" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-neutral-500">
-                Secure remote compute node
-              </span>
-            </div>
-            <h1 className="font-display text-5xl font-black tracking-tighter text-white sm:text-6xl">
-              Phone<span className="text-[#39FF14] text-glow-green">Boost</span>
-            </h1>
-            <p className="mt-4 font-display text-lg font-medium tracking-tight text-neutral-100 sm:text-xl">
-              Your phone becomes a secure compute node for your Linux PC.
-            </p>
-            <p className="mt-2 text-sm text-neutral-400">Plug it in. PhoneBoost puts it to work.</p>
-
-            <div className="mt-6 flex flex-wrap items-center gap-2.5" data-testid="hero-status-chips">
-              <Pill tone={runtime ? "live" : "warn"} testId="chip-live">
-                {runtime ? "Live · fresh" : "Live · unavailable"}
-              </Pill>
-              <Pill tone="evidence" testId="chip-evidence">Recorded evidence · available</Pill>
-            </div>
-          </div>
-
-          <LiveControl
-            live={live}
-            expanded={whyOpen}
-            onToggleWhy={onToggleWhy}
-            compute={compute}
-            onCompute={onCompute}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* At-a-glance status                                                  */
-/* ------------------------------------------------------------------ */
-
-function GlanceCard({ icon: Icon, label, value, tone = "unavailable", note, href, testId }) {
-  const Wrapper = href ? "a" : "div";
-  return (
-    <Wrapper
-      href={href}
-      data-testid={testId}
-      className={`flex flex-col rounded-lg border border-neutral-800 bg-[#111111] bg-grain p-5 ${
-        href ? "transition-colors hover:border-[#39FF14]/40" : ""
-      }`}
-    >
-      <div className="mb-3 flex items-center gap-2 text-neutral-500">
-        <Icon className="h-4 w-4" strokeWidth={1.75} />
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em]">{label}</span>
-      </div>
-      <div className="mb-2">
-        <Pill tone={tone} dot={tone !== "roadmap"}>
-          {value}
-        </Pill>
-      </div>
-      {note && <p className="mt-auto text-[11px] leading-relaxed text-neutral-500">{note}</p>}
-    </Wrapper>
-  );
-}
-
-function Glance({ live }) {
-  const runtime = live.fresh ? live.runtime : null;
-  const authenticated = runtime?.authenticated_session?.state === "AUTHENTICATED";
-  const available = runtime?.auto_use?.state === "AVAILABLE";
-  return (
-    <section className="reveal px-6 py-10 sm:px-10">
-      <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
-        At a glance
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <GlanceCard
-          testId="glance-availability"
-          icon={Gauge}
-          label="Is PhoneBoost available?"
-          value={runtime ? runtime.auto_use.state : "Unavailable"}
-          tone={available ? "live" : runtime ? "warn" : "unavailable"}
-          note={runtime ? `Fresh native snapshot · ${runtime.auto_use.reason}` : "No fresh local daemon snapshot."}
-        />
-        <GlanceCard
-          testId="glance-phone"
-          icon={Smartphone}
-          label="Is a phone contributing?"
-          value={authenticated ? "Authenticated" : runtime ? runtime.authenticated_session.remote_worker_state : "Unknown"}
-          tone={authenticated ? "live" : "unavailable"}
-          note="Current session truth from C12; durable pairing is not inferred."
-        />
-        <GlanceCard
-          testId="glance-trust"
-          icon={ShieldCheck}
-          label="Trust & control state"
-          value={runtime ? "Independent gates shown" : "Gates unavailable"}
-          href="#ladder"
-          note="Unexposed lease and ResourceGuard gates remain UNKNOWN."
-        />
-        <GlanceCard
-          testId="glance-evidence"
-          icon={FileCheck2}
-          label="Where's the proof?"
-          value="Evidence available"
-          tone="evidence"
-          href="#evidence"
-          note="Recorded, truth-audited tests and builds from the release repository."
-        />
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Simple phone-as-node topology                                       */
-/* ------------------------------------------------------------------ */
-
-function TopologyNode({ icon: Icon, tag, tagTone, title, subtitle, state }) {
-  const tones = {
-    local: "border-sky-500/25",
-    remote: "border-neutral-700",
-  };
-  const chips = {
-    local: "text-sky-300 border-sky-500/30 bg-sky-500/5",
-    remote: "text-neutral-300 border-neutral-700 bg-neutral-800/40",
-  };
-  return (
-    <div className={`flex items-center justify-between gap-4 rounded-lg border ${tones[tagTone]} bg-[#111111] bg-grain p-5`}>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900">
-          <Icon className="h-5 w-5 text-neutral-200" strokeWidth={1.75} />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-[15px] font-semibold text-white">{title}</span>
-            <span className={`rounded border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] ${chips[tagTone]}`}>
-              {tag}
-            </span>
-          </div>
-          <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-neutral-500">{subtitle}</div>
-        </div>
-      </div>
-      <StateChip state={state} />
-    </div>
-  );
-}
-
-function SimpleTopology({ snapshot, live }) {
-  const sl = snapshot.secure_link;
-  const runtime = live.fresh ? live.runtime : null;
-  return (
-    <section className="reveal px-6 pb-4 sm:px-10">
-      <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
-        How it connects
-      </div>
-      <div className="mx-auto max-w-2xl space-y-0">
-        <TopologyNode
-          icon={Cpu}
-          tag="Local"
-          tagTone="local"
-          title="Linux PC"
-          subtitle="x86-64 · orchestrator"
-          state={runtime?.local_daemon?.runtime_state || snapshot.computer.runtime.state}
-        />
-        {/* Secure link connector */}
-        <div className="flex items-stretch gap-4 py-1 pl-5">
-          <div className="flex w-10 flex-col items-center">
-            <span className="h-4 w-px bg-neutral-700" />
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/5">
-              <Radio className="h-4 w-4 text-amber-400/80" strokeWidth={1.75} />
-            </div>
-            <span className="h-4 w-px bg-neutral-700" />
-          </div>
-          <div className="flex flex-1 items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.03] px-4 py-2.5">
-            <div>
-              <div className="font-display text-[13px] font-medium text-amber-100">Secure link</div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-500">
-                Noise XX → IK · PBMUX · fail-closed
-              </div>
-            </div>
-            <StateChip state={runtime?.authenticated_session?.state || sl.session.state} />
-          </div>
-        </div>
-        <TopologyNode
-          icon={Smartphone}
-          tag="Remote node"
-          tagTone="remote"
-          title="Android phone"
-          subtitle="ARM64 · trusted worker"
-          state={runtime?.authenticated_session?.remote_worker_state || snapshot.phone.endpoint.state}
-        />
-      </div>
-      <p className="mx-auto mt-4 max-w-2xl text-center text-[11px] text-neutral-500">
-        The phone works as a separate remote node. Its resources are never merged into the Linux host.
-      </p>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Capabilities (user value)                                           */
-/* ------------------------------------------------------------------ */
-
-function CapabilityCard({ icon: Icon, title, desc, tone, statusLabel }) {
-  return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900">
-          <Icon className="h-4 w-4 text-neutral-300" strokeWidth={1.75} />
-        </div>
-        <Pill tone={tone} dot={tone !== "roadmap"}>
-          {statusLabel}
-        </Pill>
-      </div>
-      <div className="font-display text-[15px] font-semibold text-white">{title}</div>
-      <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">{desc}</p>
     </Card>
   );
 }
 
-function Capabilities({ live }) {
-  const runtime = live.fresh ? live.runtime : null;
-  const authenticated = runtime?.authenticated_session?.state === "AUTHENTICATED";
-  const remoteAvailable = runtime?.remote_blake3_available === true;
+function Hero({ live, compute, onCompute, language, t }) {
+  const liveLabel = live.fresh ? t.labels.liveFresh : t.labels.liveUnavailable;
   return (
-    <section className="reveal px-6 py-10 sm:px-10">
-      <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
-        What the phone can do
+    <section id="overview" className="grid gap-8 pt-24 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,.65fr)] lg:pt-8">
+      <div className="reveal">
+        <div data-testid="live-status-badge" className={`mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${liveBadgeTone(live)}`}>
+          <Radio size={12} />
+          {liveLabel}
+        </div>
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500">{t.hero.kicker}</p>
+        <h1 className="mt-4 max-w-4xl font-display text-5xl font-semibold leading-[0.98] tracking-tight text-white sm:text-6xl xl:text-7xl">
+          {t.hero.titleLead} <span className="text-primary text-glow-green">{t.hero.titleAccent}</span>
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">{t.hero.body}</p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-500">{t.hero.support}</p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-black transition hover:bg-primary/90" href="#why">
+            {t.hero.primary} <ArrowRight size={16} />
+          </a>
+          <a className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:border-primary/50" href="#runtime">
+            {t.hero.secondary}
+          </a>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <CapabilityCard
-          icon={Radio}
-          title="Secure link"
-          desc="Authenticated, fail-closed channel between PC and phone."
-          tone={authenticated ? "live" : "unavailable"}
-          statusLabel={authenticated ? "Authenticated" : "Not observed"}
-        />
-        <CapabilityCard
-          icon={Boxes}
-          title="Authority gates"
-          desc="Lease and ResourceGuard remain Android-owned and are not inferred by this browser."
-          tone="warn"
-          statusLabel="Unknown in C12"
-        />
-        <CapabilityCard
-          icon={Cpu}
-          title="Locked remote compute"
-          desc="The fixed c10-abc-v1 BLAKE3 action follows the production C12 path."
-          tone={remoteAvailable ? "live" : "unavailable"}
-          statusLabel={remoteAvailable ? "Available" : "Unavailable"}
-        />
-        <CapabilityCard
-          icon={FileCheck2}
-          title="Recorded evidence"
-          desc="Truth-audited tests and builds from the release repo."
-          tone="evidence"
-          statusLabel="Available"
-        />
+      <div className="reveal" style={{ animationDelay: "90ms" }}>
+        <LiveControl live={live} compute={compute} onCompute={onCompute} language={language} t={t} />
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* How it works + technical details                                    */
-/* ------------------------------------------------------------------ */
-
-function Step({ n, title, desc }) {
+function WhyPhoneBoost({ t }) {
   return (
-    <div className="flex gap-4">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-700 font-mono text-xs text-neutral-400">
-        {n}
+    <section id="why" className="border-t border-white/10 py-20">
+      <SectionHeading kicker={t.why.kicker} title={t.why.title} body={t.why.body} />
+      <div className="grid gap-4 md:grid-cols-2">
+        {t.why.points.map((point) => (
+          <Card key={point} className="flex items-start gap-3 ring-glow-green">
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Check size={15} /></span>
+            <p className="text-sm leading-6 text-zinc-300">{point}</p>
+          </Card>
+        ))}
       </div>
-      <div>
-        <div className="font-display text-sm font-semibold text-white">{title}</div>
-        <p className="mt-1 text-xs leading-relaxed text-neutral-400">{desc}</p>
+      <div className="mt-4 flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-6 text-amber-100">
+        <Leaf className="mt-0.5 shrink-0 text-amber-300" size={18} />
+        <p>{t.why.limit}</p>
       </div>
-    </div>
+    </section>
   );
 }
 
-function HowItWorks({ snapshot, arch }) {
-  const sl = snapshot.secure_link;
-  const c = snapshot.computer;
-  const p = snapshot.phone;
+function Runtime({ live, snapshot, arch, language, t }) {
+  const runtime = live.fresh ? live.runtime : null;
+  const current = runtime || {};
+  const fields = [
+    [t.runtime.daemon, current.local_daemon?.runtime_state || "UNAVAILABLE"],
+    [t.runtime.authenticated, current.authenticated_session?.state || "UNAVAILABLE"],
+    [t.runtime.provider, current.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE"],
+    [t.runtime.autoUse, current.auto_use?.state || "UNAVAILABLE"],
+  ];
   return (
-    <section id="how" className="reveal border-t border-neutral-800 px-6 py-12 sm:px-10">
-      <SectionHeading
-        index="01"
-        kicker="How it works"
-        title="Plug it in. PhoneBoost puts it to work."
-        sub="A simple flow, backed by a strict authority model. Deeper protocol detail stays tucked away below."
-      />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="p-6">
-          <Step n="1" title="Connect the phone" desc="Pair an Android phone with your Linux PC over a local, secure link." />
-        </Card>
-        <Card className="p-6">
-          <Step n="2" title="Trust is established" desc="Pairing, authentication and a controller lease must all pass before anything runs." />
-        </Card>
-        <Card className="p-6">
-          <Step n="3" title="It gets put to work" desc="When the runtime and authority gates allow, the phone contributes as a remote node." />
-        </Card>
-      </div>
-
-      {/* Honest technical clarification — secondary */}
-      <Card className="mt-6 p-6">
-        <div className="flex items-start gap-3">
-          <PlugZap className="mt-0.5 h-5 w-5 shrink-0 text-neutral-500" strokeWidth={1.75} />
-          <p className="text-sm leading-relaxed text-neutral-400">
-            PhoneBoost is explicit remote resource cooperation between two separate machines. It is
-            <span className="text-neutral-200"> not</span> RAM extension, swap, or a CPU illusion — Android capacity is
-            never transparently merged into the Linux host, and the hosted browser itself cannot perform native
-            pairing or control.
-          </p>
-        </div>
-      </Card>
-
-      {/* Technical details — collapsible, off by default */}
-      <div className="mt-6 space-y-4">
-        <Collapsible title="Secure link details" icon={Radio} testId="collapsible-secure-link">
-          <KV k="Transport" v={sl.transport.state} testId="kv-transport" />
-          <KV k="Session" v={sl.session.state} testId="kv-session" />
-          <KV k="Auth" v={sl.authentication.state} testId="kv-auth" />
-          <KV k="Latency" v={sl.latency.state} testId="kv-latency" />
-        </Collapsible>
-
-        <Collapsible title="Local host & remote worker" icon={Terminal} testId="collapsible-endpoints">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-sky-300" strokeWidth={1.75} />
-                <span className="font-display text-[13px] font-semibold text-white">{c.label}</span>
-              </div>
-              <KV k="phoneboostd" v={c.runtime.state} testId="kv-phoneboostd" />
-              <KV k="Local API" v={c.local_api.state} testId="kv-local-api" />
-              <p className="mt-2 text-[11px] text-neutral-500">{c.note}</p>
-            </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <Smartphone className="h-4 w-4 text-neutral-300" strokeWidth={1.75} />
-                <span className="font-display text-[13px] font-semibold text-white">{p.label}</span>
-              </div>
-              <KV k="Endpoint" v={p.endpoint.state} testId="kv-endpoint" />
-              <KV k="Worker" v={p.worker.state} testId="kv-worker" />
-              <KV k="Incarnation" v={p.incarnation.state} testId="kv-incarnation" />
-              <p className="mt-2 text-[11px] text-neutral-500">{p.health.note}</p>
-            </div>
+    <section id="runtime" className="border-t border-white/10 py-20">
+      <SectionHeading kicker={t.runtime.kicker} title={t.runtime.title} body={t.runtime.body} />
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">{live.fresh ? t.gates.fresh : t.gates.unavailable}</p>
+            <CanonicalState state={live.fresh ? "AVAILABLE" : "UNAVAILABLE"} language={language} />
           </div>
-        </Collapsible>
-
-        <Collapsible title="Remote capability" icon={Boxes} testId="collapsible-remote-capability">
-          <KV k="Admitted capacity" v={snapshot.remote_capability.admitted_capacity.state} testId="kv-admitted" />
-          <KV k="Reserved" v={snapshot.remote_capability.reserved.state} testId="kv-reserved" />
-          <KV k="RemoteBuffer" v={snapshot.remote_capability.active_remote_buffer.state} testId="kv-remotebuffer" />
-          <KV k="Remote job" v={snapshot.remote_capability.active_remote_job.state} testId="kv-remote-job" />
-          <p className="mt-2 text-[11px] text-neutral-500">{snapshot.remote_capability.note}</p>
-        </Collapsible>
-
-        <Collapsible
-          title="Architecture layers"
-          icon={Layers}
-          testId="collapsible-architecture"
-          right={<Pill tone="evidence">Repository truth</Pill>}
-        >
-          <ol className="space-y-2">
-            {arch.layers.map((l, i) => (
-              <li
-                key={l.layer}
-                data-testid={`arch-${i}`}
-                className="grid grid-cols-1 items-start gap-2 rounded border border-neutral-800/70 bg-neutral-900/30 p-3 md:grid-cols-[150px_120px_1fr]"
-              >
-                <div className="font-display text-[13px] font-medium text-neutral-100">{l.layer}</div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">{l.role}</div>
-                <div className="break-all font-mono text-[11px] text-neutral-400">{l.detail}</div>
+          {live.fresh ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {fields.map(([label, state]) => (
+                <div className="rounded-xl border border-white/10 bg-black/25 p-4" key={label}>
+                  <p className="text-xs text-zinc-500">{label}</p>
+                  <div className="mt-2"><CanonicalState state={state} language={language} /></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-zinc-400">{t.labels.runtimeUnavailable}</p>
+          )}
+          <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">{t.runtime.topology}</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">{t.runtime.separateNode}</p>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center gap-2 text-primary"><Layers size={17} /><p className="font-mono text-[10px] uppercase tracking-[0.16em]">Architecture</p></div>
+          <ol className="mt-4 space-y-3">
+            {(arch.layers || []).map((layer) => (
+              <li className="border-l border-white/10 pl-3" key={layer.layer}>
+                <p className="text-sm font-semibold text-zinc-200">{layer.layer} <span className="font-normal text-zinc-500">· {layer.role}</span></p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">{layer.detail}</p>
               </li>
             ))}
           </ol>
-        </Collapsible>
-
-        <Collapsible title="Security" icon={ShieldCheck} testId="collapsible-security" defaultOpen>
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#39FF14]" strokeWidth={1.75} />
-            <div>
-              <p className="text-sm leading-relaxed text-neutral-200">{snapshot.security_plain_language}</p>
-              <p className="mt-2 break-words font-mono text-[11px] leading-relaxed text-neutral-500">
-                Full 256-bit peer IDs (<span className="text-neutral-300">SHA-256(static_public_key)</span>), Noise XX
-                first pair with QR-01A SAS, Noise IK reconnect, PBMUX authenticated framing, fail-closed dispatch,
-                worker-authoritative ResourceGuard. Session material, private keys and SAS values are never exposed by
-                this UI.
-              </p>
-            </div>
-          </div>
-        </Collapsible>
+        </Card>
       </div>
+      <p className="mt-3 text-xs text-zinc-600">{snapshot.provenance === "RECORDED_EVIDENCE" ? t.labels.recordedEvidence : ""}</p>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Five-gate ladder                                                    */
-/* ------------------------------------------------------------------ */
-
-function GateLadder({ gates, live }) {
+function GateLadder({ live, snapshot, language, t }) {
   const runtime = live.fresh ? live.runtime : null;
-  const displayedGates = runtime
-    ? gates.map((gate) => {
-        const liveGate = {
-          paired: {
-            state: "UNKNOWN",
-            reason: "Durable pairing state is not independently exposed by C12.",
-          },
-          authenticated: {
-            state: runtime.authenticated_session.state,
-            reason: `Current worker state: ${runtime.authenticated_session.remote_worker_state}.`,
-          },
-          controller_lease: {
-            state: runtime.controller_lease.state,
-            reason: "Controller lease is not independently exposed by C12.",
-          },
-          resource_admissible: {
-            state: runtime.resource_guard.state,
-            reason: "ResourceGuard readiness is not independently exposed by C12.",
-          },
-          provider_ready: {
-            state: runtime.provider_readiness.state,
-            reason: "Exact readiness of pb.native.blake3/1 from the current C12 snapshot.",
-          },
-        }[gate.id];
-        return { ...gate, ...liveGate };
-      })
-    : gates;
+  const observed = {
+    paired: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    authenticated: { state: runtime?.authenticated_session?.state || "UNAVAILABLE", reason: runtime?.authenticated_session?.remote_worker_state || "UNAVAILABLE" },
+    controller_lease: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    resource_admissible: { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" },
+    provider_ready: { state: runtime?.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE", reason: "pb.native.blake3/1" },
+  };
   return (
-    <section id="ladder" className="reveal border-t border-neutral-800 px-6 py-12 sm:px-10">
-      <SectionHeading
-        index="02"
-        kicker="Trust & control"
-        title="Five independent gates"
-        sub="Each gate is a distinct authority check — not a sequence and not a progress bar. A peer ID is identity only; it does not authenticate a session, grant a lease, or create capacity."
-        right={
-          <Pill tone={runtime ? "live" : "warn"} testId="ladder-status">
-            {runtime ? "Fresh native snapshot" : "No fresh live bridge"}
-          </Pill>
-        }
-      />
-      <ol data-testid="gate-ladder" className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {displayedGates.map((g, i) => (
-          <li
-            key={g.id}
-            data-testid={`gate-${g.id}`}
-            className="group flex flex-col rounded-lg border border-neutral-800 bg-[#111111] bg-grain p-5 transition-colors hover:border-neutral-700"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="font-mono text-lg font-semibold tracking-tight text-neutral-700">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <StateChip state={g.state} testId={`gate-${g.id}-badge`} />
-            </div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full border border-neutral-600 bg-transparent" />
-              <span className="font-display text-[15px] font-semibold text-white">
-                {GATE_LABELS[g.id] || g.label}
-              </span>
-            </div>
-            <p className="text-xs leading-relaxed text-neutral-400">{g.explanation}</p>
-            <p className="mt-3 border-t border-neutral-800/70 pt-2.5 font-mono text-[10px] italic text-neutral-600">
-              {g.reason}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Evidence                                                            */
-/* ------------------------------------------------------------------ */
-
-function EvidenceGrid({ evidence, fixtures, snapshot, onOpen }) {
-  return (
-    <section id="evidence" className="reveal border-t border-neutral-800 px-6 py-12 sm:px-10">
-      <SectionHeading
-        index="03"
-        kicker="Recorded evidence"
-        title="Truth-audited technical proof"
-        sub="Every card is anchored to a checked-in file in the release repository. Nothing here is live telemetry — it is verified, recorded evidence."
-        right={
-          <div className="hidden items-center gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500 md:flex">
-            <span className="inline-flex items-center gap-1.5">
-              <GitBranch className="h-3.5 w-3.5" /> {snapshot.release.head.slice(0, 10)}
-            </span>
-            {fixtures && (
-              <span>
-                fixtures <span className="text-neutral-300">{fixtures.file_count}</span>
-              </span>
-            )}
-          </div>
-        }
-      />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {evidence.map((c) => (
-          <button
-            key={c.id}
-            data-testid={`evidence-card-${c.id}`}
-            onClick={() => onOpen(c.id)}
-            className="ring-glow-green group relative flex flex-col overflow-hidden rounded-lg border border-neutral-800 bg-[#111111] bg-grain p-5 text-left transition-colors hover:border-[#39FF14]/40"
-          >
-            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#39FF14]/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-            <div className="mb-3 flex items-center justify-between">
-              <Pill tone="evidence">Recorded evidence</Pill>
-              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-600">{c.kind}</span>
-            </div>
-            <h3 className="font-display text-[15px] font-semibold leading-snug text-white">{c.title}</h3>
-            <p className="mt-2 flex-1 text-xs leading-relaxed text-neutral-400">{c.summary}</p>
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-neutral-800/70 pt-3">
-              <span className="truncate font-mono text-[10px] text-neutral-600">{c.source}</span>
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500 transition-colors group-hover:text-[#8dff77]">
-                Open <ChevronRight className="h-3 w-3" />
-              </span>
-            </div>
-          </button>
-        ))}
+    <section id="ladder" className="border-t border-white/10 py-20">
+      <SectionHeading kicker={t.gates.kicker} title={t.gates.title} body={t.gates.body} />
+      <div className="grid gap-3">
+        {(snapshot.gates || []).map((gate, index) => {
+          const current = live.fresh ? observed[gate.id] || { state: "UNKNOWN", reason: "NOT_EXPOSED_BY_C12" } : { state: "UNAVAILABLE", reason: "NO_FRESH_LIVE_SNAPSHOT" };
+          return (
+            <Card key={gate.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 font-mono text-xs text-zinc-500">0{index + 1}</span>
+                <div>
+                  <p className="font-semibold text-zinc-100">{GATE_COPY[gate.id]?.[language] || gate.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">{gate.explanation}</p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-600">{current.reason}</p>
+                </div>
+              </div>
+              <CanonicalState state={current.state} language={language} className="shrink-0" />
+            </Card>
+          );
+        })}
       </div>
+      <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-zinc-200"><span className="inline-flex items-center gap-2"><ShieldCheck size={16} className="text-primary" />{t.labels.unknownGates}<ChevronDown size={15} /></span></summary>
+        <p className="mt-3 text-sm leading-6 text-zinc-400">{t.labels.boundaryCopy}</p>
+      </details>
     </section>
   );
 }
 
-function EvidenceDrawer({ open, onClose, api, id, evidence }) {
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const loadedFor = useRef(null);
+export function EvidenceDrawer({ item, api, t, onClose }) {
+  const [content, setContent] = useState(null);
+  const closeButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   useEffect(() => {
-    if (open && id && loadedFor.current !== id) {
-      loadedFor.current = id;
-      setLoading(true);
-      setDetail(null);
-      if (!api.base) {
-        const card = evidence.find((item) => item.id === id);
-        setDetail(card ? { provenance: "RECORDED_EVIDENCE", card } : null);
-        setLoading(false);
-        return;
+    setContent(null);
+    if (!item) return undefined;
+    previouslyFocusedRef.current = document.activeElement;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
       }
-      axios
-        .get(`${api.base}/evidence/${id}`)
-        .then((r) => {
-          setDetail(r.data);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-    }
-    if (!open) loadedFor.current = null;
-  }, [open, id, api.base, evidence]);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [item, onClose]);
 
-  if (!open) return null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!item || !api.base) return undefined;
+    axios.get(`${api.base}/evidence/${item.id}`).then((response) => {
+      if (!cancelled) setContent(response.data);
+    }).catch(() => {
+      if (!cancelled) setContent(null);
+    });
+    return () => { cancelled = true; };
+  }, [api.base, item]);
+  if (!item) return null;
   return (
-    <div className="fixed inset-0 z-50 flex" data-testid="evidence-drawer">
-      <div className="flex-1 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <aside className="reveal w-full max-w-xl overflow-y-auto border-l border-neutral-800 bg-[#0a0a0a] bg-grain p-7">
-        <div className="mb-5 flex items-center justify-between">
-          <Pill tone="evidence">Recorded evidence</Pill>
-          <button
-            data-testid="evidence-drawer-close"
-            onClick={onClose}
-            className="rounded border border-neutral-800 p-1.5 text-neutral-500 transition-colors hover:border-neutral-600 hover:text-neutral-200"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {loading && (
-          <div className="font-mono text-xs uppercase tracking-widest text-neutral-500">Loading evidence…</div>
-        )}
-        {detail && (
-          <>
-            <h3 className="font-display text-xl font-bold tracking-tight text-white">{detail.card.title}</h3>
-            <p className="mt-2 break-all font-mono text-[11px] text-neutral-500">
-              source · <span className="text-neutral-300">{detail.card.source}</span>
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-neutral-300">{detail.card.summary}</p>
-            {detail.detail && (
-              <>
-                <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-neutral-500">
-                  Structured detail
-                </div>
-                <pre className="mt-2 max-h-72 overflow-auto rounded border border-neutral-800 bg-black p-4 font-mono text-[11px] leading-relaxed text-neutral-300">
-                  {JSON.stringify(detail.detail, null, 2)}
-                </pre>
-              </>
-            )}
-            {detail.raw && (
-              <>
-                <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-neutral-500">
-                  Raw evidence · redacted at source
-                </div>
-                <pre className="mt-2 max-h-96 overflow-auto rounded border border-neutral-800 bg-black p-4 font-mono text-[11px] leading-relaxed text-neutral-300">
-                  {detail.raw}
-                </pre>
-              </>
-            )}
-          </>
-        )}
-      </aside>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="evidence-drawer-title">
+      <div className="h-full w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">{t.evidence.kicker}</p><h3 id="evidence-drawer-title" className="mt-2 text-xl font-semibold text-white">{item.title}</h3></div><button ref={closeButtonRef} data-testid="evidence-drawer-close" aria-label={t.labels.close} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white" onClick={onClose} type="button"><X size={18} /></button></div>
+        <p className="mt-5 text-sm leading-6 text-zinc-300">{item.summary}</p>
+        <p className="mt-5 font-mono text-xs text-zinc-500">{t.evidence.source}: {item.source}</p>
+        {api.base && <pre className="mt-5 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs leading-5 text-zinc-400">{content ? JSON.stringify(content, null, 2) : t.evidence.loading}</pre>}
+      </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Roadmap                                                             */
-/* ------------------------------------------------------------------ */
-
-function RoadmapColumn({ title, tone, items, testId }) {
-  const styles = {
-    green: { head: "text-[#8dff77]", dot: "bg-[#39FF14] dot-glow-green", text: "text-neutral-300" },
-    amber: { head: "text-amber-300", dot: "bg-amber-400", text: "text-neutral-300" },
-    neutral: { head: "text-neutral-400", dot: "bg-neutral-600", text: "text-neutral-500" },
-  }[tone];
+function Evidence({ evidence, fixtures, api, t }) {
+  const [selected, setSelected] = useState(null);
   return (
-    <Card className="p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${styles.dot}`} />
-        <h3 className={`font-mono text-[11px] font-semibold uppercase tracking-[0.16em] ${styles.head}`}>{title}</h3>
-      </div>
-      <ul className="space-y-2.5" data-testid={testId}>
-        {items.map((x) => (
-          <li key={x} className={`flex gap-2.5 text-[13px] leading-relaxed ${styles.text}`}>
-            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-neutral-700" />
-            {x}
-          </li>
+    <section id="evidence" className="border-t border-white/10 py-20">
+      <SectionHeading kicker={t.evidence.kicker} title={t.evidence.title} body={t.evidence.body} />
+      <div className="mb-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500"><span className="rounded-full border border-white/10 px-3 py-1">{t.labels.recordedEvidence}</span><span className="rounded-full border border-white/10 px-3 py-1">fixtures: {fixtures.file_count ?? "UNKNOWN"}</span></div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {evidence.map((item) => (
+          <Card key={item.id} className="flex flex-col justify-between ring-glow-green">
+            <div><div className="flex items-center gap-2 text-primary"><FileCheck2 size={16} /><span className="font-mono text-[10px] uppercase tracking-[0.14em]">{item.kind}</span></div><h3 className="mt-4 font-display text-lg font-semibold text-white">{item.title}</h3><p className="mt-3 text-sm leading-6 text-zinc-400">{item.summary}</p></div>
+            <button className="mt-5 inline-flex items-center gap-2 self-start text-sm font-semibold text-primary hover:text-white" type="button" onClick={() => setSelected(item)}>{t.evidence.open}<ChevronRight size={16} /></button>
+          </Card>
         ))}
-      </ul>
-    </Card>
+      </div>
+      <EvidenceDrawer item={selected} api={api} t={t} onClose={() => setSelected(null)} />
+    </section>
   );
 }
 
-function Roadmap({ roadmap }) {
+function Roadmap({ roadmap, t }) {
+  const columns = [
+    [t.roadmap.working, roadmap.working_now || [], "text-primary"],
+    [t.roadmap.next, roadmap.next || [], "text-amber-300"],
+    [t.roadmap.future, roadmap.future || [], "text-zinc-400"],
+  ];
   return (
-    <section id="roadmap" className="reveal border-t border-neutral-800 px-6 py-12 sm:px-10">
-      <SectionHeading
-        index="04"
-        kicker="Trajectory"
-        title="Working now, next, and future"
-        sub="A deliberate separation between what is demonstrated today and what remains roadmap. Nothing in Next or Future is presented as implemented."
-      />
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <RoadmapColumn title="Working / demonstrated now" tone="green" items={roadmap.working_now} testId="roadmap-working" />
-        <RoadmapColumn title="Next" tone="amber" items={roadmap.next} testId="roadmap-next" />
-        <RoadmapColumn title="Future" tone="neutral" items={roadmap.future} testId="roadmap-future" />
+    <section id="roadmap" className="border-t border-white/10 py-20">
+      <SectionHeading kicker={t.roadmap.kicker} title={t.roadmap.title} body={t.roadmap.body} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        {columns.map(([title, entries, color]) => (
+          <Card key={title}><p className={`font-mono text-[10px] uppercase tracking-[0.16em] ${color}`}>{title}</p><ul className="mt-5 space-y-4">{entries.length ? entries.map((entry) => <li className="flex gap-3 text-sm leading-6 text-zinc-400" key={entry}><span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${color.replace("text-", "bg-")}`} />{entry}</li>) : <li className="text-sm text-zinc-600">—</li>}</ul></Card>
+        ))}
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Dashboard                                                           */
-/* ------------------------------------------------------------------ */
-
-export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures, compute, onCompute }) {
-  const [openEv, setOpenEv] = useState(null);
+export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures, compute, onCompute, language, setLanguage }) {
   const [active, setActive] = useState("overview");
-  const [copied, setCopied] = useState(false);
-  const [whyOpen, setWhyOpen] = useState(false);
-  const runtime = live.fresh ? live.runtime : null;
-
+  const sectionRef = useRef(null);
+  const t = copyFor(language);
   useEffect(() => {
-    const ids = NAV.map((n) => n.id);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-20% 0px -60% 0px", threshold: [0.1, 0.5, 1] }
-    );
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActive(visible.target.id);
+    }, { rootMargin: "-25% 0px -60%" });
+    const sections = NAV.map((id) => document.getElementById(id)).filter(Boolean);
+    sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
   }, []);
-
-  const onCopy = () => {
-    const r = snapshot.release;
-    const text = `PhoneBoost ${r.tag}\nHEAD ${r.head}\nnative baseline ${r.native_baseline}\ntoolchain ${r.toolchain}\nvalidated ${r.validation_date}`;
-    const done = () => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    };
-    const fallbackCopy = () => {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      } catch {
-        /* clipboard unavailable; ignore */
-      }
-      done();
-    };
-    try {
-      const p = navigator.clipboard?.writeText(text);
-      if (p && typeof p.then === "function") p.then(done).catch(fallbackCopy);
-      else fallbackCopy();
-    } catch {
-      fallbackCopy();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-neutral-200">
-      <Sidebar active={active} snapshot={snapshot} onCopy={onCopy} copied={copied} />
-
-      <div className="lg:pl-60">
-        {/* Provenance banner (static, honest) */}
-        <div className="sticky top-0 z-20 border-b border-neutral-800 bg-[#0a0a0a]/85 backdrop-blur">
-          <div className="flex items-center justify-between gap-3 px-6 py-2.5 sm:px-10">
-            <div className="flex min-w-0 items-center gap-3">
-              <Pill tone={runtime ? "live" : "evidence"} testId="mode-badge">
-                {runtime ? "Live · fresh native state" : "Recorded evidence · live unavailable"}
-              </Pill>
-              <span className="hidden truncate font-mono text-[10px] text-neutral-500 md:inline">
-                native <span className="text-neutral-300">{snapshot.release.native_baseline.slice(0, 12)}</span>
-                {" · "}toolchain <span className="text-neutral-300">{snapshot.release.toolchain}</span>
-                {" · "}validated <span className="text-neutral-300">{snapshot.release.validation_date}</span>
-              </span>
-            </div>
-            <a
-              data-testid="repo-link"
-              href={snapshot.release.repo}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500 transition-colors hover:text-neutral-200"
-            >
-              <Github className="h-3.5 w-3.5" /> Repo
-            </a>
-          </div>
-        </div>
-
-        <main>
-          <Hero
-            snapshot={snapshot}
-            live={live}
-            whyOpen={whyOpen}
-            onToggleWhy={() => setWhyOpen((o) => !o)}
-            compute={compute}
-            onCompute={onCompute}
-          />
-          <Glance live={live} />
-          <SimpleTopology snapshot={snapshot} live={live} />
-          <Capabilities live={live} />
-          <HowItWorks snapshot={snapshot} arch={arch} />
-          <GateLadder gates={snapshot.gates} live={live} />
-          <EvidenceGrid evidence={evidence} fixtures={fixtures} snapshot={snapshot} onOpen={setOpenEv} />
-          <Roadmap roadmap={roadmap} />
-
-          <footer className="border-t border-neutral-800 px-6 py-10 sm:px-10">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[11px] text-neutral-500">
-              <span>
-                release <span className="text-neutral-300">{snapshot.release.tag}</span>
-              </span>
-              <span className="text-neutral-700">·</span>
-              <span className="break-all">
-                head <span className="text-neutral-300">{snapshot.release.head}</span>
-              </span>
-              <span className="text-neutral-700">·</span>
-              <a
-                href={snapshot.release.repo}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-neutral-400 transition-colors hover:text-[#8dff77]"
-              >
-                Repository <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            <p className="mt-3 max-w-3xl text-[11px] leading-relaxed text-neutral-600">
-              PhoneBoost is a non-production proof of concept for explicit remote resource cooperation between a Linux
-              x86-64 host and an Android ARM64 worker. It is not RAM extension, not swap, not a CPU illusion, and not a
-              cloud service. This Control Center never fabricates LIVE state.
-            </p>
-          </footer>
-        </main>
-      </div>
-
-      <EvidenceDrawer
-        open={!!openEv}
-        onClose={() => setOpenEv(null)}
-        api={api}
-        id={openEv}
-        evidence={evidence}
-      />
+    <div className="min-h-screen bg-grain bg-[#0a0a0a] text-zinc-100">
+      <Sidebar active={active} language={language} setLanguage={setLanguage} t={t} />
+      <main ref={sectionRef} className="mx-auto max-w-7xl px-5 pb-10 lg:ml-72 lg:px-12 xl:px-16">
+        <Hero live={live} compute={compute} onCompute={onCompute} language={language} t={t} />
+        <WhyPhoneBoost t={t} />
+        <Runtime live={live} snapshot={snapshot} arch={arch} language={language} t={t} />
+        <GateLadder live={live} snapshot={snapshot} language={language} t={t} />
+        <Evidence evidence={evidence} fixtures={fixtures} api={api} t={t} />
+        <Roadmap roadmap={roadmap} t={t} />
+        <footer className="border-t border-white/10 py-8 text-sm leading-6 text-zinc-500"><div className="flex flex-col justify-between gap-4 sm:flex-row"><p className="max-w-3xl">{t.footer}</p><a className="inline-flex shrink-0 items-center gap-2 text-zinc-400 hover:text-primary" href={snapshot.release?.repo} target="_blank" rel="noreferrer"><Github size={16} />Repository</a></div></footer>
+      </main>
     </div>
   );
 }

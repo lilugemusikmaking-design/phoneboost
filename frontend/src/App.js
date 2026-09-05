@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "@/App.css";
 import Dashboard from "@/pages/Dashboard";
+import { safeRecordedPayloads } from "@/recordedApi";
 import {
   consumeBridgeToken,
   expireLiveState,
@@ -22,9 +23,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const RECORDED_API = BACKEND_URL ? `${BACKEND_URL}/api` : null;
 const BRIDGE_CAPABILITY =
   typeof window === "undefined" ? null : consumeBridgeToken(window.location, window.history);
+const COMPUTE_ACTION_UNAVAILABLE = "COMPUTE_ACTION_UNAVAILABLE";
 
 export default function App() {
   const recordedApiBase = BRIDGE_CAPABILITY ? null : RECORDED_API;
+  const [language, setLanguage] = useState("fr");
 
   const [snapshot, setSnapshot] = useState(RECORDED_SNAPSHOT);
   const [live, setLive] = useState(HOSTED_LIVE_UNAVAILABLE);
@@ -47,11 +50,18 @@ export default function App() {
           axios.get(`${recordedApiBase}/fixtures/manifest`),
         ]);
         if (cancelled) return;
-        setSnapshot(snap.data);
-        setEvidence(ev.data.items || RECORDED_EVIDENCE);
-        setRoadmap(rm.data);
-        setArch(ar.data);
-        setFixtures(fx.data);
+        const safe = safeRecordedPayloads({
+          snapshot: snap?.data,
+          evidence: ev?.data,
+          roadmap: rm?.data,
+          arch: ar?.data,
+          fixtures: fx?.data,
+        });
+        setSnapshot(safe.snapshot);
+        setEvidence(safe.evidence);
+        setRoadmap(safe.roadmap);
+        setArch(safe.arch);
+        setFixtures(safe.fixtures);
       } catch {
         // Checked-in recorded data remains visible and separately labeled.
       }
@@ -96,6 +106,10 @@ export default function App() {
     }
   }, [live.fresh]);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const runCompute = useCallback(async () => {
     if (!BRIDGE_CAPABILITY) return;
     setCompute({ running: true, result: null, error: null });
@@ -112,7 +126,7 @@ export default function App() {
       if (!result) throw new Error("invalid bridge response");
       setCompute({ running: false, result, error: null });
     } catch {
-      setCompute({ running: false, result: null, error: "The production compute action was unavailable." });
+      setCompute({ running: false, result: null, error: COMPUTE_ACTION_UNAVAILABLE });
     }
   }, []);
 
@@ -129,6 +143,8 @@ export default function App() {
       fixtures={fixtures}
       compute={compute}
       onCompute={runCompute}
+      language={language}
+      setLanguage={setLanguage}
     />
   );
 }
