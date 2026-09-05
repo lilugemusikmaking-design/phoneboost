@@ -46,6 +46,30 @@ fact must carry provenance LIVE / RECORDED EVIDENCE / ROADMAP; no silent fallbac
 - Frontend: 15/15 UI expectations verified end-to-end on public preview URL.
 - No fabricated LIVE data was observed anywhere.
 
+## Business repositioning + bilingual FR/EN — 2026-06 (presentation-only, verified)
+- Repositioned for organizations (SMEs, associations, schools, public bodies, IT
+  fleets); individuals kept as secondary audience. Core message: extend the
+  useful life of the IT fleet using Android devices already owned, potentially
+  delaying hardware replacement. No backend/native changes.
+- Bilingual FR/EN with FRENCH as default (Building France). Added
+  frontend/src/i18n.js (STRINGS fr/en, STATE_LABELS canonical→friendly,
+  GATE_CONTENT, stateLabel). Language toggle in sidebar + mobile banner;
+  choice persists via localStorage 'pb-lang'; canonical runtime state names
+  preserved on hover (title attr) while labels translate.
+- New business-first structure: Hero (Prolongez la durée de vie de votre parc
+  informatique / Extend the useful life of your IT fleet) + CTAs; "Pourquoi
+  PhoneBoost?" (problem-first + 6 value cards + environmental note); "Comment
+  ça fonctionne?" (PC Linux ↕ lien local sécurisé ↕ smartphone Android ↕
+  ResourceGuard/exécution distante/décision mesurée + glance + capabilities +
+  Enable live-status); "Ce que PhoneBoost ne fait pas" (4 explicit denials:
+  no virtual RAM, no transparent remote swap, no Android CPU in Linux
+  scheduler, no perf promise without measurement). Technical proof (gates,
+  evidence, collapsible details) moved lower.
+- Truth model fully preserved: LIVE unavailable, 5 independent gates, LOCAL vs
+  REMOTE never merged, no fabricated metrics. Verified: production build PASS;
+  frontend E2E 100% (13/13), see /app/test_reports/iteration_5.json.
+- NOT republished — preview ready for review; redeploy from Emergent to push.
+
 ## Truth/status/evidence refresh — 2026-06 (to GitHub master 162539c, verified)
 - Refreshed the presentation layer to reflect current PhoneBoost master
   `162539c` ("Expose production auto-use BLAKE3") WITHOUT importing the native

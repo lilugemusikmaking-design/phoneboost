@@ -1,0 +1,22 @@
+{
+  "summary": "Bilingual FR/EN repositioning verified end-to-end on public URL. All 13 requested behaviors PASS. French is default on fresh load (localStorage 'pb-lang' cleared); hero H1 renders 'Prolongez la durée de vie de votre parc informatique.' with the support line 'Moins de matériel remplacé prématurément. Plus de valeur tirée du parc existant.' CTAs cta-primary ('Découvrir PhoneBoost'→#why) and cta-secondary ('Voir comment ça fonctionne'→#how) correct. Side lang toggle: clicking side-lang-toggle > lang-en switches hero to 'Extend the useful life of your IT fleet.' and full nav to Overview/Why/How it works/Trust & control/Evidence/Roadmap; localStorage 'pb-lang' stores 'en' and persists across reload; switching back to lang-fr restores French and 'pb-lang'='fr'. Side nav has all 6 items (nav-overview, nav-why, nav-how, nav-ladder, nav-evidence, nav-roadmap) with correct French labels (Aperçu, Pourquoi, Fonctionnement, Contrôle & confiance, Preuves, Feuille de route); nav-evidence click updates URL hash to #evidence. Why section renders why-point-0..5 and why-env. Enable-phoneboost-panel present in How section showing 'Éteint · indisponible'; enable-phoneboost-control is aria-disabled=true and non-mutating; enable-why-toggle expands/collapses live-curtain. limits-card lists exactly 4 items: no virtual RAM, no transparent remote swap, no Android CPU cores added to Linux scheduler, no performance promise without measurement (French). Glance cards render honest FR values (Hors ligne dans le navigateur / Aucun téléphone connecté / Toutes les portes indisponibles / Preuves disponibles) with correct href anchors #ladder and #evidence. Capability cards 0..3 show 'Implémenté · non établi', 'Protocole verrouillé · e2e à venir' (x2), 'Disponible'. Five-gate ladder renders 5 independent gates (paired/authenticated/controller_lease/resource_admissible/provider_ready) with FR names Appairé/Authentifié/Bail contrôleur/Ressource admissible/Fournisseur prêt; each badge shows 'Indisponible' with title='UNAVAILABLE' canonical preserved; no <progress> or role=progressbar element. Evidence grid has exactly 13 cards including evidence-card-c08-c09-checker, evidence-card-c10-checker, evidence-card-c12-auto-use-blake3. Clicking evidence-card-c10-checker opens evidence-drawer with total_vectors 17; evidence-drawer-close closes it. All 5 collapsibles present (collapsible-secure-link, -endpoints, -remote-capability, -architecture, -security). Roadmap columns roadmap-working/roadmap-next/roadmap-future render with FR titles 'Fonctionnel / démontré aujourd’hui', 'Ensuite', 'Plus tard'. Provenance banner shows master 162539c2ec and mode-badge 'Preuves enregistrées'. No console/page errors observed.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Dashboard.js is 881 lines — recommend splitting into per-section components (Hero, Why, How, GateLadder, Evidence, Roadmap) for maintainability.",
+    "data-testid='lang-fr' and 'lang-en' are duplicated inside both side-lang-toggle and banner-lang-toggle. This works because IDs are scoped by their parent testid, but any test using bare '[data-testid=\"lang-en\"]' triggers Playwright strict-mode violations. Consider using unique testids like 'side-lang-en' / 'banner-lang-en'.",
+    "EvidenceDrawer axios GET still lacks a user-facing error state; a fetch failure would render a silent empty drawer."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped per request)", "frontend": "100%" },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bilingual FR/EN pass verified at HEAD 162539c2ec. Truth model invariants intact: no fabricated LIVE/connected/ready, 5 gates independent, LOCAL vs REMOTE separated in topology, canonical state names preserved in badge title attribute. When testing language toggle programmatically, ALWAYS scope selector to '[data-testid=\"side-lang-toggle\"] [data-testid=\"lang-en\"]' (or banner-) because the same testid is duplicated across both toggles."
+}
