@@ -12,8 +12,8 @@ runtime state. It exposes:
   - GET /api/release           -> Release identity (repo anchor)
 
 Values come from files checked in at /app/backend/phoneboost_data, sourced
-from the PhoneBoost repository release-candidate tag competition-rc-20260824
-(HEAD 51accc1a). No number here is invented.
+from the PhoneBoost repository physical P0 closure baseline
+(HEAD b53ea3b). No number here is invented.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ DATA_DIR = ROOT_DIR / "phoneboost_data"
 EVIDENCE_DIR = DATA_DIR / "evidence"
 FIXTURES_DIR = DATA_DIR / "fixtures"
 
-app = FastAPI(title="PhoneBoost Control Center", version="rc-20260824")
+app = FastAPI(title="PhoneBoost Control Center", version="p0-closure-20260902")
 api = APIRouter(prefix="/api")
 
 # ---------------------------------------------------------------------------
@@ -42,23 +42,25 @@ api = APIRouter(prefix="/api")
 
 RELEASE = {
     "product": "PhoneBoost",
-    "tag": "competition-rc-20260824",
-    "head": "51accc1a8fed188f2254f085004504735368b539",
-    "native_baseline": "052471ed3cdbbe66a6c1f7b255f1d70580d91fcc",
+    "tag": "master · P0 physical closure",
+    "head": "b53ea3b84a4085ab45de58385f115f1cbd9176ed",
+    "native_baseline": "162539c2ec3721f1aa45557900988e2a4291202f",
     "toolchain": "Rust 1.98.0",
-    "validation_date": "2026-08-24",
+    "validation_date": "2026-09-02",
     "scope": "non-production Linux x86-64 / Android ARM64 proof of concept",
     "repo": "https://github.com/lilugemusikmaking-design/phoneboost",
 }
 
 # From docs/competition/IMPLEMENTATION_EVIDENCE.md
 TEST_TOTALS = {
-    "workspace": {"passed": 278, "failed": 0, "label": "Full Rust workspace"},
+    "workspace": {"passed": 352, "doc_tests": 6, "failed": 0, "label": "Full Rust workspace"},
     "crates": [
-        {"name": "pb-types", "passed": 2, "total": 2},
-        {"name": "pb-pbmux", "passed": 58, "total": 58},
-        {"name": "pb-worker-core", "passed": 43, "total": 43},
-        {"name": "pb-runtime-secure", "passed": 15, "total": 15},
+        {"name": "pb-types", "passed": 3, "total": 3},
+        {"name": "pb-pbmux", "passed": 65, "total": 65},
+        {"name": "pb-worker-core", "passed": 52, "total": 52},
+        {"name": "pb-runtime-secure", "passed": 22, "total": 22},
+        {"name": "pb-host", "passed": 163, "total": 163},
+        {"name": "pb-cli", "passed": 14, "total": 14},
     ],
     "cargo_fmt": "passed",
     "notes": "Two pre-existing non-failing unused_mut warnings remain in PBMUX tests.",
@@ -127,17 +129,18 @@ ROADMAP = {
         "Android foreground worker + Rust/JNI panic boundary + worker incarnation",
         "Android-local health sampling (memory / thermal / battery / power)",
         "ControllerLeaseManager + single-writer ResourceGuard admission logic",
+        "Authenticated C07 authority applied to the real Android lease manager",
+        "ResourceGuard-backed C08/C09/C10 production path",
+        "Locked pb.native.blake3/1 provider and truthful local fallback",
+        "Physical C07-C12 remote-compute closure for c10-abc-v1",
+        "Loopback-only browser bridge implementation with strict live freshness",
+        "Physical P1 local browser proof for the locked production BLAKE3 path",
     ],
-    "next": [
-        "C05→C07 production authorization seam (no-cycle bridge design + review)",
-        "Apply authenticated C07 commands to ControllerLeaseManager + ResourceGuard",
-        "Publish authenticated-session → controller-lease authority path",
-    ],
+    "next": [],
     "future": [
-        "RemoteBuffer storage + operations (bounded, volatile, remote-only)",
-        "Native compute providers (explicit remote jobs, worker-authoritative)",
-        "End-to-end capacity/compute product paths + benchmark evidence",
-        "Native browser bridge for a live Control Center over local socket",
+        "Providers beyond the locked BLAKE3 profile",
+        "Arbitrary compute inputs",
+        "Evidence-backed performance and capacity claims",
     ],
 }
 
@@ -156,7 +159,7 @@ EVIDENCE_CARDS = [
     {
         "id": "workspace-tests",
         "title": "Rust workspace tests",
-        "summary": "278 / 278 PASS — 0 failed — all doc-tests PASS",
+        "summary": "352 unit tests + 6 doc-tests PASS — 0 failed",
         "provenance": "RECORDED_EVIDENCE",
         "kind": "test-totals",
         "source": "docs/competition/IMPLEMENTATION_EVIDENCE.md",
@@ -165,11 +168,29 @@ EVIDENCE_CARDS = [
     {
         "id": "focused-crates",
         "title": "Focused core crates",
-        "summary": "pb-types 2/2 · pb-pbmux 58/58 · pb-worker-core 43/43 · pb-runtime-secure 15/15",
+        "summary": "pb-types 3/3 · pb-pbmux 65/65 · pb-worker-core 52/52 · pb-runtime-secure 22/22 · pb-host 163/163 · pb-cli 14/14",
         "provenance": "RECORDED_EVIDENCE",
         "kind": "test-totals",
         "source": "docs/competition/IMPLEMENTATION_EVIDENCE.md",
         "detail_key": "crates",
+    },
+    {
+        "id": "c07-c12-p0-remote-compute",
+        "title": "C07-C12 · P0 remote compute physical closure",
+        "summary": "REMOTE_SUCCESS · disconnect UNAVAILABLE · explicit local fallback · NO_FALSE_REMOTE_SUCCESS PASS · authenticated recovery · second REMOTE_SUCCESS",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "physical",
+        "source": "docs/evidence/c07-c12-p0-remote-compute-physical.txt",
+        "file": "c07-c12-p0-remote-compute-physical.txt",
+    },
+    {
+        "id": "p1-live-bridge-local-browser",
+        "title": "P1 · LIVE Bridge local browser proof",
+        "summary": "LIVE fresh state · REMOTE_SUCCESS · disconnect UNAVAILABLE · LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE · NO_FALSE_REMOTE_SUCCESS PASS · authenticated recovery · second REMOTE_SUCCESS",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "physical-browser",
+        "source": "docs/evidence/p1-live-bridge-local-browser-physical.txt",
+        "file": "p1-live-bridge-local-browser-physical.txt",
     },
     {
         "id": "c07-checker",
@@ -317,7 +338,7 @@ def _snapshot_recorded() -> dict[str, Any]:
             "reserved": {"value": "None", "state": "NO_RESERVATION"},
             "active_remote_buffer": {"value": "None", "state": "ROADMAP"},
             "active_remote_job": {"value": "None", "state": "ROADMAP"},
-            "note": "RemoteBuffer and compute providers are ROADMAP items; identity or authentication does not create capacity.",
+            "note": "The locked BLAKE3 path is implemented, but no live lease, reservation, or job is inferred by this recorded view.",
         },
         "controller": {
             "lease": {"value": "None", "state": "NO_LEASE"},
@@ -345,7 +366,7 @@ async def release() -> dict[str, Any]:
 async def live_probe() -> dict[str, Any]:
     """LIVE runtime probe. Always unreachable from a hosted browser."""
     return {
-        "provenance": "LIVE",
+        "provenance": "UNAVAILABLE",
         "reachable": False,
         "reason": (
             "This deployed Emergent web app cannot open the private local "
@@ -354,8 +375,8 @@ async def live_probe() -> dict[str, Any]:
         ),
         "requirements": [
             "phoneboostd running on a local Linux x86-64 host",
-            "A paired Android ARM64 worker with a current controller lease",
-            "A local native bridge exposing the PhoneBoostDataSource contract",
+            "phoneboost-web-bridge launched on literal IPv4 loopback",
+            "The local capability URL opened directly in the browser",
         ],
     }
 
@@ -406,13 +427,19 @@ async def architecture() -> dict[str, Any]:
     return {"provenance": "RECORDED_EVIDENCE", "layers": ARCHITECTURE, "gates": FIVE_GATES}
 
 
+def _configured_origins(value: str) -> list[str]:
+    origins = [origin.strip() for origin in value.split(",")]
+    return [origin for origin in origins if origin and origin != "*"]
+
+
 app.include_router(api)
+configured_origins = _configured_origins(os.environ.get("CORS_ORIGINS", ""))
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_origins=configured_origins,
+    allow_methods=["GET"],
+    allow_headers=["Accept", "Content-Type"],
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

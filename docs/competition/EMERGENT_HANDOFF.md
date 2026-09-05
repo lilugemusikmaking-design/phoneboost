@@ -77,10 +77,14 @@ visually distinct.
   judge-facing details panel.
 - **Evidence:** current test totals, C07 fixture/oracle results, Android build
   results, and links to checked-in evidence, including the operator-observed
-  C07-C12 P0 remote-compute closure. Mark this entire view `RECORDED EVIDENCE`.
-- **Roadmap:** the browser-to-native live runtime bridge, providers beyond the
-  locked BLAKE3 profile, arbitrary compute inputs, and any benchmark/capacity
-  claims.
+  C07-C12 P0 remote-compute closure and the bounded P1 local browser proof.
+  Mark this entire view `RECORDED EVIDENCE`.
+- **Implementation-proven and browser-proven:** the separate loopback-only
+  `phoneboost-web-bridge` exposes current C12 truth and the single locked
+  `c10-abc-v1` action. It is not part of the hosted backend. The bounded local
+  browser workflow is recorded without extending any C12-unexposed gate.
+- **Roadmap:** providers beyond the locked BLAKE3 profile, arbitrary compute
+  inputs, and any benchmark/capacity claims.
 
 Prefer a serious, compact visual system: neutral surfaces, one restrained
 accent, readable state labels, and evidence-first details. Avoid sci-fi glow,

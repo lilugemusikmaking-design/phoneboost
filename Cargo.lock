@@ -433,6 +433,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pb-web-bridge"
+version = "0.1.0"
+dependencies = [
+ "pb-cli",
+ "serde_json",
+]
+
+[[package]]
 name = "pb-worker-core"
 version = "0.1.0"
 dependencies = [

@@ -114,6 +114,44 @@ impl ComputeView {
             3
         }
     }
+
+    pub fn digest_blake3_hex(&self) -> &str {
+        &self.digest_blake3_hex
+    }
+
+    pub fn execution_source(&self) -> &str {
+        &self.execution_source
+    }
+
+    pub fn auto_use_reason(&self) -> &str {
+        &self.auto_use_reason
+    }
+}
+
+impl StatusView {
+    pub fn runtime_state(&self) -> &str {
+        &self.runtime_state
+    }
+
+    pub fn local_api_state(&self) -> &str {
+        &self.local_api_state
+    }
+
+    pub fn remote_worker_state(&self) -> &str {
+        &self.remote_worker_state
+    }
+
+    pub fn auto_use_state(&self) -> &str {
+        &self.auto_use_state
+    }
+
+    pub fn auto_use_reason(&self) -> &str {
+        &self.auto_use_reason
+    }
+
+    pub const fn remote_blake3_available(&self) -> bool {
+        self.remote_blake3_available
+    }
 }
 
 impl fmt::Display for ComputeView {
@@ -127,7 +165,11 @@ impl fmt::Display for ComputeView {
 }
 
 pub fn status() -> Result<StatusView, CliError> {
-    let mut stream = connect_local_api()?;
+    status_with_timeout(IO_TIMEOUT)
+}
+
+pub fn status_with_timeout(timeout: Duration) -> Result<StatusView, CliError> {
+    let mut stream = connect_local_api(timeout)?;
     status_over_stream(&mut stream, next_request_id())
 }
 
@@ -144,24 +186,28 @@ pub fn pair_cancel() -> Result<PairingView, CliError> {
 }
 
 pub fn compute_blake3() -> Result<ComputeView, CliError> {
-    let mut stream = connect_local_api()?;
+    compute_blake3_with_timeout(IO_TIMEOUT)
+}
+
+pub fn compute_blake3_with_timeout(timeout: Duration) -> Result<ComputeView, CliError> {
+    let mut stream = connect_local_api(timeout)?;
     compute_blake3_over_stream(&mut stream, next_request_id())
 }
 
-fn connect_local_api() -> Result<UnixStream, CliError> {
+fn connect_local_api(timeout: Duration) -> Result<UnixStream, CliError> {
     let socket_path = canonical_control_socket(env::var_os("XDG_RUNTIME_DIR"))?;
     let stream = UnixStream::connect(socket_path).map_err(|_| CliError::ConnectFailed)?;
     stream
-        .set_read_timeout(Some(IO_TIMEOUT))
+        .set_read_timeout(Some(timeout))
         .map_err(|_| CliError::IoFailed)?;
     stream
-        .set_write_timeout(Some(IO_TIMEOUT))
+        .set_write_timeout(Some(timeout))
         .map_err(|_| CliError::IoFailed)?;
     Ok(stream)
 }
 
 fn pairing_request(method: &'static str) -> Result<PairingView, CliError> {
-    let mut stream = connect_local_api()?;
+    let mut stream = connect_local_api(IO_TIMEOUT)?;
     let request_id = next_request_id();
     let response = request_value(&mut stream, request_id, method, json!({}))?;
     let result = response.as_object().ok_or(CliError::MalformedResponse)?;

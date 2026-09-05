@@ -37,25 +37,38 @@ object, not Linux-addressable memory.
   `METRICS/1 HEARTBEAT` parsing.
 - Android foreground worker, JNI boundary, local health sampling, canonical
   worker incarnation, controller-lease logic, and `ResourceGuard` logic.
+- Authenticated C07 lease mutation, C08 `ResourceGuard` admission, bounded C09
+  remote objects, and the locked C10 `pb.native.blake3/1` provider path.
+- C12 auto-use readiness and the exact `c10-abc-v1` BLAKE3 action through
+  `phoneboostctl`, including explicit local fallback sources.
+- A separate `phoneboost-web-bridge` presentation adapter. It serves the
+  production frontend from literal IPv4 loopback, calls only typed `pb-cli`
+  operations, and exposes only current status plus the locked BLAKE3 action.
 
-### Partially wired
+### Physically recorded
 
-- C07 command, ACK, and heartbeat frames reach the authenticated runtime and
-  are validated, but command frames do not yet mutate Android lease state.
-- Lease and `ResourceGuard` actors are implemented and tested, but their
-  production authorization bridge from the authenticated Noise session is
-  intentionally closed. Possessing a peer ID alone never grants authority.
-- The Android diagnostic surface is native and functional; a competition
-  browser dashboard is not included.
+- The production C07-C12 remote-compute closure is recorded at
+  `docs/evidence/c07-c12-p0-remote-compute-physical.txt`: remote success,
+  deliberate disconnect with explicit local fallback and no false remote
+  success, authenticated recovery, and a second remote success.
+- The bounded P1 local browser proof is recorded at
+  `docs/evidence/p1-live-bridge-local-browser-physical.txt`: fresh LIVE state,
+  remote success, deliberate disconnect with explicit browser fallback and no
+  false remote success, then authenticated recovery and a second remote success.
+
+### Implemented and physically browser-proven
+
+- The P1 browser bridge and frontend truth model have automated coverage and a
+  bounded operator-observed browser proof against the production daemon and
+  Android worker. Discovery, controller lease, and `ResourceGuard` remain
+  `UNKNOWN` in the live browser view because C12 does not expose those gates
+  independently.
 
 ### Roadmap
 
-- Define and review the no-cycle C05-to-C07 authorization seam, then connect
-  authenticated session authority to lease mutation.
-- Implement `RemoteBuffer`, bounded compute providers, and their end-to-end
-  product paths.
-- Add a control-center presentation layer that labels data as live runtime,
-  recorded evidence, or roadmap without substituting mocks for live state.
+- Add providers or fixtures only under separately locked profiles.
+- Produce evidence-backed performance and capacity measurements before making
+  any such claim.
 
 ## Build and test
 
@@ -67,6 +80,18 @@ cargo fmt --check
 cargo test --workspace
 python3 scripts/check_c07_wire_addendum_002.py
 ```
+
+Build the production frontend and start the loopback-only Control Center from
+the repository root:
+
+```sh
+REACT_APP_BACKEND_URL= yarn --cwd frontend build
+cargo run --release -p pb-web-bridge
+```
+
+The bridge prints a per-process capability URL. The complete interactive P1
+operator workflow is `scripts/prove_p1_live_bridge_local.sh`; it deliberately
+does not alter Android networking by itself.
 
 Focused core checks:
 

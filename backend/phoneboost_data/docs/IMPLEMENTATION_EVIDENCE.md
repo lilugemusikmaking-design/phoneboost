@@ -2,9 +2,13 @@
 
 ## Release identity
 
-- Validation date: 2026-08-24
-- Validated native baseline: `052471ed3cdbbe66a6c1f7b255f1d70580d91fcc`
-  (`Use canonical 256-bit peer IDs in worker core`)
+- Validation date: 2026-09-02
+- Evidence-record baseline: `b53ea3b84a4085ab45de58385f115f1cbd9176ed`
+  (`Record physical P0 remote compute closure`)
+- Physical workflow baseline exercised: `290767a19b52fb0713d514641169a14b2a4148d5`
+  (`Add P0 remote compute closure workflow`)
+- Production path audited at: `162539c2ec3721f1aa45557900988e2a4291202f`
+  (`Expose production auto-use BLAKE3`)
 - Toolchain: Rust 1.98.0, pinned by `rust-toolchain.toml`
 - Scope: non-production Linux x86-64 and Android ARM64 proof of concept
 
@@ -37,6 +41,22 @@ truth, and its `ResourceGuard` remains the final admission authority.
 - Authenticated PBMUX runtime dispatch validates CONTROL `COMMAND` and
   `COMMAND_ACK` frames and METRICS `HEARTBEAT` frames. Channels and message
   types are checked independently; METRICS/1 is not treated as CONTROL/PING.
+- The Android responder passes the unforgeable `VerifiedPeerSession` directly
+  through its authenticated JNI handler to the Rust `WorkerCore`. C07 ACQUIRE,
+  RENEW, and RELEASE mutate the real `ControllerLeaseManager`; no peer ID or
+  boolean can substitute for that proof.
+- Authenticated RESOURCE requests reach the Android `ResourceGuard`, which
+  validates the active lease, current worker incarnation, Android-local health,
+  request idempotence, and budget before RESERVE/COMMIT/RELEASE succeeds.
+- Authenticated REMOTE_BUFFER and COMPUTE requests reach the Android
+  `RemoteBufferStore` and native `pb.native.blake3/1` provider. C09 objects and
+  C10 jobs remain bound to the exact secure session, lease, and incarnation.
+- The Linux auto-use controller performs DNS-SD discovery, pinned Noise IK
+  reconnect for a committed peer, real C07 acquisition, a real C08/C09/C10
+  readiness probe, lease renewal, remote BLAKE3, and deterministic cleanup.
+  `phoneboostctl compute blake3 c10-abc-v1` reaches this production path through
+  C12 and reports `REMOTE_SUCCESS` only after the remote result and cleanup are
+  both terminal.
 - The Android app runs the Rust worker through JNI, samples Android-local
   memory/thermal/battery/power state, and keeps the foreground worker and
   secure-session lifecycle explicit. It does not claim a controller lease or
@@ -44,25 +64,36 @@ truth, and its `ResourceGuard` remains the final admission authority.
 
 ### RECORDED EVIDENCE
 
-- `pb-types`: 2 unit tests passed.
-- `pb-pbmux`: 58 unit tests passed.
-- `pb-worker-core`: 43 unit tests passed.
-- `pb-runtime-secure`: 15 unit tests passed. Socket-based tests required normal
+- `pb-types`: 3 unit tests passed.
+- `pb-pbmux`: 65 unit tests passed.
+- `pb-worker-core`: 52 unit tests passed.
+- `pb-runtime-secure`: 22 unit tests passed. Socket-based tests required normal
   host socket permissions and passed outside the restricted sandbox.
-- Full Rust workspace: 278 tests passed, 0 failed; all doc-test targets passed.
+- `pb-host`: 161 library tests and 2 daemon tests passed.
+- `pb-cli`: 14 tests passed.
+- Android JNI host-side suite: 16 tests passed.
+- Full Rust workspace: 352 unit tests and 6 doc-tests passed, 0 failed.
   Two pre-existing, non-failing `unused_mut` warnings remain in PBMUX tests.
 - `cargo fmt --check`: passed.
+- Strict Clippy for the changed-facing `pb-host` and `pb-cli` targets passed
+  with `-D warnings`. A broader advisory run also including unchanged
+  `pb-runtime-secure`, `pb-worker-core`, and JNI targets remains non-green on
+  five pre-existing style lints in `pb-runtime-secure/src/runtime.rs`; no P0
+  authority or runtime behavior is implicated by those lints.
 - Locked C07 checker: final `C07_WIRE_CHECK PASS`; all 10 C07 command/ACK
   vectors and 8 heartbeat vectors produced their expected accept/reject
   verdicts, and 5 structural/semantic oracle mutations produced their expected
   verdicts.
+- Locked C08/C09 checker: final `C08_C09_WIRE_CHECK PASS`.
+- Locked C10 checker: final `C10_WIRE_CHECK PASS`.
 - Android ARM64 production core: offline release build passed; fixture
   isolation and forbidden-authority-export scans passed.
-- Android debug APK: offline `:app:assembleDebug` passed (36 Gradle tasks: 4
-  executed, 32 up-to-date); the embedded JNI library passed fixture isolation.
-- Repository physical-device captures record earlier A5 worker, A6
-  lease/`ResourceGuard`, C04 transport, and C05/C06 secure-pairing runs under
-  `docs/evidence/`. Those files are evidence snapshots, not current live UI.
+- Android debug APK: offline `:app:assembleDebug` passed (36 Gradle tasks
+  up-to-date).
+- Repository physical-device captures record A5 worker, A6
+  lease/`ResourceGuard`, C04 transport, C05/C06 secure pairing, and the completed
+  C07-C12 P0 remote-compute closure under `docs/evidence/`. Those files are
+  evidence snapshots, not current live UI.
 
 ## Implemented components
 
@@ -78,22 +109,77 @@ truth, and its `ResourceGuard` remains the final admission authority.
   Android-local health sampling, controller-lease state machine, and
   single-writer `ResourceGuard` admission logic.
 
-## Limitations and ROADMAP
+## P0 remote-compute physical closure
 
-- **ROADMAP:** the production C05-to-C07 lease authority seam. The worker-core
-  `AuthenticatedSession` has no production constructor. No `authenticated=true`
-  shortcut or peer-ID-to-authority conversion exists. This is intentional:
-  identity is not proof of an authenticated session, and introducing a
-  secure-runtime/worker-core crate cycle would be invalid.
-- **ROADMAP:** applying authenticated C07 commands to
-  `ControllerLeaseManager` and `ResourceGuard`. Current C07 runtime handling
-  parses and rejects malformed data but does not perform lease mutation.
-- **ROADMAP:** `RemoteBuffer` storage/operations, native compute providers, AI
-  provider behavior, and end-to-end capacity gains. Channel/type registries do
-  not constitute provider implementations.
-- **ROADMAP:** browser control center and its live native bridge. No browser
-  should report a device, authentication, lease, admissibility, provider
-  readiness, throughput, or capacity gain unless supplied by a genuine runtime
-  snapshot.
+The read-only P0 trace at `162539c` found no missing production boundary from
+the CLI through C12, auto-use, authenticated PBMUX, Android JNI, C07, C08, C09,
+C10, result correlation, or cleanup. The earlier roadmap statements for those
+boundaries are superseded by the production implementations and regression
+tests listed above.
 
-The native core remained unchanged during this release-documentation pass.
+The bounded production workflow
+`scripts/prove_p0_remote_compute_closure_physical.sh` was subsequently completed
+against the real Android worker. The operator-observed record is
+`docs/evidence/c07-c12-p0-remote-compute-physical.txt`.
+
+The run physically proved authenticated production reconnect, C07 controller
+authority and ResourceGuard readiness through the `AVAILABLE / READY` invariant,
+the expected BLAKE3 digest with `REMOTE_SUCCESS`, removal of remote availability
+after deliberate Android Wi-Fi loss, explicit
+`LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE` with
+`NO_FALSE_REMOTE_SUCCESS PASS`, authenticated recovery after Wi-Fi restoration,
+and a second `REMOTE_SUCCESS` with terminal cleanup.
+
+For the already-paired, durably committed peer, the implementation selects the
+locked Noise IK reconnect path. The physical observation proves the production
+authenticated reconnect behavior; it is not an independent packet-level capture
+of the Noise IK handshake bytes.
+
+No P0 physical blocker remains for the locked `c10-abc-v1` BLAKE3 closure
+profile. This evidence does not extend to arbitrary inputs, other providers,
+performance or capacity claims, or unrelated product surfaces.
+
+## P1 local browser bridge implementation status
+
+The P1 change adds a separate `phoneboost-web-bridge`
+presentation process. It binds literal IPv4 loopback on an OS-selected port,
+serves the sanitized production frontend from the fixed `frontend/build` root,
+and calls the existing typed `pb-cli` library. Its only native-facing routes are
+the current C12-backed snapshot and the locked `c10-abc-v1` BLAKE3 action.
+
+The browser labels a snapshot `LIVE` only while its validated observation is no
+more than three seconds old. Failure or expiry removes that label. The three C12
+fields for auto-use readiness and the exact execution source are preserved;
+fallback is never rendered as remote success. Discovery, controller lease, and
+`ResourceGuard` are `UNKNOWN` because C12 does not expose them independently.
+
+The security boundary and limits are frozen in
+`docs/competition/PHONEBOOST_LIVE_BRIDGE_SECURITY_MODEL_V0_1.md`. The bounded,
+interactive workflow `scripts/prove_p1_live_bridge_local.sh` has been completed
+as an operator-observed physical/browser proof against the production daemon and
+real Android worker. Its durable record is
+`docs/evidence/p1-live-bridge-local-browser-physical.txt`; it is a confirmed
+summary, not an automatically captured raw transcript.
+
+Automated P1 validation on 2026-09-05 used Rust 1.98.0. The typed `pb-cli`
+suite passed 14/14 tests, the bridge passed 15/15, the full Rust workspace
+passed 367 unit tests plus 6 doc-tests, the frontend passed 9/9 tests and its
+optimized build completed, and the recorded-evidence backend passed 6/6 tests.
+Strict Clippy passed for all changed Rust targets. A non-browser launch check
+served that optimized frontend from a literal `127.0.0.1` endpoint with the
+expected security headers. The two existing `unused_mut` warnings in PBMUX test
+code remain unchanged and non-failing.
+
+The completed P1 proof observed fresh browser LIVE state for the ready production
+path, `REMOTE_SUCCESS`, deliberate Android Wi-Fi loss with explicit
+`LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE` and `NO_FALSE_REMOTE_SUCCESS PASS`,
+then authenticated recovery and a second `REMOTE_SUCCESS`. The current capability
+URL was emitted transiently by the proof script for operator use and consumed in
+a private browser window. No token or token URL is persisted in repository files,
+evidence, documentation, committed logs, or the handoff.
+
+CodeRabbit's final review after the capability-lifetime correction reported no
+actionable issues. The proof does not establish LAN access, generic RPC,
+arbitrary compute, other providers, throughput, capacity, or C12-unexposed
+discovery, controller-lease, or ResourceGuard state. Those browser gates remain
+`UNKNOWN` unless independently exposed by C12.

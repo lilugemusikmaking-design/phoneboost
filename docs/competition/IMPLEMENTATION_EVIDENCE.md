@@ -3,7 +3,9 @@
 ## Release identity
 
 - Validation date: 2026-09-02
-- Physical closure baseline: `290767a19b52fb0713d514641169a14b2a4148d5`
+- Evidence-record baseline: `b53ea3b84a4085ab45de58385f115f1cbd9176ed`
+  (`Record physical P0 remote compute closure`)
+- Physical workflow baseline exercised: `290767a19b52fb0713d514641169a14b2a4148d5`
   (`Add P0 remote compute closure workflow`)
 - Production path audited at: `162539c2ec3721f1aa45557900988e2a4291202f`
   (`Expose production auto-use BLAKE3`)
@@ -137,7 +139,47 @@ No P0 physical blocker remains for the locked `c10-abc-v1` BLAKE3 closure
 profile. This evidence does not extend to arbitrary inputs, other providers,
 performance or capacity claims, or unrelated product surfaces.
 
-The browser control center and its live native bridge remain roadmap. No
-browser should report a device, authentication, lease, admissibility, provider
-readiness, throughput, or capacity gain unless supplied by a genuine runtime
-snapshot.
+## P1 local browser bridge implementation status
+
+The P1 change adds a separate `phoneboost-web-bridge`
+presentation process. It binds literal IPv4 loopback on an OS-selected port,
+serves the sanitized production frontend from the fixed `frontend/build` root,
+and calls the existing typed `pb-cli` library. Its only native-facing routes are
+the current C12-backed snapshot and the locked `c10-abc-v1` BLAKE3 action.
+
+The browser labels a snapshot `LIVE` only while its validated observation is no
+more than three seconds old. Failure or expiry removes that label. The three C12
+fields for auto-use readiness and the exact execution source are preserved;
+fallback is never rendered as remote success. Discovery, controller lease, and
+`ResourceGuard` are `UNKNOWN` because C12 does not expose them independently.
+
+The security boundary and limits are frozen in
+`docs/competition/PHONEBOOST_LIVE_BRIDGE_SECURITY_MODEL_V0_1.md`. The bounded,
+interactive workflow `scripts/prove_p1_live_bridge_local.sh` has been completed
+as an operator-observed physical/browser proof against the production daemon and
+real Android worker. Its durable record is
+`docs/evidence/p1-live-bridge-local-browser-physical.txt`; it is a confirmed
+summary, not an automatically captured raw transcript.
+
+Automated P1 validation on 2026-09-05 used Rust 1.98.0. The typed `pb-cli`
+suite passed 14/14 tests, the bridge passed 15/15, the full Rust workspace
+passed 367 unit tests plus 6 doc-tests, the frontend passed 9/9 tests and its
+optimized build completed, and the recorded-evidence backend passed 6/6 tests.
+Strict Clippy passed for all changed Rust targets. A non-browser launch check
+served that optimized frontend from a literal `127.0.0.1` endpoint with the
+expected security headers. The two existing `unused_mut` warnings in PBMUX test
+code remain unchanged and non-failing.
+
+The completed P1 proof observed fresh browser LIVE state for the ready production
+path, `REMOTE_SUCCESS`, deliberate Android Wi-Fi loss with explicit
+`LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE` and `NO_FALSE_REMOTE_SUCCESS PASS`,
+then authenticated recovery and a second `REMOTE_SUCCESS`. The current capability
+URL was emitted transiently by the proof script for operator use and consumed in
+a private browser window. No token or token URL is persisted in repository files,
+evidence, documentation, committed logs, or the handoff.
+
+CodeRabbit's final review after the capability-lifetime correction reported no
+actionable issues. The proof does not establish LAN access, generic RPC,
+arbitrary compute, other providers, throughput, capacity, or C12-unexposed
+discovery, controller-lease, or ResourceGuard state. Those browser gates remain
+`UNKNOWN` unless independently exposed by C12.

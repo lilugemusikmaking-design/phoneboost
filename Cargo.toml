@@ -7,6 +7,7 @@ members = [
     "crates/pb-runtime-secure",
     "crates/pb-host",
     "crates/pb-cli",
+    "crates/pb-web-bridge",
     "crates/pb-worker-core",
     "android/core-jni",
     "tools/pb-fixture-gen",

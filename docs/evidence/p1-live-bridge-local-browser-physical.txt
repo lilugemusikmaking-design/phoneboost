@@ -1,0 +1,57 @@
+PhoneBoost P1 LIVE Bridge local browser proof
+
+Evidence provenance
+- Operator-observed bounded physical/browser proof.
+- The production phoneboostd daemon and real Android worker were used.
+- The proof workflow was scripts/prove_p1_live_bridge_local.sh.
+- The proof script emitted the current capability URL transiently for operator
+  use; a private browser window consumed its URL fragment in a clean page
+  context.
+- This record is a truthful summary of confirmed observations, not an
+  automatically captured raw transcript.
+
+PHASE 1 — ready production path
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Remote BLAKE3: AVAILABLE
+
+Browser: LIVE / fresh native state
+Browser compute: REMOTE_SUCCESS
+
+PHASE 2 — operator-controlled Android Wi-Fi disable
+
+Android worker: NOT_CONFIGURED
+Auto-use: RECONNECTING
+Auto-use reason: RECONNECTING
+Remote BLAKE3: UNAVAILABLE
+
+Browser: LIVE / fresh native state with remote BLAKE3 unavailable
+Browser compute: LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE
+NO_FALSE_REMOTE_SUCCESS PASS
+
+PHASE 3 — operator-controlled Android Wi-Fi restoration
+
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Remote BLAKE3: AVAILABLE
+
+Browser: LIVE / fresh native state
+Browser compute: REMOTE_SUCCESS
+
+Final verdict
+- P1_LIVE_BRIDGE_LOCAL_PROOF PASS
+
+Scope limits
+- No capability token or capability URL is recorded in this evidence.
+- This proof does not turn the browser bridge into an authority and does not
+  expand the fixed loopback-only, capability-protected API.
+- Discovery, controller lease, and ResourceGuard remain UNKNOWN in the browser
+  whenever C12 does not expose them independently.
+- This proof does not establish arbitrary compute, other providers, LAN access,
+  generic RPC, performance, capacity, packet captures, raw logs, screenshots,
+  timestamps, hashes, or unrelated product behavior.

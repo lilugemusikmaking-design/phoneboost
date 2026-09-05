@@ -19,6 +19,8 @@
 *.orig
 *.rej
 *.so
+*.pyc
+__pycache__/
 *.swp
 *.swo
 .env

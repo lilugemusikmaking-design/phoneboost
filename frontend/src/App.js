@@ -1,67 +1,122 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "@/App.css";
 import Dashboard from "@/pages/Dashboard";
+import {
+  consumeBridgeToken,
+  expireLiveState,
+  normalizeComputeResult,
+  normalizeLiveSnapshot,
+  unavailableLive,
+} from "@/liveBridge";
+import {
+  HOSTED_LIVE_UNAVAILABLE,
+  RECORDED_ARCHITECTURE,
+  RECORDED_EVIDENCE,
+  RECORDED_FIXTURES,
+  RECORDED_ROADMAP,
+  RECORDED_SNAPSHOT,
+} from "@/recordedData";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+const RECORDED_API = BACKEND_URL ? `${BACKEND_URL}/api` : null;
+const BRIDGE_CAPABILITY =
+  typeof window === "undefined" ? null : consumeBridgeToken(window.location, window.history);
 
 export default function App() {
-  const [snapshot, setSnapshot] = useState(null);
-  const [live, setLive] = useState(null);
-  const [evidence, setEvidence] = useState([]);
-  const [roadmap, setRoadmap] = useState(null);
-  const [arch, setArch] = useState(null);
-  const [fixtures, setFixtures] = useState(null);
-  const [mode, setMode] = useState("RECORDED_EVIDENCE"); // never silently fall back
-  const [error, setError] = useState(null);
+  const recordedApiBase = BRIDGE_CAPABILITY ? null : RECORDED_API;
+
+  const [snapshot, setSnapshot] = useState(RECORDED_SNAPSHOT);
+  const [live, setLive] = useState(HOSTED_LIVE_UNAVAILABLE);
+  const [evidence, setEvidence] = useState(RECORDED_EVIDENCE);
+  const [roadmap, setRoadmap] = useState(RECORDED_ROADMAP);
+  const [arch, setArch] = useState(RECORDED_ARCHITECTURE);
+  const [fixtures, setFixtures] = useState(RECORDED_FIXTURES);
+  const [compute, setCompute] = useState({ running: false, result: null, error: null });
 
   useEffect(() => {
+    if (!recordedApiBase) return undefined;
     let cancelled = false;
     (async () => {
       try {
-        const [snap, lv, ev, rm, ar, fx] = await Promise.all([
-          axios.get(`${API}/system/snapshot`),
-          axios.get(`${API}/live/probe`),
-          axios.get(`${API}/evidence/index`),
-          axios.get(`${API}/roadmap`),
-          axios.get(`${API}/architecture`),
-          axios.get(`${API}/fixtures/manifest`),
+        const [snap, ev, rm, ar, fx] = await Promise.all([
+          axios.get(`${recordedApiBase}/system/snapshot`),
+          axios.get(`${recordedApiBase}/evidence/index`),
+          axios.get(`${recordedApiBase}/roadmap`),
+          axios.get(`${recordedApiBase}/architecture`),
+          axios.get(`${recordedApiBase}/fixtures/manifest`),
         ]);
         if (cancelled) return;
         setSnapshot(snap.data);
-        setLive(lv.data);
-        setEvidence(ev.data.items || []);
+        setEvidence(ev.data.items || RECORDED_EVIDENCE);
         setRoadmap(rm.data);
         setArch(ar.data);
         setFixtures(fx.data);
-      } catch (e) {
-        if (!cancelled) setError(e?.message || "Failed to load Control Center");
+      } catch {
+        // Checked-in recorded data remains visible and separately labeled.
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
+  }, [recordedApiBase]);
+
+  useEffect(() => {
+    if (!BRIDGE_CAPABILITY) return undefined;
+    let cancelled = false;
+    const headers = { "X-PhoneBoost-Bridge-Token": BRIDGE_CAPABILITY };
+    const poll = async () => {
+      try {
+        const response = await axios.get("/bridge/v1/snapshot", { headers, timeout: 2500 });
+        if (!cancelled) setLive(normalizeLiveSnapshot(response.data));
+      } catch {
+        if (!cancelled) {
+          setLive((previous) => unavailableLive("LOCAL_RUNTIME_UNAVAILABLE", previous.runtime));
+          setCompute((current) => ({ ...current, result: null }));
+        }
+      }
+    };
+    poll();
+    const pollTimer = window.setInterval(poll, 2000);
+    const freshnessTimer = window.setInterval(() => {
+      if (!cancelled) setLive((current) => expireLiveState(current));
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollTimer);
+      window.clearInterval(freshnessTimer);
+    };
   }, []);
 
-  const api = useMemo(() => ({ base: API }), []);
+  useEffect(() => {
+    if (!live.fresh) {
+      setCompute((current) =>
+        current.result ? { ...current, result: null } : current
+      );
+    }
+  }, [live.fresh]);
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#0b0d10] text-neutral-200 flex items-center justify-center p-8">
-        <div data-testid="app-error" className="max-w-lg border border-neutral-800 rounded-lg p-6">
-          <div className="text-xs uppercase tracking-widest text-amber-400 mb-2">Control Center unavailable</div>
-          <div className="font-mono text-sm text-neutral-300 break-all">{error}</div>
-        </div>
-      </div>
-    );
-  }
+  const runCompute = useCallback(async () => {
+    if (!BRIDGE_CAPABILITY) return;
+    setCompute({ running: true, result: null, error: null });
+    try {
+      const response = await axios.post(
+        "/bridge/v1/compute/blake3",
+        { fixture: "c10-abc-v1" },
+        {
+          headers: { "X-PhoneBoost-Bridge-Token": BRIDGE_CAPABILITY },
+          timeout: 65000,
+        }
+      );
+      const result = normalizeComputeResult(response.data);
+      if (!result) throw new Error("invalid bridge response");
+      setCompute({ running: false, result, error: null });
+    } catch {
+      setCompute({ running: false, result: null, error: "The production compute action was unavailable." });
+    }
+  }, []);
 
-  if (!snapshot || !live || !roadmap || !arch) {
-    return (
-      <div className="min-h-screen bg-[#0b0d10] text-neutral-500 flex items-center justify-center">
-        <div data-testid="app-loading" className="font-mono text-xs tracking-widest uppercase">Loading recorded evidence…</div>
-      </div>
-    );
-  }
+  const api = useMemo(() => ({ base: recordedApiBase }), [recordedApiBase]);
 
   return (
     <Dashboard
@@ -72,8 +127,8 @@ export default function App() {
       roadmap={roadmap}
       arch={arch}
       fixtures={fixtures}
-      mode={mode}
-      setMode={setMode}
+      compute={compute}
+      onCompute={runCompute}
     />
   );
 }

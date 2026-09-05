@@ -19,7 +19,6 @@ import {
   Route,
   LayoutGrid,
   Terminal,
-  Power,
   PlugZap,
   Boxes,
   Gauge,
@@ -47,6 +46,7 @@ const NAV = [
 
 function Pill({ children, tone = "unavailable", dot = true, testId, className = "" }) {
   const tones = {
+    live: "border-[#39FF14]/40 bg-[#39FF14]/10 text-[#8dff77]",
     unavailable: "border-neutral-700/70 bg-neutral-800/40 text-neutral-400",
     warn: "border-amber-500/30 bg-amber-500/10 text-amber-300",
     evidence: "border-[#39FF14]/40 bg-[#39FF14]/10 text-[#8dff77]",
@@ -54,6 +54,7 @@ function Pill({ children, tone = "unavailable", dot = true, testId, className = 
     neutral: "border-neutral-700/70 bg-neutral-800/40 text-neutral-300",
   };
   const dots = {
+    live: "bg-[#39FF14] dot-glow-green",
     unavailable: "bg-neutral-500",
     warn: "bg-amber-400",
     evidence: "bg-[#39FF14] dot-glow-green",
@@ -74,9 +75,11 @@ function Pill({ children, tone = "unavailable", dot = true, testId, className = 
 function StateChip({ state, testId }) {
   const s = (state || "").toUpperCase();
   const isRoadmap = s === "ROADMAP";
+  const isLive = ["ACTIVE", "AUTHENTICATED", "AVAILABLE", "READY", "REACHABLE", "REMOTE_SUCCESS"].includes(s);
+  const isUnknown = s.startsWith("UNKNOWN");
   return (
     <Pill
-      tone={isRoadmap ? "roadmap" : "unavailable"}
+      tone={isRoadmap ? "roadmap" : isLive ? "live" : isUnknown ? "warn" : "unavailable"}
       dot={!isRoadmap}
       testId={testId}
       className="max-w-full truncate"
@@ -237,59 +240,68 @@ function Sidebar({ active, snapshot, onCopy, copied }) {
 /* Enable control (truthful — cannot fake LIVE)                         */
 /* ------------------------------------------------------------------ */
 
-function EnableControl({ live, expanded, onToggleWhy }) {
+function LiveControl({ live, expanded, onToggleWhy, compute, onCompute }) {
+  const runtime = live.fresh ? live.runtime : null;
+  const remoteAvailable = runtime?.remote_blake3_available === true;
+  const source = compute.result?.execution_source;
   return (
     <div
-      className="w-full max-w-sm rounded-xl border border-amber-500/25 bg-[#111111] bg-grain p-5"
+      className={`w-full max-w-sm rounded-xl border bg-[#111111] bg-grain p-5 ${runtime ? "border-[#39FF14]/25" : "border-amber-500/25"}`}
       data-testid="enable-phoneboost-panel"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/5">
-            <Power className="h-5 w-5 text-amber-400" strokeWidth={1.75} />
+          <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${runtime ? "border-[#39FF14]/30 bg-[#39FF14]/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+            <Cpu className={`h-5 w-5 ${runtime ? "text-[#39FF14]" : "text-amber-400"}`} strokeWidth={1.75} />
           </div>
           <div className="leading-tight">
-            <div className="font-display text-sm font-semibold text-white">Enable PhoneBoost</div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-300/80">
-              Off · Unavailable
+            <div className="font-display text-sm font-semibold text-white">Locked BLAKE3 fixture</div>
+            <div className={`font-mono text-[10px] uppercase tracking-[0.18em] ${runtime ? "text-[#8dff77]" : "text-amber-300/80"}`}>
+              {runtime ? (remoteAvailable ? "Live · remote available" : "Live · remote unavailable") : "Unavailable"}
             </div>
           </div>
         </div>
-        {/* Disabled switch — cannot be turned on without a reachable native runtime */}
-        <button
-          data-testid="enable-phoneboost-control"
-          disabled
-          aria-disabled="true"
-          title="Native runtime not reachable from this hosted browser"
-          className="relative h-7 w-12 cursor-not-allowed rounded-full border border-neutral-700 bg-neutral-800/80"
-        >
-          <span className="absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-neutral-500" />
-        </button>
+        <StateChip state={runtime?.auto_use?.state || "UNAVAILABLE"} />
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-amber-100/80">
-        Native runtime not reachable from this hosted browser.
-      </p>
+      <button
+        data-testid="run-blake3-control"
+        disabled={!runtime || compute.running}
+        onClick={onCompute}
+        className="mt-4 w-full rounded border border-[#39FF14]/35 bg-[#39FF14]/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8dff77] disabled:cursor-not-allowed disabled:border-neutral-700 disabled:bg-neutral-800 disabled:text-neutral-500"
+      >
+        {compute.running ? "Production path running…" : "Run c10-abc-v1"}
+      </button>
+      {!runtime && <p className="mt-3 text-xs leading-relaxed text-amber-100/80">{live.reason}</p>}
+      {source && (
+        <div className="mt-3 rounded border border-neutral-800 bg-black/30 p-3" data-testid="compute-result">
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-500">
+            Last browser action · observed result
+          </div>
+          <div className={`mt-1 break-all font-mono text-[11px] ${source === "REMOTE_SUCCESS" ? "text-[#8dff77]" : "text-amber-300"}`}>
+            {source}
+          </div>
+          <div className="mt-2 break-all font-mono text-[9px] text-neutral-500">{compute.result.digest_blake3_hex}</div>
+          <div className="mt-1 font-mono text-[9px] text-neutral-600">
+            {new Date(compute.result.observed_at_unix_ms).toISOString()}
+          </div>
+        </div>
+      )}
+      {compute.error && <p className="mt-3 text-xs text-amber-300">{compute.error}</p>}
       <button
         data-testid="enable-why-toggle"
         onClick={onToggleWhy}
         className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400 transition-colors hover:text-amber-200"
       >
-        {expanded ? "Hide details" : "Why can't I enable it?"}
+        {expanded ? "Hide boundary details" : "Why are some gates unknown?"}
         <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && (
         <div data-testid="live-curtain" className="mt-3 border-t border-neutral-800 pt-3">
-          <p className="text-xs leading-relaxed text-amber-100/70">{live.reason}</p>
-          <ul className="mt-2 space-y-1.5">
-            {(live.requirements || []).map((r) => (
-              <li key={r} className="flex gap-2 text-[11px] text-amber-100/60">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
-                {r}
-              </li>
-            ))}
-          </ul>
+          <p className="text-xs leading-relaxed text-amber-100/70">
+            C12 exposes authentication, auto-use, and locked-provider readiness. Discovery, controller lease, and ResourceGuard are shown as UNKNOWN because C12 does not expose them independently.
+          </p>
           <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.16em] text-neutral-600">
-            No LIVE state is ever fabricated here.
+            This button can only invoke the fixed c10-abc-v1 production action.
           </p>
         </div>
       )}
@@ -301,7 +313,8 @@ function EnableControl({ live, expanded, onToggleWhy }) {
 /* Hero                                                                */
 /* ------------------------------------------------------------------ */
 
-function Hero({ snapshot, live, whyOpen, onToggleWhy }) {
+function Hero({ snapshot, live, whyOpen, onToggleWhy, compute, onCompute }) {
+  const runtime = live.fresh ? live.runtime : null;
   return (
     <section id="overview" className="reveal relative overflow-hidden border-b border-neutral-800">
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#39FF14]/5 blur-3xl" />
@@ -323,12 +336,20 @@ function Hero({ snapshot, live, whyOpen, onToggleWhy }) {
             <p className="mt-2 text-sm text-neutral-400">Plug it in. PhoneBoost puts it to work.</p>
 
             <div className="mt-6 flex flex-wrap items-center gap-2.5" data-testid="hero-status-chips">
-              <Pill tone="warn" testId="chip-live">Live · unavailable</Pill>
+              <Pill tone={runtime ? "live" : "warn"} testId="chip-live">
+                {runtime ? "Live · fresh" : "Live · unavailable"}
+              </Pill>
               <Pill tone="evidence" testId="chip-evidence">Recorded evidence · available</Pill>
             </div>
           </div>
 
-          <EnableControl live={live} expanded={whyOpen} onToggleWhy={onToggleWhy} />
+          <LiveControl
+            live={live}
+            expanded={whyOpen}
+            onToggleWhy={onToggleWhy}
+            compute={compute}
+            onCompute={onCompute}
+          />
         </div>
       </div>
     </section>
@@ -363,7 +384,10 @@ function GlanceCard({ icon: Icon, label, value, tone = "unavailable", note, href
   );
 }
 
-function Glance({ snapshot }) {
+function Glance({ live }) {
+  const runtime = live.fresh ? live.runtime : null;
+  const authenticated = runtime?.authenticated_session?.state === "AUTHENTICATED";
+  const available = runtime?.auto_use?.state === "AVAILABLE";
   return (
     <section className="reveal px-6 py-10 sm:px-10">
       <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
@@ -374,24 +398,25 @@ function Glance({ snapshot }) {
           testId="glance-availability"
           icon={Gauge}
           label="Is PhoneBoost available?"
-          value="Offline in browser"
-          tone="warn"
-          note="Needs a local phoneboostd runtime; a hosted browser cannot reach it."
+          value={runtime ? runtime.auto_use.state : "Unavailable"}
+          tone={available ? "live" : runtime ? "warn" : "unavailable"}
+          note={runtime ? `Fresh native snapshot · ${runtime.auto_use.reason}` : "No fresh local daemon snapshot."}
         />
         <GlanceCard
           testId="glance-phone"
           icon={Smartphone}
           label="Is a phone contributing?"
-          value="No phone connected"
-          note="Pair an Android worker over the secure link to contribute capacity."
+          value={authenticated ? "Authenticated" : runtime ? runtime.authenticated_session.remote_worker_state : "Unknown"}
+          tone={authenticated ? "live" : "unavailable"}
+          note="Current session truth from C12; durable pairing is not inferred."
         />
         <GlanceCard
           testId="glance-trust"
           icon={ShieldCheck}
           label="Trust & control state"
-          value="All gates unavailable"
+          value={runtime ? "Independent gates shown" : "Gates unavailable"}
           href="#ladder"
-          note="Five independent authority gates — none satisfied without a live bridge."
+          note="Unexposed lease and ResourceGuard gates remain UNKNOWN."
         />
         <GlanceCard
           testId="glance-evidence"
@@ -441,8 +466,9 @@ function TopologyNode({ icon: Icon, tag, tagTone, title, subtitle, state }) {
   );
 }
 
-function SimpleTopology({ snapshot }) {
+function SimpleTopology({ snapshot, live }) {
   const sl = snapshot.secure_link;
+  const runtime = live.fresh ? live.runtime : null;
   return (
     <section className="reveal px-6 pb-4 sm:px-10">
       <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
@@ -455,7 +481,7 @@ function SimpleTopology({ snapshot }) {
           tagTone="local"
           title="Linux PC"
           subtitle="x86-64 · orchestrator"
-          state={snapshot.computer.runtime.state}
+          state={runtime?.local_daemon?.runtime_state || snapshot.computer.runtime.state}
         />
         {/* Secure link connector */}
         <div className="flex items-stretch gap-4 py-1 pl-5">
@@ -473,7 +499,7 @@ function SimpleTopology({ snapshot }) {
                 Noise XX → IK · PBMUX · fail-closed
               </div>
             </div>
-            <StateChip state={sl.session.state} />
+            <StateChip state={runtime?.authenticated_session?.state || sl.session.state} />
           </div>
         </div>
         <TopologyNode
@@ -482,7 +508,7 @@ function SimpleTopology({ snapshot }) {
           tagTone="remote"
           title="Android phone"
           subtitle="ARM64 · trusted worker"
-          state={snapshot.phone.endpoint.state}
+          state={runtime?.authenticated_session?.remote_worker_state || snapshot.phone.endpoint.state}
         />
       </div>
       <p className="mx-auto mt-4 max-w-2xl text-center text-[11px] text-neutral-500">
@@ -513,7 +539,10 @@ function CapabilityCard({ icon: Icon, title, desc, tone, statusLabel }) {
   );
 }
 
-function Capabilities() {
+function Capabilities({ live }) {
+  const runtime = live.fresh ? live.runtime : null;
+  const authenticated = runtime?.authenticated_session?.state === "AUTHENTICATED";
+  const remoteAvailable = runtime?.remote_blake3_available === true;
   return (
     <section className="reveal px-6 py-10 sm:px-10">
       <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-neutral-500">
@@ -524,22 +553,22 @@ function Capabilities() {
           icon={Radio}
           title="Secure link"
           desc="Authenticated, fail-closed channel between PC and phone."
-          tone="unavailable"
-          statusLabel="Implemented · not established"
+          tone={authenticated ? "live" : "unavailable"}
+          statusLabel={authenticated ? "Authenticated" : "Not observed"}
         />
         <CapabilityCard
           icon={Boxes}
-          title="Remote capacity"
-          desc="Bounded, volatile storage held on the remote node only."
-          tone="roadmap"
-          statusLabel="Roadmap"
+          title="Authority gates"
+          desc="Lease and ResourceGuard remain Android-owned and are not inferred by this browser."
+          tone="warn"
+          statusLabel="Unknown in C12"
         />
         <CapabilityCard
           icon={Cpu}
-          title="Remote compute"
-          desc="Explicit remote jobs, always worker-authoritative."
-          tone="roadmap"
-          statusLabel="Roadmap"
+          title="Locked remote compute"
+          desc="The fixed c10-abc-v1 BLAKE3 action follows the production C12 path."
+          tone={remoteAvailable ? "live" : "unavailable"}
+          statusLabel={remoteAvailable ? "Available" : "Unavailable"}
         />
         <CapabilityCard
           icon={FileCheck2}
@@ -694,7 +723,35 @@ function HowItWorks({ snapshot, arch }) {
 /* Five-gate ladder                                                    */
 /* ------------------------------------------------------------------ */
 
-function GateLadder({ gates }) {
+function GateLadder({ gates, live }) {
+  const runtime = live.fresh ? live.runtime : null;
+  const displayedGates = runtime
+    ? gates.map((gate) => {
+        const liveGate = {
+          paired: {
+            state: "UNKNOWN",
+            reason: "Durable pairing state is not independently exposed by C12.",
+          },
+          authenticated: {
+            state: runtime.authenticated_session.state,
+            reason: `Current worker state: ${runtime.authenticated_session.remote_worker_state}.`,
+          },
+          controller_lease: {
+            state: runtime.controller_lease.state,
+            reason: "Controller lease is not independently exposed by C12.",
+          },
+          resource_admissible: {
+            state: runtime.resource_guard.state,
+            reason: "ResourceGuard readiness is not independently exposed by C12.",
+          },
+          provider_ready: {
+            state: runtime.provider_readiness.state,
+            reason: "Exact readiness of pb.native.blake3/1 from the current C12 snapshot.",
+          },
+        }[gate.id];
+        return { ...gate, ...liveGate };
+      })
+    : gates;
   return (
     <section id="ladder" className="reveal border-t border-neutral-800 px-6 py-12 sm:px-10">
       <SectionHeading
@@ -702,10 +759,14 @@ function GateLadder({ gates }) {
         kicker="Trust & control"
         title="Five independent gates"
         sub="Each gate is a distinct authority check — not a sequence and not a progress bar. A peer ID is identity only; it does not authenticate a session, grant a lease, or create capacity."
-        right={<Pill tone="warn" testId="ladder-status">All unavailable · no live bridge</Pill>}
+        right={
+          <Pill tone={runtime ? "live" : "warn"} testId="ladder-status">
+            {runtime ? "Fresh native snapshot" : "No fresh live bridge"}
+          </Pill>
+        }
       />
       <ol data-testid="gate-ladder" className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {gates.map((g, i) => (
+        {displayedGates.map((g, i) => (
           <li
             key={g.id}
             data-testid={`gate-${g.id}`}
@@ -715,9 +776,7 @@ function GateLadder({ gates }) {
               <span className="font-mono text-lg font-semibold tracking-tight text-neutral-700">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <Pill tone="unavailable" testId={`gate-${g.id}-badge`}>
-                {g.state}
-              </Pill>
+              <StateChip state={g.state} testId={`gate-${g.id}-badge`} />
             </div>
             <div className="mb-2 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full border border-neutral-600 bg-transparent" />
@@ -789,7 +848,7 @@ function EvidenceGrid({ evidence, fixtures, snapshot, onOpen }) {
   );
 }
 
-function EvidenceDrawer({ open, onClose, api, id }) {
+function EvidenceDrawer({ open, onClose, api, id, evidence }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const loadedFor = useRef(null);
@@ -799,6 +858,12 @@ function EvidenceDrawer({ open, onClose, api, id }) {
       loadedFor.current = id;
       setLoading(true);
       setDetail(null);
+      if (!api.base) {
+        const card = evidence.find((item) => item.id === id);
+        setDetail(card ? { provenance: "RECORDED_EVIDENCE", card } : null);
+        setLoading(false);
+        return;
+      }
       axios
         .get(`${api.base}/evidence/${id}`)
         .then((r) => {
@@ -808,7 +873,7 @@ function EvidenceDrawer({ open, onClose, api, id }) {
         .catch(() => setLoading(false));
     }
     if (!open) loadedFor.current = null;
-  }, [open, id, api.base]);
+  }, [open, id, api.base, evidence]);
 
   if (!open) return null;
   return (
@@ -912,11 +977,12 @@ function Roadmap({ roadmap }) {
 /* Dashboard                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures }) {
+export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures, compute, onCompute }) {
   const [openEv, setOpenEv] = useState(null);
   const [active, setActive] = useState("overview");
   const [copied, setCopied] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  const runtime = live.fresh ? live.runtime : null;
 
   useEffect(() => {
     const ids = NAV.map((n) => n.id);
@@ -976,7 +1042,9 @@ export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch
         <div className="sticky top-0 z-20 border-b border-neutral-800 bg-[#0a0a0a]/85 backdrop-blur">
           <div className="flex items-center justify-between gap-3 px-6 py-2.5 sm:px-10">
             <div className="flex min-w-0 items-center gap-3">
-              <Pill tone="evidence" testId="mode-badge">Recorded evidence</Pill>
+              <Pill tone={runtime ? "live" : "evidence"} testId="mode-badge">
+                {runtime ? "Live · fresh native state" : "Recorded evidence · live unavailable"}
+              </Pill>
               <span className="hidden truncate font-mono text-[10px] text-neutral-500 md:inline">
                 native <span className="text-neutral-300">{snapshot.release.native_baseline.slice(0, 12)}</span>
                 {" · "}toolchain <span className="text-neutral-300">{snapshot.release.toolchain}</span>
@@ -996,12 +1064,19 @@ export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch
         </div>
 
         <main>
-          <Hero snapshot={snapshot} live={live} whyOpen={whyOpen} onToggleWhy={() => setWhyOpen((o) => !o)} />
-          <Glance snapshot={snapshot} />
-          <SimpleTopology snapshot={snapshot} />
-          <Capabilities />
+          <Hero
+            snapshot={snapshot}
+            live={live}
+            whyOpen={whyOpen}
+            onToggleWhy={() => setWhyOpen((o) => !o)}
+            compute={compute}
+            onCompute={onCompute}
+          />
+          <Glance live={live} />
+          <SimpleTopology snapshot={snapshot} live={live} />
+          <Capabilities live={live} />
           <HowItWorks snapshot={snapshot} arch={arch} />
-          <GateLadder gates={snapshot.gates} />
+          <GateLadder gates={snapshot.gates} live={live} />
           <EvidenceGrid evidence={evidence} fixtures={fixtures} snapshot={snapshot} onOpen={setOpenEv} />
           <Roadmap roadmap={roadmap} />
 
@@ -1033,7 +1108,13 @@ export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch
         </main>
       </div>
 
-      <EvidenceDrawer open={!!openEv} onClose={() => setOpenEv(null)} api={api} id={openEv} />
+      <EvidenceDrawer
+        open={!!openEv}
+        onClose={() => setOpenEv(null)}
+        api={api}
+        id={openEv}
+        evidence={evidence}
+      />
     </div>
   );
 }
