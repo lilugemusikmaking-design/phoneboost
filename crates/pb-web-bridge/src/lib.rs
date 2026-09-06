@@ -309,7 +309,11 @@ impl<N: NativeBackend> Bridge<N> {
     }
 
     fn compute(&mut self, request: &Request) -> Response {
-        if request.headers.get("content-type").map(String::as_str) != Some("application/json") {
+        if !request
+            .headers
+            .get("content-type")
+            .is_some_and(|value| is_json_content_type(value))
+        {
             return Response::error(415, "CONTENT_TYPE_REQUIRED");
         }
         let body: Value = match serde_json::from_slice(&request.body) {
@@ -423,6 +427,116 @@ fn content_type(path: &Path) -> Option<&'static str> {
         Some("woff2") => Some("font/woff2"),
         _ => None,
     }
+}
+
+fn is_json_content_type(value: &str) -> bool {
+    fn is_ows(byte: u8) -> bool {
+        matches!(byte, b' ' | b'\t')
+    }
+
+    fn is_token_byte(byte: u8) -> bool {
+        byte.is_ascii_alphanumeric()
+            || matches!(
+                byte,
+                b'!' | b'#'
+                    | b'$'
+                    | b'%'
+                    | b'&'
+                    | b'\''
+                    | b'*'
+                    | b'+'
+                    | b'-'
+                    | b'.'
+                    | b'^'
+                    | b'_'
+                    | b'`'
+                    | b'|'
+                    | b'~'
+            )
+    }
+
+    fn skip_ows(bytes: &[u8], cursor: &mut usize) {
+        while bytes.get(*cursor).is_some_and(|byte| is_ows(*byte)) {
+            *cursor += 1;
+        }
+    }
+
+    fn consume_token(bytes: &[u8], cursor: &mut usize) -> bool {
+        let start = *cursor;
+        while bytes.get(*cursor).is_some_and(|byte| is_token_byte(*byte)) {
+            *cursor += 1;
+        }
+        *cursor > start
+    }
+
+    fn consume_quoted_string(bytes: &[u8], cursor: &mut usize) -> bool {
+        if bytes.get(*cursor) != Some(&b'"') {
+            return false;
+        }
+        *cursor += 1;
+        while let Some(byte) = bytes.get(*cursor).copied() {
+            match byte {
+                b'"' => {
+                    *cursor += 1;
+                    return true;
+                }
+                b'\\' => {
+                    *cursor += 1;
+                    let Some(escaped) = bytes.get(*cursor).copied() else {
+                        return false;
+                    };
+                    if !(escaped == b'\t' || escaped == b' ' || (0x21..=0x7e).contains(&escaped)) {
+                        return false;
+                    }
+                    *cursor += 1;
+                }
+                b'\t' | b' ' | b'!' | b'#'..=b'[' | b']'..=b'~' => *cursor += 1,
+                _ => return false,
+            }
+        }
+        false
+    }
+
+    let bytes = value.as_bytes();
+    let mut cursor = 0;
+    skip_ows(bytes, &mut cursor);
+
+    const JSON_MEDIA_TYPE: &[u8] = b"application/json";
+    let Some(media_type) = bytes.get(cursor..cursor + JSON_MEDIA_TYPE.len()) else {
+        return false;
+    };
+    if !media_type.eq_ignore_ascii_case(JSON_MEDIA_TYPE) {
+        return false;
+    }
+    cursor += JSON_MEDIA_TYPE.len();
+    skip_ows(bytes, &mut cursor);
+
+    while cursor < bytes.len() {
+        if bytes[cursor] != b';' {
+            return false;
+        }
+        cursor += 1;
+        skip_ows(bytes, &mut cursor);
+        if !consume_token(bytes, &mut cursor) {
+            return false;
+        }
+        skip_ows(bytes, &mut cursor);
+        if bytes.get(cursor) != Some(&b'=') {
+            return false;
+        }
+        cursor += 1;
+        skip_ows(bytes, &mut cursor);
+        if bytes.get(cursor) == Some(&b'"') {
+            if !consume_quoted_string(bytes, &mut cursor) {
+                return false;
+            }
+        } else if !consume_token(bytes, &mut cursor) {
+            return false;
+        }
+        skip_ows(bytes, &mut cursor);
+    }
+
+    true
 }
 
 fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
@@ -878,6 +992,64 @@ mod tests {
             assert_eq!(response.status, 400);
             assert_eq!(bridge.native.compute_calls.get(), 0);
         }
+    }
+
+    #[test]
+    fn compute_accepts_json_content_type_with_valid_parameters() {
+        for content_type in [
+            "application/json",
+            "Application/JSON",
+            "application/json; charset=utf-8",
+            " application/json ; charset = \"utf-8\" ",
+            "application/json;charset=UTF-8; profile=phoneboost",
+            "application/json; profile=\"phoneboost;v=1\"",
+        ] {
+            let mut bridge = bridge(fake_native());
+            let response = bridge.handle(request(
+                "POST",
+                "/bridge/v1/compute/blake3",
+                &[("content-type", content_type)],
+                br#"{"fixture":"c10-abc-v1"}"#,
+            ));
+            assert_eq!(response.status, 200, "content type: {content_type}");
+            assert_eq!(bridge.native.compute_calls.get(), 1);
+        }
+    }
+
+    #[test]
+    fn compute_rejects_non_json_or_malformed_content_type_before_native_call() {
+        for content_type in [
+            "text/json",
+            "application/jsonp",
+            "application/json;",
+            "application/json; charset",
+            "application/json; =utf-8",
+            "application/json; charset=",
+            "application/json; charset=\"unterminated",
+            "application/json; charset=\"utf-8\" trailing",
+            "application/json, text/plain",
+            "application/json; charset=utf-8;",
+        ] {
+            let mut bridge = bridge(fake_native());
+            let response = bridge.handle(request(
+                "POST",
+                "/bridge/v1/compute/blake3",
+                &[("content-type", content_type)],
+                br#"{"fixture":"c10-abc-v1"}"#,
+            ));
+            assert_eq!(response.status, 415, "content type: {content_type}");
+            assert_eq!(bridge.native.compute_calls.get(), 0);
+        }
+
+        let mut bridge = bridge(fake_native());
+        let response = bridge.handle(request(
+            "POST",
+            "/bridge/v1/compute/blake3",
+            &[],
+            br#"{"fixture":"c10-abc-v1"}"#,
+        ));
+        assert_eq!(response.status, 415, "missing content type");
+        assert_eq!(bridge.native.compute_calls.get(), 0);
     }
 
     #[test]
