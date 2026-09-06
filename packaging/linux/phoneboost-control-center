@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() {
+    printf 'PHONEBOOST_CONTROL_CENTER FAIL: %s\n' "$1" >&2
+    exit 1
+}
+
+launcher_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+install_prefix="$(CDPATH= cd -- "$launcher_dir/.." && pwd -P)"
+application_root="$install_prefix/share/phoneboost"
+
+[[ -x "$application_root/libexec/phoneboostctl" ]] \
+    || fail "installed phoneboostctl is unavailable"
+[[ -x "$application_root/libexec/phoneboostd" ]] \
+    || fail "installed phoneboostd is unavailable"
+[[ -x "$application_root/libexec/phoneboost-web-bridge" ]] \
+    || fail "installed web bridge is unavailable"
+[[ -x "$application_root/scripts/run_phoneboost_control_center.sh" ]] \
+    || fail "installed Control Center launcher is unavailable"
+[[ -f "$application_root/frontend/build/index.html" ]] \
+    || fail "installed production frontend is unavailable"
+
+export PHONEBOOSTCTL_BIN="$application_root/libexec/phoneboostctl"
+export PHONEBOOSTD_BIN="$application_root/libexec/phoneboostd"
+export PHONEBOOST_WEB_BRIDGE_BIN="$application_root/libexec/phoneboost-web-bridge"
+
+cd "$application_root"
+exec "$application_root/scripts/run_phoneboost_control_center.sh" --no-build "$@"

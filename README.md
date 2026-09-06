@@ -103,6 +103,20 @@ The complete interactive P1 operator workflow is
 `scripts/prove_p1_live_bridge_local.sh`; it deliberately does not alter Android
 networking by itself.
 
+Install the same reviewed launcher, production binaries, frontend bundle, and a
+desktop-menu entry for the current Linux user with:
+
+```sh
+scripts/install_phoneboost_control_center_user.sh
+```
+
+This user-local installation does not configure autostart or a background
+service. The menu entry opens a terminal and prints a fresh one-time loopback
+URL. Remove only the installed application payload with
+`scripts/uninstall_phoneboost_control_center_user.sh`; pairing state and other
+user data are preserved. The locked operational contract is
+`docs/operations/PHONEBOOST_P3_LOCAL_USER_INSTALLATION_V0_1_LOCKED_20260906.md`.
+
 Focused core checks:
 
 ```sh

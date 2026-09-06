@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=PhoneBoost Control Center
+Name[fr]=Centre de contrôle PhoneBoost
+Comment=Open the local, loopback-only PhoneBoost Control Center
+Comment[fr]=Ouvrir le Centre de contrôle PhoneBoost local limité au loopback
+Exec=@PHONEBOOST_CONTROL_CENTER@
+TryExec=@PHONEBOOST_CONTROL_CENTER@
+Icon=utilities-system-monitor
+Terminal=true
+Categories=Utility;
+StartupNotify=false
