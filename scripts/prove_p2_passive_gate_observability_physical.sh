@@ -25,11 +25,35 @@ command -v python3 >/dev/null 2>&1 || fail "python3 is unavailable"
 temporary_root="$(mktemp -d)"
 chmod 700 "$temporary_root"
 bridge_pid=""
-cleanup() {
-    if [[ -n "$bridge_pid" ]] && kill -0 "$bridge_pid" 2>/dev/null; then
-        kill "$bridge_pid" 2>/dev/null || true
+bridge_is_reapable() {
+    local process_state
+
+    kill -0 "$bridge_pid" 2>/dev/null || return 0
+    [[ -r "/proc/$bridge_pid/stat" ]] || return 1
+    read -r _ _ process_state _ <"/proc/$bridge_pid/stat" || return 0
+    [[ "$process_state" == "Z" ]]
+}
+stop_bridge() {
+    [[ -n "$bridge_pid" ]] || return 0
+    bridge_is_reapable && {
         wait "$bridge_pid" 2>/dev/null || true
-    fi
+        return 0
+    }
+
+    kill "$bridge_pid" 2>/dev/null || true
+    for _ in $(seq 1 20); do
+        bridge_is_reapable && {
+            wait "$bridge_pid" 2>/dev/null || true
+            return 0
+        }
+        sleep 0.05
+    done
+
+    kill -KILL "$bridge_pid" 2>/dev/null || true
+    wait "$bridge_pid" 2>/dev/null || true
+}
+cleanup() {
+    stop_bridge
     rm -rf -- "$temporary_root"
 }
 trap cleanup EXIT INT TERM
@@ -54,7 +78,7 @@ base_url="${launch_url%%/#token=*}"
 capability="${launch_url##*#token=}"
 [[ "$base_url" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "bridge did not bind literal IPv4 loopback"
 [[ "$capability" =~ ^[0-9a-f]{64}$ ]] || fail "bridge capability shape invalid"
-curl --fail --silent --show-error --max-time 4 \
+curl --disable --noproxy '*' --fail --silent --show-error --max-time 4 \
     -H "X-PhoneBoost-Bridge-Token: $capability" \
     "$base_url/bridge/v1/snapshot" >"$snapshot_file"
 
