@@ -76,8 +76,10 @@ visually distinct.
   full peer ID, PBMUX sequence, worker incarnation, and lease details behind a
   judge-facing details panel.
 - **Evidence:** current test totals, C07 fixture/oracle results, Android build
-  results, and links to checked-in evidence, including the operator-observed
-  C07-C12 P0 remote-compute closure and the bounded P1 local browser proof.
+  results, and links to checked-in evidence. The current recorded-presentation
+  anchor is P2; historical test totals retain their original labels. Include
+  the operator-observed C07-C12 P0 remote-compute closure, bounded P1 local
+  browser proof, and P2 passive gate-observability physical proof.
   Mark this entire view `RECORDED EVIDENCE`.
 - **Implementation-proven and browser-proven:** the separate loopback-only
   `phoneboost-web-bridge` exposes current C12 truth and the single locked

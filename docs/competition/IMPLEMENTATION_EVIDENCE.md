@@ -5,7 +5,9 @@
 - Historical P0 evidence-record validation date: 2026-09-02
 - Historical P1 automated validation and physical/browser proof date: 2026-09-05
 - Current P2 automated and physical/bridge validation date: 2026-09-05
-- Evidence-record baseline: `b53ea3b84a4085ab45de58385f115f1cbd9176ed`
+- Current recorded-presentation anchor: `449ca077a49c0079c95959718d883a3d6b032da7`
+  (`Harden P2 proof script cleanup`)
+- Historical P0 evidence anchor: `b53ea3b84a4085ab45de58385f115f1cbd9176ed`
   (`Record physical P0 remote compute closure`)
 - Physical workflow baseline exercised: `290767a19b52fb0713d514641169a14b2a4148d5`
   (`Add P0 remote compute closure workflow`)

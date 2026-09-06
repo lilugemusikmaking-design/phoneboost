@@ -88,17 +88,20 @@ cargo test --workspace
 python3 scripts/check_c07_wire_addendum_002.py
 ```
 
-Build the production frontend and start the loopback-only Control Center from
-the repository root:
+Build the production frontend, start or reuse the production daemon, and launch
+the loopback-only Control Center from the repository root with one command:
 
 ```sh
-REACT_APP_BACKEND_URL= yarn --cwd frontend build
-cargo run --release -p pb-web-bridge
+scripts/run_phoneboost_control_center.sh
 ```
 
-The bridge prints a per-process capability URL. The complete interactive P1
-operator workflow is `scripts/prove_p1_live_bridge_local.sh`; it deliberately
-does not alter Android networking by itself.
+The launcher prints current native status followed by a per-process capability
+URL. It leaves a pre-existing daemon running and stops only processes that it
+started. After a successful build, use
+`scripts/run_phoneboost_control_center.sh --no-build` for a faster relaunch.
+The complete interactive P1 operator workflow is
+`scripts/prove_p1_live_bridge_local.sh`; it deliberately does not alter Android
+networking by itself.
 
 Focused core checks:
 

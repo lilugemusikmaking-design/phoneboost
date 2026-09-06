@@ -11,11 +11,11 @@ export const RECORDED_SNAPSHOT = {
   mode_label: "Recorded Evidence Mode",
   release: {
     product: "PhoneBoost",
-    tag: "master · P0 physical closure",
-    head: "b53ea3b84a4085ab45de58385f115f1cbd9176ed",
+    tag: "master · P2 physical closure · reviewed hardening",
+    head: "449ca077a49c0079c95959718d883a3d6b032da7",
     native_baseline: "162539c2ec3721f1aa45557900988e2a4291202f",
     toolchain: "Rust 1.98.0",
-    validation_date: "2026-09-02",
+    validation_date: "2026-09-05",
     repo: "https://github.com/lilugemusikmaking-design/phoneboost",
   },
   computer: {
@@ -83,6 +83,15 @@ export const RECORDED_EVIDENCE = [
     source: "docs/evidence/p1-live-bridge-local-browser-physical.txt",
   },
   {
+    id: "p2-passive-gate-observability",
+    title: "P2 · Passive gate observability physical proof",
+    summary:
+      "FRESH_HINT / C04_CANDIDATE_OBSERVED · ACTIVE / C07_ACK_FRESH · FRESH_PASS / C08_C09_C10_PROBE_PASSED · fail-closed expiry · P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS",
+    provenance: "RECORDED_EVIDENCE",
+    kind: "physical-browser",
+    source: "docs/evidence/p2-passive-gate-observability-physical.txt",
+  },
+  {
     id: "workspace-tests",
     title: "Rust workspace tests",
     summary: "352 unit tests + 6 doc-tests PASS at the P0 closure baseline",
@@ -117,6 +126,8 @@ export const RECORDED_ROADMAP = {
     "Physically proven c10-abc-v1 remote compute and truthful fallback",
     "Loopback-only browser bridge implementation with strict live freshness",
     "Physical P1 local browser proof for the locked production BLAKE3 path",
+    "Passive C12 observations for discovery, C07 lease, and latest C08/C09/C10 admission/readiness proof",
+    "Physical P2 browser/CLI proof of the fresh gate trio and fail-closed expiry",
   ],
   next: [],
   future: [

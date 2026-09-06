@@ -3,11 +3,12 @@ import asyncio
 import server
 
 
-def test_recorded_release_is_current_p0_closure_truth():
+def test_recorded_release_is_current_p2_closure_truth():
     snapshot = server._snapshot_recorded()
     assert snapshot["provenance"] == "RECORDED_EVIDENCE"
-    assert snapshot["release"]["head"] == "b53ea3b84a4085ab45de58385f115f1cbd9176ed"
+    assert snapshot["release"]["head"] == "449ca077a49c0079c95959718d883a3d6b032da7"
     assert snapshot["release"]["native_baseline"] == "162539c2ec3721f1aa45557900988e2a4291202f"
+    assert snapshot["release"]["validation_date"] == "2026-09-05"
     assert snapshot["live_available"] is False
     assert all(gate["state"] == "UNAVAILABLE" for gate in snapshot["gates"])
 
@@ -41,6 +42,20 @@ def test_p1_local_browser_proof_is_on_recorded_evidence_surface():
     assert item["file"] == "p1-live-bridge-local-browser-physical.txt"
     assert "REMOTE_SUCCESS" in item["summary"]
     assert "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE" in item["summary"]
+
+
+def test_p2_passive_gate_proof_is_on_recorded_evidence_surface():
+    item = next(
+        card
+        for card in server.EVIDENCE_CARDS
+        if card["id"] == "p2-passive-gate-observability"
+    )
+    assert item["provenance"] == "RECORDED_EVIDENCE"
+    assert item["file"] == "p2-passive-gate-observability-physical.txt"
+    assert "FRESH_HINT / C04_CANDIDATE_OBSERVED" in item["summary"]
+    assert "ACTIVE / C07_ACK_FRESH" in item["summary"]
+    assert "FRESH_PASS / C08_C09_C10_PROBE_PASSED" in item["summary"]
+    assert "P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS" in item["summary"]
 
 
 def test_obsolete_p0_roadmap_claims_are_removed():

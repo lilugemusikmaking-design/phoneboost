@@ -55,14 +55,21 @@ object, not Linux-addressable memory.
   `docs/evidence/p1-live-bridge-local-browser-physical.txt`: fresh LIVE state,
   remote success, deliberate disconnect with explicit browser fallback and no
   false remote success, then authenticated recovery and a second remote success.
+- The bounded P2 passive-observability proof is recorded at
+  `docs/evidence/p2-passive-gate-observability-physical.txt`: one production
+  transition exposed the exact fresh discovery, controller-lease, and latest
+  admission/readiness observations together; later passive reads showed the
+  discovery and proof expiring fail-closed.
 
 ### Implemented and physically browser-proven
 
 - The P1 browser bridge and frontend truth model have automated coverage and a
   bounded operator-observed browser proof against the production daemon and
-  Android worker. Discovery, controller lease, and `ResourceGuard` remain
-  `UNKNOWN` in the live browser view because C12 does not expose those gates
-  independently.
+  Android worker. P2 adds passive, expiring observations for discovery, the C07
+  controller lease, and the latest C08/C09/C10 admission/readiness proof; it does
+  not infer them from authenticated state or create remote work from status
+  reads. The P2 production transition and expiry behavior are physically
+  recorded without claiming a durable ResourceGuard grant.
 
 ### Roadmap
 
@@ -81,17 +88,20 @@ cargo test --workspace
 python3 scripts/check_c07_wire_addendum_002.py
 ```
 
-Build the production frontend and start the loopback-only Control Center from
-the repository root:
+Build the production frontend, start or reuse the production daemon, and launch
+the loopback-only Control Center from the repository root with one command:
 
 ```sh
-REACT_APP_BACKEND_URL= yarn --cwd frontend build
-cargo run --release -p pb-web-bridge
+scripts/run_phoneboost_control_center.sh
 ```
 
-The bridge prints a per-process capability URL. The complete interactive P1
-operator workflow is `scripts/prove_p1_live_bridge_local.sh`; it deliberately
-does not alter Android networking by itself.
+The launcher prints current native status followed by a per-process capability
+URL. It leaves a pre-existing daemon running and stops only processes that it
+started. After a successful build, use
+`scripts/run_phoneboost_control_center.sh --no-build` for a faster relaunch.
+The complete interactive P1 operator workflow is
+`scripts/prove_p1_live_bridge_local.sh`; it deliberately does not alter Android
+networking by itself.
 
 Focused core checks:
 

@@ -11,9 +11,10 @@ runtime state. It exposes:
   - GET /api/roadmap           -> ROADMAP items from repo docs
   - GET /api/release           -> Release identity (repo anchor)
 
-Values come from files checked in at /app/backend/phoneboost_data, sourced
-from the PhoneBoost repository physical P0 closure baseline
-(HEAD b53ea3b). No number here is invented.
+Values come from files checked in at /app/backend/phoneboost_data. The current
+recorded-presentation anchor is the reviewed P2 closure (HEAD 449ca07), while
+historical P0/P1 cards and test totals retain their original provenance. No
+number here is invented.
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ DATA_DIR = ROOT_DIR / "phoneboost_data"
 EVIDENCE_DIR = DATA_DIR / "evidence"
 FIXTURES_DIR = DATA_DIR / "fixtures"
 
-app = FastAPI(title="PhoneBoost Control Center", version="p0-closure-20260902")
+app = FastAPI(title="PhoneBoost Control Center", version="p2-closure-20260905")
 api = APIRouter(prefix="/api")
 
 # ---------------------------------------------------------------------------
@@ -42,18 +43,23 @@ api = APIRouter(prefix="/api")
 
 RELEASE = {
     "product": "PhoneBoost",
-    "tag": "master · P0 physical closure",
-    "head": "b53ea3b84a4085ab45de58385f115f1cbd9176ed",
+    "tag": "master · P2 physical closure · reviewed hardening",
+    "head": "449ca077a49c0079c95959718d883a3d6b032da7",
     "native_baseline": "162539c2ec3721f1aa45557900988e2a4291202f",
     "toolchain": "Rust 1.98.0",
-    "validation_date": "2026-09-02",
+    "validation_date": "2026-09-05",
     "scope": "non-production Linux x86-64 / Android ARM64 proof of concept",
     "repo": "https://github.com/lilugemusikmaking-design/phoneboost",
 }
 
 # From docs/competition/IMPLEMENTATION_EVIDENCE.md
 TEST_TOTALS = {
-    "workspace": {"passed": 352, "doc_tests": 6, "failed": 0, "label": "Full Rust workspace"},
+    "workspace": {
+        "passed": 352,
+        "doc_tests": 6,
+        "failed": 0,
+        "label": "Full Rust workspace at P0 closure",
+    },
     "crates": [
         {"name": "pb-types", "passed": 3, "total": 3},
         {"name": "pb-pbmux", "passed": 65, "total": 65},
@@ -135,6 +141,8 @@ ROADMAP = {
         "Physical C07-C12 remote-compute closure for c10-abc-v1",
         "Loopback-only browser bridge implementation with strict live freshness",
         "Physical P1 local browser proof for the locked production BLAKE3 path",
+        "Passive C12 observations for discovery, C07 lease, and latest C08/C09/C10 admission/readiness proof",
+        "Physical P2 browser/CLI proof of the fresh gate trio and fail-closed expiry",
     ],
     "next": [],
     "future": [
@@ -191,6 +199,15 @@ EVIDENCE_CARDS = [
         "kind": "physical-browser",
         "source": "docs/evidence/p1-live-bridge-local-browser-physical.txt",
         "file": "p1-live-bridge-local-browser-physical.txt",
+    },
+    {
+        "id": "p2-passive-gate-observability",
+        "title": "P2 · Passive gate observability physical proof",
+        "summary": "FRESH_HINT / C04_CANDIDATE_OBSERVED · ACTIVE / C07_ACK_FRESH · FRESH_PASS / C08_C09_C10_PROBE_PASSED · fail-closed expiry · P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS",
+        "provenance": "RECORDED_EVIDENCE",
+        "kind": "physical-browser",
+        "source": "docs/evidence/p2-passive-gate-observability-physical.txt",
+        "file": "p2-passive-gate-observability-physical.txt",
     },
     {
         "id": "c07-checker",

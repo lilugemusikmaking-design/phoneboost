@@ -164,6 +164,30 @@ test("complete valid recorded snapshot is accepted", () => {
   expect(safe.snapshot).toBe(snapshot);
 });
 
+test("checked-in recorded presentation is anchored to the physical P2 closure", () => {
+  expect(RECORDED_SNAPSHOT.release).toMatchObject({
+    head: "449ca077a49c0079c95959718d883a3d6b032da7",
+    validation_date: "2026-09-05",
+  });
+
+  const p2 = RECORDED_EVIDENCE.find(
+    (item) => item.id === "p2-passive-gate-observability"
+  );
+  expect(p2).toMatchObject({
+    provenance: "RECORDED_EVIDENCE",
+    source: "docs/evidence/p2-passive-gate-observability-physical.txt",
+  });
+  expect(p2.summary).toContain("FRESH_HINT / C04_CANDIDATE_OBSERVED");
+  expect(p2.summary).toContain("ACTIVE / C07_ACK_FRESH");
+  expect(p2.summary).toContain("FRESH_PASS / C08_C09_C10_PROBE_PASSED");
+  expect(p2.summary).toContain(
+    "P2_PASSIVE_GATE_OBSERVABILITY_PHYSICAL_PROOF PASS"
+  );
+  expect(RECORDED_ROADMAP.working_now).toContain(
+    "Physical P2 browser/CLI proof of the fresh gate trio and fail-closed expiry"
+  );
+});
+
 test.each(rejectionCases)("recorded snapshot rejection: %s", (_name, mutate) => {
   const snapshot = completeSnapshot();
   const candidate = mutate(snapshot);
