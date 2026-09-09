@@ -117,6 +117,17 @@ URL. Remove only the installed application payload with
 user data are preserved. The locked operational contract is
 `docs/operations/PHONEBOOST_P3_LOCAL_USER_INSTALLATION_V0_1_LOCKED_20260906.md`.
 
+After installation, an already-ready production daemon and authenticated
+Android worker can be checked through the installed payload with:
+
+```sh
+scripts/prove_p3_installed_control_center_physical.sh
+```
+
+This bounded operator proof does not build, start a daemon, operate Android, or
+change networking. Its locked contract is
+`docs/operations/PHONEBOOST_P3_INSTALLED_CONTROL_CENTER_PROOF_V0_1_LOCKED_20260907.md`.
+
 Focused core checks:
 
 ```sh
