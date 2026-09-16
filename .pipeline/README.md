@@ -15,4 +15,4 @@ STATE records the parent HEAD because a commit cannot contain its own hash. `res
 
 Canonical paths can be registered in AUTHORITY.json with accepted SHA-256 hashes. Resume computes current hashes and reports changes without accepting them automatically. Originals not present are external/not-local. Unchanged documents do not trigger rereads or repeat audits.
 
-Frontend has no dedicated lint script/config at the official checkpoint; build uses existing CRA/CRACO lint integration. Tests are required (no passWithNoTests). Android uses its existing AGP/SDK/NDK versions; no physical test scripts are invoked. No runtime files may be edited to green CI.
+Frontend has no standalone lint script at the official checkpoint; build uses the existing CRACO React Hooks lint configuration. Tests are required (no passWithNoTests). Android uses its existing AGP/SDK/NDK versions; no physical test scripts are invoked. No runtime files may be edited to green CI.
