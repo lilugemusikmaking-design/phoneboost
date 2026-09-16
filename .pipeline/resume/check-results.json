@@ -7,16 +7,14 @@
       "-p",
       "pb-host",
       "--lib",
-      "startup::tests::hs_t2",
-      "--",
-      "--nocapture"
+      "startup::tests"
     ],
     "environment": {
-      "TMPDIR": "/tmp"
+      "TMPDIR": "/var/tmp"
     },
     "returncode": 0,
-    "head": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
-    "date": "2026-09-16T18:13:54.340279+00:00"
+    "date": "2026-09-16T18:18:25.714989+00:00",
+    "source_state": "F1 O_PATH working tree correction"
   },
   {
     "command": [
@@ -26,15 +24,40 @@
       "-p",
       "pb-host",
       "--lib",
-      "startup::tests::hs_t2",
-      "--",
-      "--nocapture"
+      "startup::tests"
     ],
     "environment": {
-      "TMPDIR": "/var/tmp"
+      "TMPDIR": "/tmp"
     },
-    "returncode": 101,
-    "head": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
-    "date": "2026-09-16T18:13:54.340429+00:00"
+    "returncode": 0,
+    "date": "2026-09-16T18:18:25.715596+00:00",
+    "source_state": "F1 O_PATH working tree correction"
+  },
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "environment": {},
+    "returncode": 0,
+    "date": "2026-09-16T18:18:25.715636+00:00",
+    "source_state": "F1 O_PATH working tree correction"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "-p",
+      "pb-host",
+      "--all-targets"
+    ],
+    "environment": {},
+    "returncode": 0,
+    "date": "2026-09-16T18:18:25.715658+00:00",
+    "source_state": "F1 O_PATH working tree correction"
   }
 ]

@@ -35,5 +35,13 @@
     "Install / Onboarding Technical Reconnaissance",
     "UI / Design Guardrails"
   ],
-  "rule": "Re-read only changed canonical hashes; never infer physical readiness from CI."
+  "rule": "Re-read only changed canonical hashes; never infer physical readiness from CI.",
+  "scoped_excerpts": [
+    {
+      "path": ".pipeline/decisions/003-host-startup-excerpt.md",
+      "sha256": "b10cba2225e42feed3b6c24c4fb35775de90f0ab5607e96f822b7af37d1f02c3",
+      "source": "user-supplied normative excerpt; originals external/not-local",
+      "scope": "HOST_STARTUP stale socket recovery"
+    }
+  ]
 }

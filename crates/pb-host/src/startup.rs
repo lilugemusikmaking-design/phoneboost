@@ -312,11 +312,34 @@ fn startup_from_runtime_value(
         path: Some(runtime_path),
     };
 
+    // Pin the pathname object before the first observation. Otherwise an unlinked
+    // stale socket inode can be reused, hiding replacement between the two stats.
+    // Keep this no-follow reference alive through recovery and the fresh bind.
+    let pinned_existing = match openat(
+        &parent,
+        CONTROL_SOCKET,
+        OFlags::PATH | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+        Mode::empty(),
+    ) {
+        Ok(fd) => Some(fd),
+        Err(Errno::NOENT) => None,
+        Err(_) => return Err(startup_refused(StartupIssue::UnsafeControlObject)),
+    };
+    let pinned_identity = pinned_existing
+        .as_ref()
+        .map(|fd| fstat(fd).map(|stat| ObjectIdentity::from_stat(&stat)))
+        .transpose()
+        .map_err(|_| startup_refused(StartupIssue::UnsafeControlObject))?;
+
     let first = match statat(&parent, CONTROL_SOCKET, AtFlags::SYMLINK_NOFOLLOW) {
         Ok(stat) => Some(ObjectIdentity::from_stat(&stat)),
         Err(Errno::NOENT) => None,
         Err(_) => return Err(startup_refused(StartupIssue::UnsafeControlObject)),
     };
+
+    if first != pinned_identity {
+        return Err(startup_refused(StartupIssue::ControlObjectChanged));
+    }
 
     if let Some(first_identity) = first {
         if first_identity.file_type != FileType::Socket || first_identity.uid != current_uid {
@@ -345,13 +368,15 @@ fn startup_from_runtime_value(
             .map_err(|_| startup_refused(StartupIssue::ControlObjectChanged))?;
     }
 
-    bind_fresh(
+    let outcome = bind_fresh(
         parent,
         socket_path,
         validated_event,
         #[cfg(test)]
         hooks,
-    )
+    );
+    drop(pinned_existing);
+    outcome
 }
 
 fn connect_existing(socket_path: &Path) -> Result<(), Errno> {
