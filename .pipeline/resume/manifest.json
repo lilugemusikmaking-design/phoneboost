@@ -1,8 +1,8 @@
 {
-  "next_action": "Create deterministic GitHub Actions jobs for existing components",
+  "next_action": "Configure dependency and CodeQL security checks",
   "writer": "Codex",
-  "parent_head": "a2719dd1babc2bc5780a6eb483604f6c112c49e6",
-  "date": "2026-09-16T16:52:16.041579+00:00",
+  "parent_head": "90dad7f685cf48ef275ab27561e98c1aa5d5151b",
+  "date": "2026-09-16T17:55:26.632114+00:00",
   "branch": "chore/dev-pipeline-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+: "${ANDROID_HOME:?Android SDK required; see .pipeline/README.md}"
+ndk="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin"
+test -x "$ndk/aarch64-linux-android29-clang"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ndk/aarch64-linux-android29-clang"
+export CC_aarch64_linux_android="$CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
+export AR_aarch64_linux_android="$ndk/llvm-ar"
+cargo build --locked --release --target aarch64-linux-android -p phoneboost-core-jni
+mkdir -p .work/a5/jniLibs/arm64-v8a
+cp "${CARGO_TARGET_DIR:-target}/aarch64-linux-android/release/libphoneboost_core_jni.so" .work/a5/jniLibs/arm64-v8a/
+gradle --no-daemon -p android :app:assembleDebug :app:testDebugUnitTest :app:testControllerLeaseStateName :app:lintDebug
+test -f android/app/build/outputs/apk/debug/app-debug.apk
+printf '%s\n' 'SOFTWARE/CI PROOF only; no physical hardware proof.'

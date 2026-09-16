@@ -1,0 +1,20 @@
+{
+  "tags": {
+    "actions/checkout": "v4",
+    "actions/setup-node": "v4",
+    "actions/setup-java": "v4",
+    "actions/setup-go": "v5",
+    "gradle/actions": "v4",
+    "android-actions/setup-android": "v3",
+    "github/codeql-action": "v3"
+  },
+  "commits": {
+    "actions/checkout": "11d5960a326750d5838078e36cf38b85af677262",
+    "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "actions/setup-java": "cf277c60eb25467037889841efdb72551f06f6c3",
+    "actions/setup-go": "40f1582b2485089dde7abd97c1529aa768e1baff",
+    "gradle/actions": "ed408507eac070d1f99cc633dbcf757c94c7933a",
+    "android-actions/setup-android": "9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407",
+    "github/codeql-action": "faaca9a8f6edddba5725ffe5adefdab6669a2eca"
+  }
+}

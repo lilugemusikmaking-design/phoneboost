@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "$root/.tooling/pipeline-bin"
+export GOBIN="$root/.tooling/pipeline-bin"
+go install github.com/zricethezav/gitleaks/v8@v8.30.0
+go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7

@@ -1,0 +1,80 @@
+name: Project pipeline
+on:
+  push:
+    branches: ['chore/dev-pipeline-v1']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pipeline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  deterministic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.26.8'
+          cache: false
+      - run: scripts/pipeline-install-tools
+      - run: python3 -m unittest discover -s tests/pipeline -v
+      - run: .tooling/pipeline-bin/actionlint
+      - name: Secret scan (all reachable commits, redacted)
+        run: .tooling/pipeline-bin/gitleaks git --redact --no-banner --log-opts="--all"
+  rust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --workspace --all-targets
+      - run: cargo test --locked --workspace
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --global yarn@1.22.22
+      - run: yarn install --frozen-lockfile --non-interactive
+      - run: yarn test --watchAll=false --runInBand
+        env:
+          CI: 'true'
+      - name: Build with existing CRA lint integration
+        run: yarn build
+        env:
+          CI: 'true'
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.5.0'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+      - run: sdkmanager 'platforms;android-37' 'build-tools;36.0.0' 'ndk;29.0.14206865'
+      - run: rustup target add aarch64-linux-android
+      - run: scripts/pipeline-android
