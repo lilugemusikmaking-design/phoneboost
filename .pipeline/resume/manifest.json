@@ -1,8 +1,8 @@
 {
-  "next_action": "Complete Android targeted build locally and in CI, checkpoint F2 results, then run check-full once",
+  "next_action": "Run scripts/project-pipeline check-full after local provisioning, checkpoint actual results and STOP before P1",
   "writer": "Codex",
-  "parent_head": "9f1e69db0bb763bde712ece84e0acf05a8dd5ccf",
-  "date": "2026-09-16T18:49:22.065451+00:00",
+  "parent_head": "6044c061fa3270e2ff0160374551721a4b880044",
+  "date": "2026-09-16T18:58:31.396674+00:00",
   "branch": "chore/dev-pipeline-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"

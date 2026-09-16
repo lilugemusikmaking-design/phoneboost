@@ -1,63 +1,12 @@
 [
   {
     "command": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "pb-host",
-      "--lib",
-      "startup::tests"
+      "GitHub Actions",
+      "Android build/tests/lint"
     ],
-    "environment": {
-      "TMPDIR": "/var/tmp"
-    },
     "returncode": 0,
-    "date": "2026-09-16T18:18:25.714989+00:00",
-    "source_state": "F1 O_PATH working tree correction"
-  },
-  {
-    "command": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "pb-host",
-      "--lib",
-      "startup::tests"
-    ],
-    "environment": {
-      "TMPDIR": "/tmp"
-    },
-    "returncode": 0,
-    "date": "2026-09-16T18:18:25.715596+00:00",
-    "source_state": "F1 O_PATH working tree correction"
-  },
-  {
-    "command": [
-      "cargo",
-      "fmt",
-      "--all",
-      "--",
-      "--check"
-    ],
-    "environment": {},
-    "returncode": 0,
-    "date": "2026-09-16T18:18:25.715636+00:00",
-    "source_state": "F1 O_PATH working tree correction"
-  },
-  {
-    "command": [
-      "cargo",
-      "clippy",
-      "--locked",
-      "-p",
-      "pb-host",
-      "--all-targets"
-    ],
-    "environment": {},
-    "returncode": 0,
-    "date": "2026-09-16T18:18:25.715658+00:00",
-    "source_state": "F1 O_PATH working tree correction"
+    "date": "2026-09-16T18:53:21Z",
+    "head": "6044c061fa3270e2ff0160374551721a4b880044",
+    "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841/job/104931120331"
   }
 ]
