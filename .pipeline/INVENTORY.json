@@ -1,0 +1,33 @@
+{
+  "git": "2.47.3",
+  "cargo": "1.98.0",
+  "node": "26.8.1",
+  "yarn": "1.22.22",
+  "python": "3.13.5",
+  "github_auth": "valid outside sandbox",
+  "java": "not on PATH",
+  "gradle": "not on PATH; no wrapper tracked",
+  "android": "not on PATH; SDK/NDK versions in android/app/build.gradle.kts",
+  "gitleaks": "installation in progress",
+  "actionlint": "installation in progress",
+  "ollama": [
+    "qwen2.5:1.5b",
+    "deepseek-r1:1.5b",
+    "deepseek-r1:7b",
+    "phi3:latest",
+    "mistral:latest"
+  ],
+  "extensions_installed": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "dbaeumer.vscode-eslint",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions",
+    "vscjava.vscode-gradle"
+  ],
+  "extension_pending": {
+    "github.vscode-pull-request-github": "network timeout; retry once"
+  },
+  "frontend_lint": "no existing lint script/config",
+  "ci": "none at base"
+}

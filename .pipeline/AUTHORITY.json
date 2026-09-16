@@ -1,0 +1,39 @@
+{
+  "order": [
+    {
+      "name": "SPEC V0.7",
+      "status": "external/not-local",
+      "path": null,
+      "sha256": null
+    },
+    {
+      "name": "Contract Set V1.3",
+      "status": "external/not-local",
+      "path": null,
+      "sha256": null
+    },
+    {
+      "name": "Tech Sheet V1.3",
+      "status": "external/not-local",
+      "path": null,
+      "sha256": null
+    },
+    {
+      "name": "Pseudocode V1.1",
+      "status": "external/not-local",
+      "path": null,
+      "sha256": null
+    },
+    {
+      "name": "Fixture Generation Spec V1.0",
+      "status": "external/not-local",
+      "path": null,
+      "sha256": null
+    }
+  ],
+  "non_normative": [
+    "Install / Onboarding Technical Reconnaissance",
+    "UI / Design Guardrails"
+  ],
+  "rule": "Re-read only changed canonical hashes; never infer physical readiness from CI."
+}
