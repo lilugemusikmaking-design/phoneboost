@@ -2,6 +2,7 @@ name: CodeQL advisory security analysis
 on:
   push:
     branches: ['chore/dev-pipeline-v1']
+    paths-ignore: ['.pipeline/**']
   pull_request:
   workflow_dispatch:
 permissions:

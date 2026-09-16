@@ -8,8 +8,8 @@
   "java": "not on PATH",
   "gradle": "not on PATH; no wrapper tracked",
   "android": "not on PATH; SDK/NDK versions in android/app/build.gradle.kts",
-  "gitleaks": "installation in progress",
-  "actionlint": "installation in progress",
+  "gitleaks": "v8.30.0 installed in .tooling/pipeline-bin",
+  "actionlint": "v1.7.7 installed in .tooling/pipeline-bin",
   "ollama": [
     "qwen2.5:1.5b",
     "deepseek-r1:1.5b",
@@ -23,11 +23,10 @@
     "dbaeumer.vscode-eslint",
     "redhat.vscode-yaml",
     "github.vscode-github-actions",
-    "vscjava.vscode-gradle"
+    "vscjava.vscode-gradle",
+    "github.vscode-pull-request-github"
   ],
-  "extension_pending": {
-    "github.vscode-pull-request-github": "network timeout; retry once"
-  },
-  "frontend_lint": "no existing lint script/config",
-  "ci": "none at base"
+  "extension_pending": {},
+  "frontend_lint": "existing react-hooks lint configuration in craco.config.js; integrated in build",
+  "ci": "GitHub Actions pipeline and CodeQL configured on pipeline branch"
 }

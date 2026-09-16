@@ -65,4 +65,35 @@ class PipelineSafety(unittest.TestCase):
         p.status()
         self.assertEqual(before,self.git('status','--porcelain').stdout)
 
+    def checkpoint_args(self):
+        from argparse import Namespace
+        state=p.read('STATE.json');state['completed']=[]
+        p.save('STATE.json',state)
+        return Namespace(paths=['.pipeline'],message='test checkpoint',next='resume',writer='test')
+    def test_push_failure_preserves_local_checkpoint(self):
+        args=self.checkpoint_args()
+        before=self.git('rev-parse','HEAD').stdout
+        with patch.object(p,'scan_index'):
+            with self.assertRaises(subprocess.CalledProcessError):p.checkpoint(args)
+        self.assertNotEqual(before,self.git('rev-parse','HEAD').stdout)
+        self.assertEqual(self.git('status','--porcelain').stdout,b'')
+        self.assertEqual(p.read('resume/manifest.json')['next_action'],'resume')
+    def test_real_checkpoint_push_resume(self):
+        args=self.checkpoint_args()
+        with tempfile.TemporaryDirectory() as remote:
+            subprocess.run(['git','init','--bare',remote],check=True,capture_output=True)
+            self.git('remote','add','origin',remote)
+            with patch.object(p,'scan_index'):p.checkpoint(args)
+            state=p.status()
+            remote_head=self.git('ls-remote','origin','refs/heads/chore/test').stdout.split()[0].decode()
+            self.assertEqual(state['live_head'],remote_head)
+            self.assertEqual(state['checkpoint_containing_state'],remote_head)
+    @unittest.skipUnless(p.shutil.which('gitleaks'),'Gitleaks integration requires installed scanner')
+    def test_staged_secret_rejected_even_if_worktree_cleaned(self):
+        secret=self.root/'synthetic-test-key.txt'
+        secret.write_text('-----BEGIN '+'RSA PRIVATE KEY-----\n'+'A'*80+'\n-----END '+'RSA PRIVATE KEY-----\n')
+        self.git('add',secret.name)
+        secret.write_text('clean worktree version')
+        with self.assertRaises(subprocess.CalledProcessError):p.scan_index()
+
 if __name__=='__main__':unittest.main()

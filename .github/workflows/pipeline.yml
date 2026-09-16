@@ -2,6 +2,7 @@ name: Project pipeline
 on:
   push:
     branches: ['chore/dev-pipeline-v1']
+    paths-ignore: ['.pipeline/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -75,6 +76,9 @@ jobs:
         with:
           gradle-version: '9.5.0'
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-37' 'build-tools;36.0.0' 'ndk;29.0.14206865'
       - run: rustup target add aarch64-linux-android
       - run: scripts/pipeline-android

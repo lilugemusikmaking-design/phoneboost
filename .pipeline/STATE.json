@@ -1,13 +1,14 @@
 {
   "schema_version": 1,
   "branch": "chore/dev-pipeline-v1",
-  "head": "21370def7cb5d73921a94379709c177c2b6fd337",
+  "head": "624d94c74cd25c64f8406864f5998e30ab5a425f",
   "task": "P0 autonomous development pipeline",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
     "pipeline: checkpoint C deterministic software CI",
-    "pipeline: checkpoint D security and dependency policies"
+    "pipeline: checkpoint D security and dependency policies",
+    "pipeline: validate recovery and repair Android SDK bootstrap"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -19,16 +20,49 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "Validate fast/full checks and live GitHub CI; record blockers without changing runtime",
+  "next_action": "Inspect CI results; checkpoint final P0 evidence and limitations",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
     "Grok manual milestone review; non-blocking P0"
   ],
-  "last_tests": [],
+  "last_tests": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "date": "2026-09-16T17:58:55.627293+00:00",
+      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/pipeline",
+        "-v"
+      ],
+      "returncode": 0,
+      "date": "2026-09-16T17:58:55.664526+00:00",
+      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
+    },
+    {
+      "command": [
+        "actionlint"
+      ],
+      "returncode": 0,
+      "date": "2026-09-16T17:58:57.300052+00:00",
+      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
+    }
+  ],
   "checkpoint": {
-    "date": "2026-09-16T17:55:54.307294+00:00",
-    "commit": "21370def7cb5d73921a94379709c177c2b6fd337",
+    "date": "2026-09-16T17:58:57.454826+00:00",
+    "commit": "624d94c74cd25c64f8406864f5998e30ab5a425f",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "not yet run",
