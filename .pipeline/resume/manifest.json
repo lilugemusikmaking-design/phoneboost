@@ -1,8 +1,8 @@
 {
-  "next_action": "Finish SDK installation and targeted Android build; checkpoint F2 result then run check-full",
+  "next_action": "Complete Android targeted build locally and in CI, checkpoint F2 results, then run check-full once",
   "writer": "Codex",
-  "parent_head": "5f701586864d9a60d657b5691234e58d0724c102",
-  "date": "2026-09-16T18:39:19.517001+00:00",
+  "parent_head": "9f1e69db0bb763bde712ece84e0acf05a8dd5ccf",
+  "date": "2026-09-16T18:49:22.065451+00:00",
   "branch": "chore/dev-pipeline-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"
