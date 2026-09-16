@@ -1,8 +1,8 @@
 {
-  "next_action": "F2: verify official Android API 37 package and provision reproducible toolchain; then check-full",
+  "next_action": "Finish SDK installation and targeted Android build; checkpoint F2 result then run check-full",
   "writer": "Codex",
-  "parent_head": "63e63a7e4dab64baa3efda2a86bc66e4c3e00b67",
-  "date": "2026-09-16T18:18:26.177286+00:00",
+  "parent_head": "5f701586864d9a60d657b5691234e58d0724c102",
+  "date": "2026-09-16T18:39:19.517001+00:00",
   "branch": "chore/dev-pipeline-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"

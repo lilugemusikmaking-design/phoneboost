@@ -1,0 +1,43 @@
+{
+  "platform": "linux-x86_64",
+  "jdk_version": "21.0.12.1+1",
+  "gradle_version": "9.5.0",
+  "cmdline_tools_version": "23.0",
+  "cmdline_tools_build": "16111833",
+  "assets": [
+    {
+      "name": "jdk",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
+      "format": "tar.gz"
+    },
+    {
+      "name": "gradle",
+      "url": "https://services.gradle.org/distributions/gradle-9.5.0-bin.zip",
+      "sha256": "553c78f50dafcd54d65b9a444649057857469edf836431389695608536d6b746",
+      "format": "zip"
+    },
+    {
+      "name": "cmdline-tools",
+      "url": "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip",
+      "sha1": "e025545c62a8e64c7559119566a569fb1dec5f60",
+      "format": "zip",
+      "sha256": "0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8"
+    }
+  ],
+  "sdk_packages": [
+    "platforms;android-37.0",
+    "build-tools;36.0.0",
+    "ndk;29.0.14206865",
+    "platform-tools"
+  ],
+  "jdk_directory": "jdk-21.0.12.1+1",
+  "sdk_revisions": {
+    "platforms;android-37.0": "2",
+    "build-tools;36.0.0": "36.0.0",
+    "ndk;29.0.14206865": "29.0.14206865",
+    "platform-tools": "37.0.1"
+  },
+  "sdk_repository": "https://dl.google.com/android/repository/repository2-3.xml",
+  "android_cli_version": "1.0.16261425"
+}

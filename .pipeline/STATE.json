@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "chore/dev-pipeline-v1",
-  "head": "63e63a7e4dab64baa3efda2a86bc66e4c3e00b67",
-  "task": "P0 F1/F2 blockers investigation",
+  "head": "5f701586864d9a60d657b5691234e58d0724c102",
+  "task": "P0 F2 Android environment repair in progress",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -14,7 +14,9 @@
     "F1 investigation: exact ext4 reproduction and inode reuse cause demonstrated",
     "pipeline: F1 reproduce stale socket inode reuse on ext4",
     "F1 correction: canonical-compatible O_PATH inode pin, unchanged startup tests pass on ext4/tmpfs",
-    "fix(host): pin stale socket identity through recovery"
+    "fix(host): pin stale socket identity through recovery",
+    "F2 source investigation: official Android 37.0 package and exact compatible toolchain locked",
+    "pipeline: checkpoint F2 official Android toolchain installation"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -34,10 +36,10 @@
     "Physical evidence"
   ],
   "blockers": [
-    "Android compileSdk 37 required by existing project but sdkmanager cannot find platforms;android-37 on CI; do not downgrade project to hide failure",
-    "Dependabot automatic activation requires configuration on default branch; no master merge allowed"
+    "Dependabot automatic activation requires configuration on default branch; no master merge allowed",
+    "F2 build validation pending SDK/NDK installation; do not claim Android PASS"
   ],
-  "next_action": "F2: verify official Android API 37 package and provision reproducible toolchain; then check-full",
+  "next_action": "Finish SDK installation and targeted Android build; checkpoint F2 result then run check-full",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -107,8 +109,8 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-09-16T18:18:26.166227+00:00",
-    "commit": "63e63a7e4dab64baa3efda2a86bc66e4c3e00b67",
+    "date": "2026-09-16T18:39:19.504059+00:00",
+    "commit": "5f701586864d9a60d657b5691234e58d0724c102",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "Partial. Inspect resume/ci-results.json and VALIDATION.md; never overall PASS.",

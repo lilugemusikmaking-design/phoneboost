@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Install the pinned Linux Android build environment from official distributions."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
+import tarfile
+import urllib.request
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+BASE = ROOT / '.tooling/pipeline-android'
+LOCK = json.loads((ROOT / '.pipeline/android-toolchain.json').read_text())
+BASE.mkdir(parents=True, exist_ok=True)
+
+def digest(path):
+    with path.open('rb') as f:
+        return hashlib.file_digest(f, 'sha256').hexdigest()
+
+for item in LOCK['assets']:
+    archive = BASE / (item['name'] + '.' + item['format'])
+    if not archive.exists() or digest(archive) != item['sha256']:
+        pending = archive.with_suffix(archive.suffix + '.partial')
+        with urllib.request.urlopen(item['url'], timeout=120) as src, pending.open('wb') as out:
+            shutil.copyfileobj(src, out)
+        with pending.open('rb') as src:
+            if hashlib.file_digest(src, 'sha256').hexdigest() != item['sha256']:
+                raise SystemExit('Checksum mismatch: ' + item['name'])
+        pending.replace(archive)
+    destination = BASE / item['name']
+    stamp = destination / '.verified-sha256'
+    if not stamp.exists() or stamp.read_text() != item['sha256']:
+        destination.mkdir(exist_ok=True)
+        if item['format'] == 'zip':
+            with zipfile.ZipFile(archive) as z:
+                for name in z.namelist():
+                    if not (destination / name).resolve().is_relative_to(destination):
+                        raise SystemExit('Archive path escapes destination')
+                z.extractall(destination)
+        else:
+            with tarfile.open(archive) as t:
+                t.extractall(destination, filter='data')
+        stamp.write_text(item['sha256'])
+    print(item['name'] + ': checksum verified', flush=True)
+
+jdk = BASE / 'jdk' / LOCK['jdk_directory']
+gradle = BASE / 'gradle' / ('gradle-' + LOCK['gradle_version'])
+cmdline = BASE / 'cmdline-tools/cmdline-tools'
+for folder in [jdk / 'bin', gradle / 'bin', cmdline / 'bin']:
+    for binary in folder.iterdir():
+        binary.chmod(binary.stat().st_mode | 0o111)
+sdk = BASE / 'sdk'
+sdk.mkdir(exist_ok=True)
+env = {**os.environ, 'JAVA_HOME': str(jdk), 'ANDROID_HOME': str(sdk), 'ANDROID_SDK_ROOT': str(sdk)}
+env['PATH'] = ':'.join(str(x / 'bin') for x in [jdk, gradle, cmdline]) + ':' + os.environ['PATH']
+manager = str(cmdline / 'bin/android')
+version = subprocess.check_output([manager, '--no-metrics', '--version'], env=env, text=True).strip()
+if version != LOCK['android_cli_version']:
+    raise SystemExit('Android CLI version drift: ' + version)
+packages = [name.replace(';', '/') + '@' + (revision if '.' in revision else revision + '.0.0')
+            for name, revision in LOCK['sdk_revisions'].items()]
+with (BASE / 'sdk-install.log').open('w') as log:
+    subprocess.run([manager, '--no-metrics', '--sdk=' + str(sdk), 'sdk', 'install', *packages],
+                   env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+for package, expected in LOCK['sdk_revisions'].items():
+    props = sdk / package.replace(';', '/') / 'source.properties'
+    values = dict(line.split('=', 1) for line in props.read_text().splitlines() if '=' in line)
+    actual = {k.strip(): v.strip() for k, v in values.items()}.get('Pkg.Revision')
+    if actual != expected:
+        raise SystemExit(f'SDK revision drift: {package}: expected {expected}, got {actual}')
+lines = [f'export {key}={shlex.quote(env[key])}' for key in ['JAVA_HOME', 'ANDROID_HOME', 'ANDROID_SDK_ROOT']]
+bins = ':'.join(str(x / 'bin') for x in [jdk, gradle, cmdline])
+lines.append('export PATH=' + shlex.quote(bins) + ':"$PATH"')
+(BASE / 'env.sh').write_text('\n'.join(lines) + '\n')
+print('Android environment ready: ' + str(BASE / 'env.sh'))

@@ -1,0 +1,160 @@
+{
+  "date": "2026-09-16T18:28:03.645643+00:00",
+  "documents": [
+    "https://developer.android.com/about/versions/17/setup-sdk",
+    "https://developer.android.com/build/releases/agp-9-3-0-release-notes"
+  ],
+  "catalogues": [
+    {
+      "url": "https://dl.google.com/android/repository/repository2-3.xml",
+      "sha256": "6643c7f660c0e23fbb722f95439460797cac26182a8fe87343df7bc78f9c590e",
+      "contains_android_37": false,
+      "selected": [
+        {
+          "path": "platforms;android-37.0",
+          "revision": "2",
+          "archives": [
+            {
+              "url": "platform-37.0_r02.zip",
+              "checksum": "ed8ebf7f8822a4de5686d427f237d2fa30ff7410",
+              "host": null
+            }
+          ]
+        },
+        {
+          "path": "ndk;29.0.14206865",
+          "revision": "29.0.14206865",
+          "archives": [
+            {
+              "url": "android-ndk-r29-linux.zip",
+              "checksum": "87e2bb7e9be5d6a1c6cdf5ec40dd4e0c6d07c30b",
+              "host": "linux"
+            },
+            {
+              "url": "android-ndk-r29-darwin.zip",
+              "checksum": "03d29fbb57e3c05a7d53597dd011d856c1456a4f",
+              "host": "macosx"
+            },
+            {
+              "url": "android-ndk-r29-windows.zip",
+              "checksum": "ab3bb30fbb9e6903666d60c55d11e78b04e07472",
+              "host": "windows"
+            }
+          ]
+        },
+        {
+          "path": "build-tools;36.0.0",
+          "revision": "36.0.0",
+          "archives": [
+            {
+              "url": "build-tools_r36_linux.zip",
+              "checksum": "b0b6376977657e8ad9b969bacf4093601da2c6fb",
+              "host": "linux"
+            },
+            {
+              "url": "build-tools_r36_windows.zip",
+              "checksum": "f16ccffd34de8790dede813a6c7d8e2c11a27b50",
+              "host": "windows"
+            },
+            {
+              "url": "build-tools_r36_macosx.zip",
+              "checksum": "199ae0047ee61e842f8ee0c6d3918e44fb9a1f83",
+              "host": "macosx"
+            }
+          ]
+        },
+        {
+          "path": "platform-tools",
+          "revision": "37.0.1",
+          "archives": [
+            {
+              "url": "platform-tools_r37.0.1-linux.zip",
+              "checksum": "477254aa5f903c15cf51001717bdf347fb6b53e0",
+              "host": "linux"
+            },
+            {
+              "url": "platform-tools_r37.0.1-darwin.zip",
+              "checksum": "6ae73f4de6452dc57e62ec02b68eed92a4c21661",
+              "host": "macosx"
+            },
+            {
+              "url": "platform-tools_r37.0.1-win.zip",
+              "checksum": "e03e78b1d80b396f1c3358e31251cb31740e1110",
+              "host": "windows"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://dl.google.com/android/repository/repository2-1.xml",
+      "sha256": "b2568235933c4697cbaa7401ca1f26c542896edf654f73367ef9187a563ab08d",
+      "contains_android_37": false,
+      "selected": [
+        {
+          "path": "ndk;29.0.14206865",
+          "revision": "29.0.14206865",
+          "archives": [
+            {
+              "url": "android-ndk-r29-linux.zip",
+              "checksum": "87e2bb7e9be5d6a1c6cdf5ec40dd4e0c6d07c30b",
+              "host": "linux"
+            },
+            {
+              "url": "android-ndk-r29-darwin.zip",
+              "checksum": "03d29fbb57e3c05a7d53597dd011d856c1456a4f",
+              "host": "macosx"
+            },
+            {
+              "url": "android-ndk-r29-windows.zip",
+              "checksum": "ab3bb30fbb9e6903666d60c55d11e78b04e07472",
+              "host": "windows"
+            }
+          ]
+        },
+        {
+          "path": "build-tools;36.0.0",
+          "revision": "36.0.0",
+          "archives": [
+            {
+              "url": "build-tools_r36_linux.zip",
+              "checksum": "b0b6376977657e8ad9b969bacf4093601da2c6fb",
+              "host": "linux"
+            },
+            {
+              "url": "build-tools_r36_windows.zip",
+              "checksum": "f16ccffd34de8790dede813a6c7d8e2c11a27b50",
+              "host": "windows"
+            },
+            {
+              "url": "build-tools_r36_macosx.zip",
+              "checksum": "199ae0047ee61e842f8ee0c6d3918e44fb9a1f83",
+              "host": "macosx"
+            }
+          ]
+        },
+        {
+          "path": "platform-tools",
+          "revision": "37.0.1",
+          "archives": [
+            {
+              "url": "platform-tools_r37.0.1-linux.zip",
+              "checksum": "477254aa5f903c15cf51001717bdf347fb6b53e0",
+              "host": "linux"
+            },
+            {
+              "url": "platform-tools_r37.0.1-darwin.zip",
+              "checksum": "6ae73f4de6452dc57e62ec02b68eed92a4c21661",
+              "host": "macosx"
+            },
+            {
+              "url": "platform-tools_r37.0.1-win.zip",
+              "checksum": "e03e78b1d80b396f1c3358e31251cb31740e1110",
+              "host": "windows"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

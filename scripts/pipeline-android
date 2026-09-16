@@ -2,6 +2,9 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+if [[ -f "$root/.tooling/pipeline-android/env.sh" ]]; then
+    source "$root/.tooling/pipeline-android/env.sh"
+fi
 : "${ANDROID_HOME:?Android SDK required; see .pipeline/README.md}"
 ndk="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin"
 test -x "$ndk/aarch64-linux-android29-clang"
