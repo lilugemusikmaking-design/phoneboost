@@ -1,0 +1,12 @@
+running 9 tests
+test startup::tests::hs_t20_unchanged_stale_socket_is_recovered ... ok
+test startup::tests::hs_t23_type_change_is_refused_and_survives ... ok
+test startup::tests::hs_t21_replaced_stale_socket_is_refused_and_survives ... ok
+test startup::tests::hs_t22_inode_change_is_refused ... ok
+test startup::tests::hs_t25_overlong_bind_path_never_reports_ready ... ok
+test startup::tests::hs_t26_forced_mode_failure_never_reports_ready ... ok
+test startup::tests::hs_t27_final_socket_mode_is_exactly_0600 ... ok
+test startup::tests::hs_t29_missing_xdg_does_not_create_fallback_authority ... ok
+test startup::tests::hs_t28_parent_mode_remains_0700 ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 157 filtered out; finished in 0.01s

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "chore/dev-pipeline-v1",
-  "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-  "task": "P0 delivered with explicit product/toolchain blockers; stop before P1",
+  "head": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
+  "task": "P0 F1/F2 blockers investigation",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -10,7 +10,9 @@
     "pipeline: checkpoint D security and dependency policies",
     "pipeline: validate recovery and repair Android SDK bootstrap",
     "E: real recovery cycle validated; CI executed and blockers recorded",
-    "pipeline: checkpoint E final validation and explicit blockers"
+    "pipeline: checkpoint E final validation and explicit blockers",
+    "F1 investigation: exact ext4 reproduction and inode reuse cause demonstrated",
+    "pipeline: F1 reproduce stale socket inode reuse on ext4"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -20,7 +22,8 @@
     "check-fast PASS: diff check, pipeline tests, actionlint, cargo fmt",
     "All changed paths restricted to pipeline/CI; no existing product files modified",
     "All seven requested VS Code extensions installed",
-    "Gitleaks index and patch scans PASS at every checkpoint; CI history scan PASS"
+    "Gitleaks index and patch scans PASS at every checkpoint; CI history scan PASS",
+    "F1 unchanged tests: tmpfs 9/9; ext4 6/9, failures exactly hs_t20/21/22; O_PATH probe prevents inode reuse"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -28,11 +31,11 @@
     "Physical evidence"
   ],
   "blockers": [
-    "Rust existing pb-host tests hs_t20/hs_t21/hs_t22 fail on GitHub runner; no product repair or test exclusion authorized in this mission",
+    "F1 product inode lifetime defect demonstrated; canonical HOST_STARTUP excerpt needed before runtime correction",
     "Android compileSdk 37 required by existing project but sdkmanager cannot find platforms;android-37 on CI; do not downgrade project to hide failure",
     "Dependabot automatic activation requires configuration on default branch; no master merge allowed"
   ],
-  "next_action": "Run scripts/project-pipeline resume; await separate authorization for pb-host hs_t20/21/22 investigation and Android SDK 37 source. Stop before P1; no master merge.",
+  "next_action": "Investigate official Android API 37 availability; obtain canonical HOST_STARTUP excerpt before runtime correction",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -41,128 +44,46 @@
   "last_tests": [
     {
       "command": [
-        "git",
-        "diff",
-        "--check"
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "pb-host",
+        "--lib",
+        "startup::tests::hs_t2",
+        "--",
+        "--nocapture"
       ],
+      "environment": {
+        "TMPDIR": "/tmp"
+      },
       "returncode": 0,
-      "date": "2026-09-16T17:58:55.627293+00:00",
-      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
+      "head": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
+      "date": "2026-09-16T18:13:54.340279+00:00"
     },
     {
       "command": [
-        "python3",
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        "tests/pipeline",
-        "-v"
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "pb-host",
+        "--lib",
+        "startup::tests::hs_t2",
+        "--",
+        "--nocapture"
       ],
-      "returncode": 0,
-      "date": "2026-09-16T17:58:55.664526+00:00",
-      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
-    },
-    {
-      "command": [
-        "actionlint"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T17:58:57.300052+00:00",
-      "head": "624d94c74cd25c64f8406864f5998e30ab5a425f"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "android"
-      ],
-      "returncode": 1,
-      "date": "2026-09-16T18:00:14Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540290/job/104913757785",
-      "conclusion": "failure"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "rust"
-      ],
-      "returncode": 1,
-      "date": "2026-09-16T18:02:27Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540290/job/104913758022",
-      "conclusion": "failure"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "deterministic"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:00:47Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540290/job/104913758068",
-      "conclusion": "success"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "frontend"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:01:02Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540290/job/104913758200",
-      "conclusion": "success"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "analyze (actions)"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:00:25Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540401/job/104913494310",
-      "conclusion": "success"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "analyze (rust)"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:01:38Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540401/job/104913494437",
-      "conclusion": "success"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "analyze (javascript-typescript)"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:00:07Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540401/job/104913494445",
-      "conclusion": "success"
-    },
-    {
-      "command": [
-        "GitHub Actions",
-        "analyze (python)"
-      ],
-      "returncode": 0,
-      "date": "2026-09-16T18:00:08Z",
-      "head": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
-      "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35131540401/job/104913494470",
-      "conclusion": "success"
+      "environment": {
+        "TMPDIR": "/var/tmp"
+      },
+      "returncode": 101,
+      "head": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
+      "date": "2026-09-16T18:13:54.340429+00:00"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-16T18:03:41.671434+00:00",
-    "commit": "ad78f1a754115ef39ba9f1b8f624aa77982d9f01",
+    "date": "2026-09-16T18:14:50.879450+00:00",
+    "commit": "2f29f1c3b4e3408cbebb0f3d122b1ec6894a1c1a",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "Partial. Inspect resume/ci-results.json and VALIDATION.md; never overall PASS.",
