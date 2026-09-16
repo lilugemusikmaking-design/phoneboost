@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""Deterministic project pipeline; Python standard library only."""
+import argparse
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess as sp
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+META = ROOT / '.pipeline'
+BASE = 'acacc0418a3ed8c8b06cec42365f1d6fe8e56c60'
+os.environ['PATH'] = str(ROOT / '.tooling/pipeline-bin') + os.pathsep + os.environ['PATH']
+
+def now():
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+def run(args, **kw):
+    return sp.run(args, cwd=ROOT, check=True, **kw)
+
+def git(*args):
+    return run(['git', *args], stdout=sp.PIPE).stdout.decode().strip()
+
+def read(name):
+    return json.loads((META / name).read_text())
+
+def save(name, value):
+    path = META / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix='.pending-')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(value, f, indent=2)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+def branch_guard():
+    branch = git('branch', '--show-current')
+    if not branch or branch in ('main', 'master'):
+        raise RuntimeError('Refusing mutation on detached HEAD/main/master')
+    if branch != read('STATE.json')['branch']:
+        raise RuntimeError('Branch differs from STATE writer branch')
+    return branch
+
+def authority():
+    result = read('AUTHORITY.json')
+    for doc in result['order']:
+        path = doc.get('path')
+        if path:
+            p = (ROOT / path).resolve()
+            if not p.is_relative_to(ROOT):
+                raise RuntimeError('Canonical path must be inside repository')
+            digest = hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
+            doc['current_sha256'] = digest
+            doc['changed'] = digest != doc.get('sha256')
+        else:
+            doc['current_sha256'] = None
+            doc['changed'] = False
+    return result
+
+def status():
+    state = read('STATE.json')
+    state['live_branch'] = git('branch', '--show-current')
+    state['live_head'] = git('rev-parse', 'HEAD')
+    state['working_tree'] = git('status', '--short')
+    state['canonical_documents'] = authority()
+    state['checkpoint_containing_state'] = git('log', '-1', '--format=%H', '--', '.pipeline/STATE.json')
+    return state
+
+def doctor():
+    names = ['git','gh','cargo','rustc','node','yarn','java','gradle','adb','sdkmanager','python3','ollama','gitleaks','actionlint']
+    return dict(tools={n: shutil.which(n) for n in names},
+                android_home=os.environ.get('ANDROID_HOME'), java_home=os.environ.get('JAVA_HOME'),
+                gradle_wrapper=(ROOT/'android/gradlew').is_file(),
+                branch=git('branch','--show-current'),head=git('rev-parse','HEAD'),
+                ai_required=False, proof_scope='SOFTWARE/CI PROOF only')
+
+def scan_index():
+    if not shutil.which('gitleaks'):
+        raise RuntimeError('Gitleaks required; run scripts/pipeline-install-tools')
+    # Scan staged bytes, not unstaged versions. Includes deletions in the patch.
+    patch = run(['git','diff','--cached','--binary','--no-ext-diff'], stdout=sp.PIPE).stdout
+    run(['gitleaks','stdin','--redact','--no-banner'], input=patch)
+    with tempfile.TemporaryDirectory(prefix='pipeline-index-') as tmp:
+        run(['git','checkout-index','--all','--prefix='+tmp+'/'], stdout=sp.DEVNULL)
+        run(['gitleaks','dir',tmp,'--redact','--no-banner'])
+
+def checkpoint(args):
+    branch = branch_guard()
+    if not args.paths:
+        raise RuntimeError('Explicit --paths required; no implicit git add -A')
+    if git('diff','--cached','--name-only'):
+        raise RuntimeError('Index must be empty before checkpoint; preserve operator staging')
+    for name in args.paths:
+        path = (ROOT/name).resolve()
+        if not path.is_relative_to(ROOT) or name in ('.', '/', '') or path == ROOT:
+            raise RuntimeError('Specify individual project paths, never repository root')
+    state = read('STATE.json')
+    previous = git('rev-parse','HEAD')
+    state.update(branch=branch,head=previous,next_action=args.next,writer=args.writer)
+    state['completed'] += [args.message] if args.message not in state['completed'] else []
+    state['checkpoint'] = dict(date=now(),commit=previous,meaning='parent of containing checkpoint commit; exact commit resolved by resume')
+    state['canonical_documents'] = authority()
+    report = META/'resume/check-results.json'
+    if report.exists():
+        state['last_tests'] = json.loads(report.read_text())
+    save('STATE.json',state)
+    save('resume/manifest.json',dict(next_action=args.next,writer=args.writer,parent_head=previous,
+                                   date=now(),branch=branch,push='verify remote on resume',
+                                   physical_proof='unchanged; no readiness promotion'))
+    run(['git','add','--',*args.paths,'.pipeline/STATE.json','.pipeline/resume'])
+    scan_index()
+    run(['git','diff','--cached','--check'])
+    run(['git','commit','-m',args.message])
+    # No force push. Failed pushes preserve local commit and return nonzero.
+    run(['git','push','--set-upstream','origin','HEAD:refs/heads/'+branch])
+    print(json.dumps(dict(checkpoint=git('rev-parse','HEAD'),pushed=True,next_action=args.next)))
+
+def check(full=False, component='all'):
+    branch_guard()
+    commands = []
+    if component in ('all','pipeline'):
+        commands += [['git','diff','--check'],['python3','-m','unittest','discover','-s','tests/pipeline','-v'],['actionlint']]
+    if component in ('all','rust'):
+        commands += [['cargo','fmt','--all','--','--check']]
+        if full:
+            commands += [['cargo','clippy','--locked','--workspace','--all-targets'],['cargo','test','--locked','--workspace']]
+    if full and component in ('all','frontend'):
+        commands += [['yarn','--cwd','frontend','install','--frozen-lockfile','--non-interactive'],
+                     ['yarn','--cwd','frontend','test','--watchAll=false','--runInBand'],
+                     ['yarn','--cwd','frontend','build']]
+    if full and component in ('all','android'):
+        commands += [['bash','scripts/pipeline-android']]
+    results=[]
+    for cmd in commands:
+        print('+ '+' '.join(cmd),flush=True)
+        start=now()
+        try:
+            code=sp.run(cmd,cwd=ROOT,env={**os.environ,'CI':'true'},timeout=1800).returncode
+        except (OSError,sp.TimeoutExpired) as e:
+            print(str(e),file=sys.stderr)
+            code=127
+        results.append(dict(command=cmd,returncode=code,date=start,head=git('rev-parse','HEAD')))
+        save('resume/check-results.json',results)
+    print('SOFTWARE/CI PROOF only. Physical evidence unchanged.')
+    return 1 if any(r['returncode'] for r in results) else 0
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    sub=p.add_subparsers(dest='cmd',required=True)
+    for name in ['doctor','status','resume']:
+        sub.add_parser(name)
+    for name in ['check-fast','check-full']:
+        c=sub.add_parser(name)
+        c.add_argument('--component',choices=['all','pipeline','rust','frontend','android'],default='all')
+    c=sub.add_parser('checkpoint')
+    c.add_argument('--message',required=True)
+    c.add_argument('--next',required=True)
+    c.add_argument('--writer',default='Codex')
+    c.add_argument('--paths',nargs='+',required=True)
+    args=p.parse_args()
+    if args.cmd=='doctor':
+        print(json.dumps(doctor(),indent=2)); return 0
+    if args.cmd in ('status','resume'):
+        data=status()
+        if args.cmd=='resume':
+            # Remote connectivity failure is explicit; no checkout/reset/replay.
+            try:
+                remote=git('ls-remote','origin','refs/heads/'+data['live_branch']).split()
+                data['remote_head']=remote[0] if remote else None
+                data['pushed']=data['remote_head']==data['live_head']
+            except sp.CalledProcessError:
+                data['pushed']='unknown; remote unavailable'
+        print(json.dumps(data,indent=2)); return 0
+    lock=Path(git('rev-parse','--absolute-git-dir'))/'pipeline-writer.lock'
+    with lock.open('w') as f:
+        try:
+            fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError('Another pipeline writer is active')
+        if args.cmd=='checkpoint':
+            checkpoint(args); return 0
+        return check(args.cmd=='check-full',args.component)
+
+if __name__=='__main__':
+    try:
+        sys.exit(main())
+    except (RuntimeError,sp.CalledProcessError) as e:
+        print('BLOCKED: '+str(e),file=sys.stderr)
+        sys.exit(1)

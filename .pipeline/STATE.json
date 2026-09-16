@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "branch": "chore/dev-pipeline-v1",
-  "head": "acacc0418a3ed8c8b06cec42365f1d6fe8e56c60",
+  "head": "a2719dd1babc2bc5780a6eb483604f6c112c49e6",
   "task": "P0 autonomous development pipeline",
   "completed": [
-    "A: clean clone and checkpoint verified"
+    "A: clean clone and checkpoint verified",
+    "pipeline: checkpoint B operational memory and safe resume"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -16,7 +17,7 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "Implement operational memory and safe checkpoint/resume CLI",
+  "next_action": "Create deterministic GitHub Actions jobs for existing components",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -24,9 +25,59 @@
   ],
   "last_tests": [],
   "checkpoint": {
-    "date": null,
-    "commit": null
+    "date": "2026-09-16T16:52:16.036233+00:00",
+    "commit": "a2719dd1babc2bc5780a6eb483604f6c112c49e6",
+    "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "not yet run",
-  "physical_proof": "unchanged; outside pipeline authority"
+  "physical_proof": "unchanged; outside pipeline authority",
+  "canonical_documents": {
+    "order": [
+      {
+        "name": "SPEC V0.7",
+        "status": "external/not-local",
+        "path": null,
+        "sha256": null,
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Contract Set V1.3",
+        "status": "external/not-local",
+        "path": null,
+        "sha256": null,
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Tech Sheet V1.3",
+        "status": "external/not-local",
+        "path": null,
+        "sha256": null,
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Pseudocode V1.1",
+        "status": "external/not-local",
+        "path": null,
+        "sha256": null,
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Fixture Generation Spec V1.0",
+        "status": "external/not-local",
+        "path": null,
+        "sha256": null,
+        "current_sha256": null,
+        "changed": false
+      }
+    ],
+    "non_normative": [
+      "Install / Onboarding Technical Reconnaissance",
+      "UI / Design Guardrails"
+    ],
+    "rule": "Re-read only changed canonical hashes; never infer physical readiness from CI."
+  }
 }
