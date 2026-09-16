@@ -1,0 +1,30 @@
+name: CodeQL advisory security analysis
+on:
+  push:
+    branches: ['chore/dev-pipeline-v1']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, rust, python, actions]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@faaca9a8f6edddba5725ffe5adefdab6669a2eca
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@faaca9a8f6edddba5725ffe5adefdab6669a2eca
+        with:
+          category: /language:${{ matrix.language }}

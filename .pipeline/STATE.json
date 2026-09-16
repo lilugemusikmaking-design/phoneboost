@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
   "branch": "chore/dev-pipeline-v1",
-  "head": "90dad7f685cf48ef275ab27561e98c1aa5d5151b",
+  "head": "21370def7cb5d73921a94379709c177c2b6fd337",
   "task": "P0 autonomous development pipeline",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
-    "pipeline: checkpoint C deterministic software CI"
+    "pipeline: checkpoint C deterministic software CI",
+    "pipeline: checkpoint D security and dependency policies"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -18,7 +19,7 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "Configure dependency and CodeQL security checks",
+  "next_action": "Validate fast/full checks and live GitHub CI; record blockers without changing runtime",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -26,8 +27,8 @@
   ],
   "last_tests": [],
   "checkpoint": {
-    "date": "2026-09-16T17:55:26.628478+00:00",
-    "commit": "90dad7f685cf48ef275ab27561e98c1aa5d5151b",
+    "date": "2026-09-16T17:55:54.307294+00:00",
+    "commit": "21370def7cb5d73921a94379709c177c2b6fd337",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "not yet run",

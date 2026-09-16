@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    target-branch: chore/dev-pipeline-v1
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: chore/dev-pipeline-v1
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: gradle
+    directory: /android
+    target-branch: chore/dev-pipeline-v1
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: chore/dev-pipeline-v1
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
