@@ -1,0 +1,270 @@
+{
+  "pipeline": {
+    "conclusion": "success",
+    "headSha": "6044c061fa3270e2ff0160374551721a4b880044",
+    "jobs": [
+      {
+        "completedAt": "2026-09-16T18:55:06Z",
+        "conclusion": "success",
+        "databaseId": 104931120020,
+        "name": "rust",
+        "startedAt": "2026-09-16T18:49:40Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run rustup show",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run cargo fmt --all -- --check",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run cargo clippy --locked --workspace --all-targets",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run cargo test --locked --workspace",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 12,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841/job/104931120020"
+      },
+      {
+        "completedAt": "2026-09-16T18:50:38Z",
+        "conclusion": "success",
+        "databaseId": 104931120261,
+        "name": "frontend",
+        "startedAt": "2026-09-16T18:49:40Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run npm install --global yarn@1.22.22",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run yarn install --frozen-lockfile --non-interactive",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run yarn test --watchAll=false --runInBand",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Build with existing CRA lint integration",
+            "number": 7,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "number": 13,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 14,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 15,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841/job/104931120261"
+      },
+      {
+        "completedAt": "2026-09-16T18:50:16Z",
+        "conclusion": "success",
+        "databaseId": 104931120276,
+        "name": "deterministic",
+        "startedAt": "2026-09-16T18:49:40Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run scripts/pipeline-install-tools",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run python3 -m unittest discover -s tests/pipeline -v",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run .tooling/pipeline-bin/actionlint",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Secret scan (all reachable commits, redacted)",
+            "number": 7,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+            "number": 13,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 14,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 15,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841/job/104931120276"
+      },
+      {
+        "completedAt": "2026-09-16T18:53:21Z",
+        "conclusion": "success",
+        "databaseId": 104931120331,
+        "name": "android",
+        "startedAt": "2026-09-16T18:50:18Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Install verified official Android toolchain",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run rustup target add aarch64-linux-android",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run scripts/pipeline-android",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "number": 10,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 11,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841/job/104931120331"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807841"
+  },
+  "codeql": {
+    "conclusion": "success",
+    "headSha": "6044c061fa3270e2ff0160374551721a4b880044",
+    "status": "completed",
+    "url": "https://github.com/lilugemusikmaking-design/phoneboost/actions/runs/35136807840"
+  }
+}

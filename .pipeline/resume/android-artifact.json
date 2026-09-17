@@ -1,0 +1,6 @@
+{
+  "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
+  "sha256": "1365d87ec13caa3b51587fd04cbd556d613311f5a21a8a2e0767e3890cdf4f76",
+  "jni_entry": "lib/arm64-v8a/libphoneboost_core_jni.so",
+  "jni_size": 925232
+}

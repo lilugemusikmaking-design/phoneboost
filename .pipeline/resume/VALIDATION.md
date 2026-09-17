@@ -1,3 +1,5 @@
+> Historical initial P0 report. Superseded by [FINAL_F1_F2.md](FINAL_F1_F2.md).
+
 # P0 validation and exact restart
 
 Clean clone: /home/mimir/phoneboost-dev-pipeline-v1. Official base acacc0418a3ed8c8b06cec42365f1d6fe8e56c60; branch chore/dev-pipeline-v1. Master and old clones untouched. No existing product source/config file modified.

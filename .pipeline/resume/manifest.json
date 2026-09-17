@@ -1,8 +1,8 @@
 {
-  "next_action": "Run scripts/project-pipeline check-full after local provisioning, checkpoint actual results and STOP before P1",
+  "next_action": "STOP. Run scripts/project-pipeline resume on next instruction; no P1 or merge.",
   "writer": "Codex",
-  "parent_head": "6044c061fa3270e2ff0160374551721a4b880044",
-  "date": "2026-09-16T18:58:31.396674+00:00",
+  "parent_head": "cabb65edb20bee0fd52f8081de10c19179885076",
+  "date": "2026-09-17T04:51:44.750115+00:00",
   "branch": "chore/dev-pipeline-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"

@@ -16,3 +16,5 @@ STATE records the parent HEAD because a commit cannot contain its own hash. `res
 Canonical paths can be registered in AUTHORITY.json with accepted SHA-256 hashes. Resume computes current hashes and reports changes without accepting them automatically. Originals not present are external/not-local. Unchanged documents do not trigger rereads or repeat audits.
 
 Frontend has no standalone lint script at the official checkpoint; build uses the existing CRACO React Hooks lint configuration. Tests are required (no passWithNoTests). Android uses its existing AGP/SDK/NDK versions; no physical test scripts are invoked. No runtime files may be edited to green CI.
+
+Android bootstrap on a fresh Linux x86_64 checkout: run `scripts/pipeline-android-setup`, then `rustup target add aarch64-linux-android`. The shared local/CI installer verifies archive SHA-256, exact SDK revisions and Android CLI version from `.pipeline/android-toolchain.json`; `scripts/pipeline-android` loads its generated ignored environment. Full-check results and closure are in `resume/FINAL_F1_F2.md`.
