@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "chore/dev-pipeline-v1",
-  "head": "cabb65edb20bee0fd52f8081de10c19179885076",
-  "task": "P0 F1/F2 complete; final checks recorded; STOP before P1",
+  "branch": "feat/ui-control-center-v1",
+  "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
+  "task": "UI / Design V1 complete; desktop and Android worker aligned; STOP",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -21,7 +21,8 @@
     "F2: official API37.0 toolchain and Android CI build/tests/lint PASS",
     "pipeline: checkpoint F2 Android build and validation passed",
     "F1/F2 final full check executed and actual outcome archived",
-    "pipeline: final F1 F2 full-check validation and closure"
+    "pipeline: final F1 F2 full-check validation and closure",
+    "ui: align Android worker with control center"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -37,7 +38,11 @@
     "F2 Android CI job 104931120331 PASS at 6044c061fa3270e2ff0160374551721a4b880044",
     "F1 original hs_t20/21/22 preserved; all 32 startup tests passed on ext4 and tmpfs",
     "F2 official SDK 37.0, existing AGP/Gradle/NDK unchanged; Android CI PASS",
-    "Latest CI pipeline and CodeQL PASS at 6044c061fa3270e2ff0160374551721a4b880044"
+    "Latest CI pipeline and CodeQL PASS at 6044c061fa3270e2ff0160374551721a4b880044",
+    "UI handoff files copied byte-identically from the validated local archive",
+    "Desktop Control Center frontend tests PASS: 331/331; production build PASS",
+    "Android Worker assembleDebug, deterministic lease-state test 5/5, and lintDebug PASS",
+    "UI branch check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -45,7 +50,7 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "STOP. Run scripts/project-pipeline resume on next instruction; no P1 or merge.",
+  "next_action": "STOP. Resume only on a new instruction; do not start P1, merge master, or claim physical UI proof.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -59,8 +64,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-17T04:40:11.411732+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+      "date": "2026-09-17T10:49:50.192339+00:00",
+      "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
     },
     {
       "command": [
@@ -73,16 +78,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-17T04:40:11.431660+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+      "date": "2026-09-17T10:49:50.232138+00:00",
+      "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-17T04:40:13.739501+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+      "date": "2026-09-17T10:49:52.433677+00:00",
+      "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
     },
     {
       "command": [
@@ -93,85 +98,16 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-17T04:40:13.820890+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "cargo",
-        "clippy",
-        "--locked",
-        "--workspace",
-        "--all-targets"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:40:15.874343+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "cargo",
-        "test",
-        "--locked",
-        "--workspace"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:40:36.231168+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "install",
-        "--frozen-lockfile",
-        "--non-interactive"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:48:10.724549+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "test",
-        "--watchAll=false",
-        "--runInBand"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:49:24.783618+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "build"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:49:29.238115+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-    },
-    {
-      "command": [
-        "bash",
-        "scripts/pipeline-android"
-      ],
-      "returncode": 0,
-      "date": "2026-09-17T04:49:41.287790+00:00",
-      "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+      "date": "2026-09-17T10:49:52.536049+00:00",
+      "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-17T04:51:44.744790+00:00",
-    "commit": "cabb65edb20bee0fd52f8081de10c19179885076",
+    "date": "2026-09-17T10:51:17.144680+00:00",
+    "commit": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "PASS: all local full-check commands and latest CI",
+  "software_proof": "PASS: UI frontend tests/build, Android build/test/lint, and check-fast",
   "physical_proof": "UNCHANGED; no hardware proof, deployment, READY/LIVE/PASS promotion",
   "canonical_documents": {
     "order": [

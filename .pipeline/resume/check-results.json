@@ -6,8 +6,8 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-17T04:40:11.411732+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+    "date": "2026-09-17T10:49:50.192339+00:00",
+    "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
   },
   {
     "command": [
@@ -20,16 +20,16 @@
       "-v"
     ],
     "returncode": 0,
-    "date": "2026-09-17T04:40:11.431660+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+    "date": "2026-09-17T10:49:50.232138+00:00",
+    "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
   },
   {
     "command": [
       "actionlint"
     ],
     "returncode": 0,
-    "date": "2026-09-17T04:40:13.739501+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+    "date": "2026-09-17T10:49:52.433677+00:00",
+    "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
   },
   {
     "command": [
@@ -40,76 +40,7 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-17T04:40:13.820890+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "cargo",
-      "clippy",
-      "--locked",
-      "--workspace",
-      "--all-targets"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:40:15.874343+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "cargo",
-      "test",
-      "--locked",
-      "--workspace"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:40:36.231168+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "install",
-      "--frozen-lockfile",
-      "--non-interactive"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:48:10.724549+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "test",
-      "--watchAll=false",
-      "--runInBand"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:49:24.783618+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "build"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:49:29.238115+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
-  },
-  {
-    "command": [
-      "bash",
-      "scripts/pipeline-android"
-    ],
-    "returncode": 0,
-    "date": "2026-09-17T04:49:41.287790+00:00",
-    "head": "cabb65edb20bee0fd52f8081de10c19179885076"
+    "date": "2026-09-17T10:49:52.536049+00:00",
+    "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604"
   }
 ]

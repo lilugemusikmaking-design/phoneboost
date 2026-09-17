@@ -1,9 +1,9 @@
 {
-  "next_action": "STOP. Run scripts/project-pipeline resume on next instruction; no P1 or merge.",
+  "next_action": "STOP. Resume only on a new instruction; do not start P1, merge master, or claim physical UI proof.",
   "writer": "Codex",
-  "parent_head": "cabb65edb20bee0fd52f8081de10c19179885076",
-  "date": "2026-09-17T04:51:44.750115+00:00",
-  "branch": "chore/dev-pipeline-v1",
+  "parent_head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
+  "date": "2026-09-17T10:51:17.149347+00:00",
+  "branch": "feat/ui-control-center-v1",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"
 }
