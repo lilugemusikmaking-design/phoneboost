@@ -6,6 +6,7 @@ import {
   LiveControl,
   Sidebar,
   liveBadgeTone,
+  runtimeSummary,
 } from "./Dashboard";
 import { copyFor } from "../i18n";
 
@@ -79,6 +80,23 @@ test("runtime absence and compute failure render distinct localized messages", (
 test("LIVE badge tone follows fresh availability state", () => {
   expect(liveBadgeTone({ fresh: true })).toContain("text-primary");
   expect(liveBadgeTone({ fresh: false })).toContain("text-amber-200");
+});
+
+test("participation preference never fabricates runtime readiness", () => {
+  expect(runtimeSummary({ fresh: false, runtime: null }, true)).toEqual({
+    state: "OFFLINE",
+    ready: false,
+  });
+  expect(runtimeSummary({ fresh: true, runtime: {
+    remote_blake3_available: false,
+    provider_readiness: { state: "UNAVAILABLE" },
+    auto_use: { state: "AVAILABLE", reason: "READY" },
+  } }, true)).toEqual({ state: "AVAILABLE", ready: false });
+  expect(runtimeSummary({ fresh: true, runtime: {
+    remote_blake3_available: true,
+    provider_readiness: { state: "AVAILABLE" },
+    auto_use: { state: "AVAILABLE", reason: "READY" },
+  } }, false)).toEqual({ state: "DISABLED", ready: false });
 });
 
 test("evidence drawer clears old content when its evidence item changes", async () => {

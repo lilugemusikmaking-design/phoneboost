@@ -1,0 +1,112 @@
+PHONEBOOST UI HANDOFF — AURSKEL DIRECTION — V1
+
+Purpose
+- This package contains the validated flat UI references for PhoneBoost.
+- These files are intended to guide Codex / implementation work in the real repository.
+- Use them as visual direction, not as pixel-perfect constraints for every spacing detail.
+
+Included files
+- screens/phoneboost_mobile_dark_flat_v1.png
+- screens/phoneboost_desktop_dark_flat_v1.png
+- reference/aurskel_logo_reference.png
+- this text file
+
+Important workflow note
+- The chosen method is correct:
+  1) generate and validate visual screens first,
+  2) package them with a short handoff,
+  3) then implement in the real codebase with Codex.
+- For implementation guidance, flat screens are more useful than mockups with a physical phone or laptop around them.
+
+Brand / identity direction
+- Overall spirit: tech, sober, nordic, clean, slightly tactical at the edges.
+- Product feel: premium but efficient, low-noise, dark, practical.
+- Visual tone: dark background, subtle geometric motifs, sharp clarity, restrained glow.
+- Aurskel logo is included only as brand-direction reference. Direct logo usage in the app can be decided later.
+
+Core visual direction
+- Theme: dark mode first.
+- Primary accent: vivid neon green, close to the validated references.
+- Recommended palette (approximate implementation targets):
+  - background-main: #06090D
+  - background-panel: #0B1117
+  - background-panel-2: #0E141C
+  - border-subtle: #1A2430
+  - text-primary: #F2F5F7
+  - text-secondary: #9BA5B2
+  - text-muted: #6D7886
+  - accent-primary: #63FF19
+  - accent-primary-strong: #4CFF00
+  - accent-glow: rgba(99,255,25,0.28)
+  - success-ready: #63FF19
+- Corners: rounded, modern, not playful.
+- Glow: subtle and localized, mainly on the ON switch and active accents.
+- Geometry: restrained angular / faceted motifs in some panels to keep the tactical-nordic feel.
+
+Product wording / positioning
+- Keep the interface honest.
+- PhoneBoost must present remote help as explicit, governed, bounded remote resources.
+- Never imply:
+  - extra local RAM
+  - added CPU cores
+  - magical transparent resources
+- Tone: simple, calm, competent.
+
+Functional UX direction
+- Primary user action must be obvious: ON / OFF switch.
+- Default user preference: ON.
+- IMPORTANT: the ON/OFF switch represents the user preference "this device is allowed to participate as a PhoneBoost worker". It is NOT a readiness indicator and must not be driven automatically by pairing/session/lease/admission/provider state.
+- On application start, if the saved/default preference is ON, the switch stays ON while the separate runtime status progresses through truthful states such as Initializing, Connecting, Waiting, READY, THROTTLED, OFFLINE, LOST, etc.
+- If the user sets the switch to OFF, PhoneBoost participation is disabled and the status should clearly say Disabled.
+- The helper note "Enabled by default" refers only to the default user preference, never to technical readiness or granted resources.
+- READY may only be shown when the canonical runtime truth actually supports READY; do not infer READY from the switch position.
+- Mobile UI should stay simple and non-geek-first.
+- Advanced / technical information must be collapsed behind "Advanced details", while the simple visible status remains truthful.
+- Desktop UI can expose more information, but the top of the screen should still feel simple and aligned with mobile.
+
+Mobile screen direction
+- File: screens/phoneboost_mobile_dark_flat_v1.png
+- Role: Android worker app main screen.
+- Key elements:
+  - PB product mark at top-left
+  - "PhoneBoost Worker" title
+  - FR / EN language toggle
+  - large hero card
+  - large ON switch
+  - READY badge
+  - helper line "Enabled by default"
+  - simple Status block with only a few rows
+  - collapsed "Advanced details"
+  - bottom navigation
+- Keep battery out of the main in-app content on mobile, because it is already available in the phone status bar.
+
+Desktop screen direction
+- File: screens/phoneboost_desktop_dark_flat_v1.png
+- Role: Linux control center main screen.
+- Key elements:
+  - left navigation rail
+  - product header
+  - FR / EN toggle
+  - LIVE pill
+  - hero section visually aligned with mobile
+  - large ON switch
+  - READY badge
+  - helper line "Enabled by default"
+  - worker / battery / connection / status summary on the right
+  - three explanatory cards under the hero section
+  - collapsed "Advanced details" panel
+- Battery remains useful on desktop.
+
+Implementation guidance
+- Do not implement the phone or laptop hardware frame.
+- Implement the flat UI only.
+- Maintain visual consistency between desktop and mobile.
+- The ON/OFF switch is a central brand interaction element and should feel strong, clean and immediate.
+- Use a responsive design system so the same visual language clearly links both screens.
+
+Suggested repository placement
+- docs/ui/handoff/PHONEBOOST_UI_HANDOFF_AURSKEL_V1.txt
+- docs/ui/handoff/screens/phoneboost_mobile_dark_flat_v1.png
+- docs/ui/handoff/screens/phoneboost_desktop_dark_flat_v1.png
+- docs/ui/handoff/reference/aurskel_logo_reference.png
+
