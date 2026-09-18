@@ -51,3 +51,19 @@ tasks.register<JavaExec>("testControllerLeaseStateName") {
         configurations.named("debugUnitTestRuntimeClasspath"),
     )
 }
+
+tasks.register<JavaExec>("testPairingSasDisplay") {
+    group = "verification"
+    description = "Runs the deterministic pairing SAS display test."
+    dependsOn("compileDebugUnitTestKotlin")
+    mainClass.set("org.phoneboost.app.PairingSasDisplayTest")
+    classpath(
+        layout.buildDirectory.dir(
+            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes",
+        ),
+        layout.buildDirectory.dir(
+            "intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes",
+        ),
+        configurations.named("debugUnitTestRuntimeClasspath"),
+    )
+}

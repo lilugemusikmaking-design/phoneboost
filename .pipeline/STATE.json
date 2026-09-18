@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "chore/pipeline-p1-user-tests",
-  "head": "9ed52bdd45258b031ed46681eaaf19a796f17242",
-  "task": "P1 quality tooling and automated user tests complete; final local check-full PASS",
+  "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
+  "task": "P1 quality tooling, automated user tests, Galaxy A15 Maestro validation, and targeted remote regression complete",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -28,7 +28,11 @@
     "P1: two Maestro Android flows structurally validated",
     "P1: targeted local validation and actionable dependency remediation complete",
     "pipeline: integrate P1 quality and user tests",
-    "pipeline: finalize P1 user tests"
+    "pipeline: finalize P1 user tests",
+    "P1 physical: Galaxy A15 Maestro flows 2/2 PASS",
+    "P1 physical: secure SAS pairing, persistence, and IK reconnect PASS",
+    "P1 physical: targeted remote compute loss/fallback/reconnect closure PASS",
+    "test(android): validate Galaxy A15 physical path"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -55,10 +59,15 @@
     "P1 frontend tests PASS 331/331 and production build PASS after dependency remediation",
     "P1 Playwright PASS 10/10 after dependency remediation",
     "P1 Android assembleDebug, ControllerLeaseStateName 5/5, and lintDebug PASS",
-    "P1 Maestro flow structure PASS; physical execution skipped because adb is unavailable",
     "P1 64 MiB Rust proof PASS under scoped measured nextest timeout (126.43s)",
     "P1 corrected nextest ordinary suite PASS: 359/359 with heavy authenticated proofs retained in mandatory cargo test",
-    "P1 final check-full PASS: 14/14 commands, including Rust, frontend, Playwright, Android, security and Maestro syntax"
+    "P1 final check-full PASS: 14/14 commands, including Rust, frontend, Playwright, Android, security and Maestro syntax",
+    "Galaxy A15 SM-A155F authorized over USB as RZ8X500LL3A",
+    "P1 Android assembleDebug, ControllerLeaseStateName 5/5, PairingSasDisplay 4/4, and lintDebug PASS",
+    "P1 Maestro physical PASS 2/2 on Galaxy A15: controls/advanced details and truth/startup",
+    "C05/C06 physical PASS: SAS match, mutual encrypted confirmation, persisted trust, ping/pong, restart reload, IK reconnect, no ADB tunnel",
+    "Targeted remote regression PASS: authenticated worker, active lease, readiness/admission proof, two exact REMOTE_SUCCESS jobs",
+    "Controlled Wi-Fi loss PASS: session and lease invalidated, explicit local fallback, no false REMOTE_SUCCESS, authenticated reconnect"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -66,7 +75,7 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "STOP. On a Galaxy A15, authorize adb, install the debug app, and run scripts/pipeline-maestro. Do not start P2 or merge master without a new instruction.",
+  "next_action": "STOP. P1 physical validation complete; do not start P2 or merge master without a new instruction.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -80,8 +89,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:15:39.459716+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:10:59.234840+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
@@ -94,16 +103,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:15:39.500152+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:10:59.336599+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:15:42.427560+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:11:04.764825+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
@@ -114,129 +123,57 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:15:42.473148+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:11:04.939337+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "clippy",
-        "--locked",
-        "--workspace",
-        "--all-targets"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:15:45.088059+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "nextest",
-        "run",
-        "--locked",
-        "--workspace",
-        "--profile",
-        "ci"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:15:46.441630+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "test",
-        "--locked",
-        "--workspace"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:17:17.824608+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "install",
-        "--frozen-lockfile",
-        "--non-interactive"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:24:53.853434+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "test",
-        "--watchAll=false",
-        "--runInBand"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:24:57.312697+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "build"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:25:07.734528+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "scripts/pipeline-playwright",
-        "test"
-      ],
-      "returncode": 0,
-      "date": "2026-09-18T18:25:44.431347+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-    },
-    {
-      "command": [
-        "bash",
         "scripts/pipeline-android"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:26:26.960591+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:12:10.152469+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
-        "scripts/pipeline-security"
+        "scripts/test_c05_android_physical.sh"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:27:39.580064+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:12:10.152469+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     },
     {
       "command": [
-        "scripts/pipeline-maestro",
-        "--syntax-only"
+        "scripts/prove_c12_auto_use_blake3_physical.sh"
       ],
       "returncode": 0,
-      "date": "2026-09-18T18:28:06.569663+00:00",
-      "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+      "date": "2026-09-18T22:12:10.152469+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+    },
+    {
+      "command": [
+        "scripts/prove_p0_remote_compute_closure_physical.sh"
+      ],
+      "returncode": 0,
+      "date": "2026-09-18T22:12:10.152469+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+    },
+    {
+      "command": [
+        "scripts/pipeline-maestro"
+      ],
+      "returncode": 0,
+      "date": "2026-09-18T22:12:10.152469+00:00",
+      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-18T18:46:02.307954+00:00",
-    "commit": "9ed52bdd45258b031ed46681eaaf19a796f17242",
+    "date": "2026-09-18T22:12:54.456138+00:00",
+    "commit": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P1 final PASS: check-full 14/14; nextest ordinary suite 359/359; mandatory cargo test retains JNI and 64 MiB proofs; frontend 331/331/build; Playwright 10/10; Android build/test/lint; security gates; Maestro structure",
-  "physical_proof": "UNCHANGED; no hardware proof, deployment, READY/LIVE/PASS promotion",
+  "software_proof": "P1 final check-full 14/14 remains valid for unchanged baseline; targeted Android gate PASS after physical-test fixes: assembleDebug, lease-state 5/5, SAS display 4/4, lint; Maestro syntax and physical flows PASS.",
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: Maestro 2/2 PASS; C05/C06 secure pairing and IK reconnect PASS; remote compute closure PASS with active lease, admission/readiness proof, controlled Wi-Fi loss, truthful local fallback, authenticated reconnect, and second REMOTE_SUCCESS.",
   "canonical_documents": {
     "order": [
       {
@@ -300,7 +237,6 @@
     "Local generated Android/Cargo caches use /var/tmp/phoneboost-p0-fo4lub9x; reproducible tool installer retained",
     "Nextest runs the ordinary suite without the CPU-heavy JNI package and pb-host 64 MiB proof; the mandatory cargo-test pass executes those unchanged proofs, and an explicit nextest selection of the 64 MiB test retains its scoped 180-second allowance",
     "Two HIGH advisories remain in the legacy react-scripts svgo 1.3.x build-only path; major substitution is deferred and findings remain visible",
-    "Maestro flows are structurally validated but not run on hardware because adb/device is unavailable; physical proof unchanged",
     "Trivy warns that the project HTTPS tarball dependency is not parsed as a registry package; Yarn installs it from the existing project source"
   ]
 }

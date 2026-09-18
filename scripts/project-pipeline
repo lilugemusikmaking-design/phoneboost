@@ -117,7 +117,10 @@ def checkpoint(args):
     save('STATE.json',state)
     save('resume/manifest.json',dict(next_action=args.next,writer=args.writer,parent_head=previous,
                                    date=now(),branch=branch,push='verify remote on resume',
-                                   physical_proof='unchanged; no readiness promotion'))
+                                   physical_proof=state.get(
+                                       'physical_proof',
+                                       'unchanged; no readiness promotion',
+                                   )))
     run(['git','add','--',*args.paths,'.pipeline/STATE.json','.pipeline/resume'])
     scan_index()
     run(['git','diff','--cached','--check'])

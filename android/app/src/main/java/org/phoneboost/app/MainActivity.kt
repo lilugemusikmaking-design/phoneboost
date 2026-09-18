@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var heroRuntimeStatusView: TextView
+    private lateinit var pairingSasView: TextView
     private lateinit var runtimeStatusView: TextView
     private lateinit var connectionView: TextView
     private lateinit var modeView: TextView
@@ -169,6 +170,12 @@ class MainActivity : Activity() {
             background = rounded(Color.rgb(14, 31, 20), 24f, Color.rgb(24, 66, 33))
         }
         addView(heroRuntimeStatusView, LinearLayout.LayoutParams(dp(210), dp(50)).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(16) })
+        pairingSasView = label("", 18f, PRIMARY, true).apply {
+            gravity = Gravity.CENTER
+            contentDescription = "Pairing code"
+            visibility = View.GONE
+        }
+        addView(pairingSasView, margin(top = 12))
         addView(label("ⓘ  " + text("Autorisé par défaut · statut runtime séparé", "Enabled by default · separate runtime status"), 13f, MUTED).apply { gravity = Gravity.CENTER }, margin(top = 14))
     }
 
@@ -278,6 +285,13 @@ class MainActivity : Activity() {
         }
         // Provider readiness is not exposed here, so this screen never infers READY.
         heroRuntimeStatusView.text = status
+        val pairingDisplay = if (secureStateCode == WorkerNative.SECURE_SAS_PENDING) {
+            pairingSasDisplay(WorkerNative.secureSas(), language)
+        } else {
+            null
+        }
+        pairingSasView.text = pairingDisplay.orEmpty()
+        pairingSasView.visibility = if (pairingDisplay == null) View.GONE else View.VISIBLE
         runtimeStatusView.text = status
         connectionView.text = if (authenticated) "AUTHENTICATED" else transport.state.toString()
         modeView.text = if (enabled) text("Autorisé", "Enabled") else text("Désactivé", "Disabled")

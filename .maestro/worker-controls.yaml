@@ -6,12 +6,20 @@ tags:
 - launchApp:
     clearState: true
 - tapOn: "PhoneBoost participation switch"
-- assertVisible: "OFF"
+- assertVisible: "●       OFF"
 - assertNotVisible: "READY"
 - tapOn: "PhoneBoost participation switch"
-- assertVisible: "ON"
+- assertVisible: "ON       ●"
 - assertNotVisible: "READY"
+- scrollUntilVisible:
+    element:
+      text: "Advanced details toggle"
+    direction: DOWN
 - tapOn: "Advanced details toggle"
-- assertVisible: "LOCAL · ANDROID WORKER"
-- assertVisible: "REMOTE · CONTROLLER"
-- assertVisible: "Provider ready: UNAVAILABLE"
+- scrollUntilVisible:
+    element:
+      text: "(?s).*Provider ready: UNAVAILABLE.*"
+    direction: DOWN
+- assertVisible: "(?s).*LOCAL · ANDROID WORKER.*"
+- assertVisible: "(?s).*REMOTE · CONTROLLER.*"
+- assertVisible: "(?s).*Provider ready: UNAVAILABLE.*"

@@ -6,8 +6,8 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:15:39.459716+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:10:59.234840+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
@@ -20,16 +20,16 @@
       "-v"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:15:39.500152+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:10:59.336599+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
       "actionlint"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:15:42.427560+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:11:04.764825+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
@@ -40,119 +40,47 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:15:42.473148+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:11:04.939337+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "clippy",
-      "--locked",
-      "--workspace",
-      "--all-targets"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:15:45.088059+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "nextest",
-      "run",
-      "--locked",
-      "--workspace",
-      "--profile",
-      "ci"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:15:46.441630+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "test",
-      "--locked",
-      "--workspace"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:17:17.824608+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "install",
-      "--frozen-lockfile",
-      "--non-interactive"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:24:53.853434+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "test",
-      "--watchAll=false",
-      "--runInBand"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:24:57.312697+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "build"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:25:07.734528+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "scripts/pipeline-playwright",
-      "test"
-    ],
-    "returncode": 0,
-    "date": "2026-09-18T18:25:44.431347+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
-  },
-  {
-    "command": [
-      "bash",
       "scripts/pipeline-android"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:26:26.960591+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:12:10.152469+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
-      "scripts/pipeline-security"
+      "scripts/test_c05_android_physical.sh"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:27:39.580064+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:12:10.152469+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   },
   {
     "command": [
-      "scripts/pipeline-maestro",
-      "--syntax-only"
+      "scripts/prove_c12_auto_use_blake3_physical.sh"
     ],
     "returncode": 0,
-    "date": "2026-09-18T18:28:06.569663+00:00",
-    "head": "9ed52bdd45258b031ed46681eaaf19a796f17242"
+    "date": "2026-09-18T22:12:10.152469+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+  },
+  {
+    "command": [
+      "scripts/prove_p0_remote_compute_closure_physical.sh"
+    ],
+    "returncode": 0,
+    "date": "2026-09-18T22:12:10.152469+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+  },
+  {
+    "command": [
+      "scripts/pipeline-maestro"
+    ],
+    "returncode": 0,
+    "date": "2026-09-18T22:12:10.152469+00:00",
+    "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
   }
 ]

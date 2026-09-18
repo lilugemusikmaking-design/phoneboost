@@ -55,12 +55,18 @@ listener_endpoint() {
 start_daemon() {
     local endpoint="$1"
     local log="$2"
+    local expected_state="${3:-connected}"
     XDG_RUNTIME_DIR="${test_root}/runtime" XDG_STATE_HOME="${test_root}/state" \
         "${daemon}" --foreground --manual-endpoint "${endpoint}" \
         >"${test_root}/${log}.stdout" 2>"${test_root}/${log}.stderr" &
     daemon_pid=$!
     for _ in $(seq 1 150); do
-        if grep -q 'C04_TRANSPORT state=CONNECTED_UNAUTHENTICATED' \
+        if [[ "${expected_state}" = authenticated ]]; then
+            if XDG_RUNTIME_DIR="${test_root}/runtime" "${ctl}" status 2>/dev/null \
+                | grep -q '^Android worker: AUTHENTICATED$'; then
+                return
+            fi
+        elif grep -q 'C04_TRANSPORT state=CONNECTED_UNAUTHENTICATED' \
             "${test_root}/${log}.stdout" 2>/dev/null; then
             return
         fi
@@ -91,22 +97,28 @@ current_stage="sas-android-ui"
 "${adb}" -d shell input keyevent KEYCODE_WAKEUP
 "${adb}" -d shell wm dismiss-keyguard
 "${adb}" -d shell am start -W --activity-clear-top -n "${activity}" >/dev/null
-current_stage="sas-android-ocr"
-ocr=""
+
+window_dump="${test_root}/window.xml"
+dump_window() {
+    "${adb}" -d shell uiautomator dump /sdcard/phoneboost-c05-window.xml >/dev/null
+    "${adb}" -d exec-out cat /sdcard/phoneboost-c05-window.xml >"${window_dump}"
+}
+
+bounds_for_description() {
+    local description="$1"
+    sed -n "s/.*content-desc=\"${description}\"[^>]*bounds=\"\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]\".*/\1 \2 \3 \4/p" \
+        "${window_dump}"
+}
+
+current_stage="sas-android-ui-read"
 android_sas=""
-for _ in $(seq 1 3); do
+for _ in $(seq 1 10); do
     "${adb}" -d shell input keyevent KEYCODE_WAKEUP
     "${adb}" -d shell wm dismiss-keyguard
     "${adb}" -d shell input keyevent 82
-    ocr="$("${adb}" -d exec-out screencap -p | tesseract stdin stdout --psm 6 tsv 2>/dev/null)"
-    android_sas="$(awk -F '\t' '
-        match($12, /[0-9][0-9][0-9][0-9][0-9][0-9]/) {
-            print substr($12, RSTART, RLENGTH)
-            exit
-        }
-    ' <<<"${ocr}")"
-    if grep -q $'\tCONFIRM\r\{0,1\}$' <<<"${ocr}" \
-        && [[ "${#android_sas}" -eq 6 ]]; then
+    dump_window
+    android_sas="$(sed -n 's/.*text="[^"]*\([0-9]\{6\}\)[^"]*"[^>]*content-desc="Pairing code".*/\1/p' "${window_dump}")"
+    if [[ "${#android_sas}" -eq 6 ]]; then
         break
     fi
     sleep 0.25
@@ -114,15 +126,44 @@ done
 test "${#android_sas}" -eq 6
 current_stage="sas-equality"
 test "${host_sas}" = "${android_sas}"
+
+current_stage="advanced-details-locate"
+advanced_bounds=""
+for _ in $(seq 1 6); do
+    dump_window
+    advanced_bounds="$(bounds_for_description 'Advanced details toggle')"
+    if [[ -n "${advanced_bounds}" ]]; then
+        break
+    fi
+    "${adb}" -d shell input swipe 540 1900 540 600 350
+    sleep 0.25
+done
+read -r advanced_x1 advanced_y1 advanced_x2 advanced_y2 <<<"${advanced_bounds}"
+test -n "${advanced_x1}"
+"${adb}" -d shell input tap \
+    "$(((advanced_x1 + advanced_x2) / 2))" "$(((advanced_y1 + advanced_y2) / 2))"
+
 current_stage="confirm-locate"
-confirm_bounds="$(awk -F '\t' '$12 == "CONFIRM" {print $7, $8, $9, $10; exit}' <<<"${ocr}")"
-read -r confirm_x confirm_y confirm_width confirm_height <<<"${confirm_bounds}"
-test -n "${confirm_x}"
+confirm_bounds=""
+for _ in $(seq 1 6); do
+    dump_window
+    confirm_bounds="$(bounds_for_description 'Confirm pairing')"
+    if [[ -z "${confirm_bounds}" ]]; then
+        confirm_bounds="$(bounds_for_description 'Confirmer l’appairage')"
+    fi
+    if [[ -n "${confirm_bounds}" ]]; then
+        break
+    fi
+    "${adb}" -d shell input swipe 540 1900 540 600 350
+    sleep 0.25
+done
+read -r confirm_x1 confirm_y1 confirm_x2 confirm_y2 <<<"${confirm_bounds}"
+test -n "${confirm_x1}"
 
 current_stage="mutual-confirm-auth"
 XDG_RUNTIME_DIR="${test_root}/runtime" "${ctl}" pair-confirm >/dev/null
 "${adb}" -d shell input tap \
-    "$((confirm_x + confirm_width / 2))" "$((confirm_y + confirm_height / 2))"
+    "$(((confirm_x1 + confirm_x2) / 2))" "$(((confirm_y1 + confirm_y2) / 2))"
 
 for _ in $(seq 1 150); do
     status="$(XDG_RUNTIME_DIR="${test_root}/runtime" "${ctl}" status)"
@@ -174,7 +215,7 @@ current_stage="ik-listener"
 ik_endpoint="$(listener_endpoint)"
 test -n "${ik_endpoint}"
 current_stage="ik-connect"
-start_daemon "${ik_endpoint}" ik
+start_daemon "${ik_endpoint}" ik authenticated
 current_stage="ik-auth"
 for _ in $(seq 1 150); do
     ik_status="$(XDG_RUNTIME_DIR="${test_root}/runtime" "${ctl}" status)"

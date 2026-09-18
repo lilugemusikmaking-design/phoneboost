@@ -1,9 +1,9 @@
 {
-  "next_action": "STOP. On a Galaxy A15, authorize adb, install the debug app, and run scripts/pipeline-maestro. Do not start P2 or merge master without a new instruction.",
+  "next_action": "STOP. P1 physical validation complete; do not start P2 or merge master without a new instruction.",
   "writer": "Codex",
-  "parent_head": "9ed52bdd45258b031ed46681eaaf19a796f17242",
-  "date": "2026-09-18T18:46:02.311754+00:00",
+  "parent_head": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
+  "date": "2026-09-18T22:12:54.471559+00:00",
   "branch": "chore/pipeline-p1-user-tests",
   "push": "verify remote on resume",
-  "physical_proof": "unchanged; no readiness promotion"
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: Maestro 2/2 PASS; C05/C06 secure pairing and IK reconnect PASS; remote compute closure PASS with active lease, admission/readiness proof, controlled Wi-Fi loss, truthful local fallback, authenticated reconnect, and second REMOTE_SUCCESS."
 }
