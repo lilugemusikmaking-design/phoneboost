@@ -19,7 +19,7 @@ Maestro flows cover Worker launch, ON/OFF, ON not implying READY, visible runtim
 
 ## CI and fallback
 
-The workflow keeps separate deterministic, Rust, frontend, Playwright, security/dependency, Maestro structure and Android jobs. Rust runs formatting, clippy, nextest and the existing cargo-test proof. The measured 64 MiB encrypted end-to-end Rust test needs about 130 seconds in an unoptimized build; only that test receives a 180-second nextest allowance, while all other tests retain the 30-second/2-period policy. Android uses the previously locked official API 37.0 toolchain.
+The workflow keeps separate deterministic, Rust, frontend, Playwright, security/dependency, Maestro structure and Android jobs. Rust runs formatting, clippy, nextest and the existing cargo-test proof. Nextest isolates the ordinary suite; the `phoneboost-core-jni` package and the pb-host 64 MiB encrypted transfer stay in the mandatory cargo-test pass because separate nextest processes make their CPU-heavy authenticated protocol deadlines contend. The measured pb-host proof needs about 130 seconds in an unoptimized isolated run; an explicit nextest selection receives a 180-second allowance, while ordinary tests retain the 30-second/2-period policy. Android uses the previously locked official API 37.0 toolchain.
 
 If pinned P1 tools are absent, run the setup command. If sccache fails, the wrapper prints a fallback message and continues. If no Android device is attached, CI and local automation validate Maestro structure; this is not a physical run. Playwright does not substitute for native Android or hardware evidence.
 

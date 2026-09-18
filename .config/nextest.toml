@@ -3,10 +3,14 @@ fail-fast = false
 status-level = "fail"
 final-status-level = "pass"
 slow-timeout = { period = "30s", terminate-after = 2 }
+# These authenticated bulk-transfer tests intentionally compete for CPU and
+# protocol deadlines when nextest gives each one a separate process. The
+# mandatory cargo-test pass below nextest runs them together with their native
+# synchronization model.
+default-filter = 'not (package(phoneboost-core-jni) or test(remote_blake3_64_mib_is_exact_when_practical))'
 
-# The end-to-end 64 MiB encrypted transfer takes about 130 seconds in an
-# unoptimized build on the reference runner. Keep the proof intact and give
-# only this measured bulk-transfer case enough time to complete.
+# Keep an adequate timeout if an operator explicitly selects the excluded
+# 64 MiB proof with a command-line filter.
 [[profile.default.overrides]]
 filter = 'test(remote_blake3_64_mib_is_exact_when_practical)'
 slow-timeout = { period = "180s", terminate-after = 1 }

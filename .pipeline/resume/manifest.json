@@ -1,8 +1,8 @@
 {
-  "next_action": "Run scripts/project-pipeline check-full, record actual result, final checkpoint, push, then STOP.",
+  "next_action": "STOP. On a Galaxy A15, authorize adb, install the debug app, and run scripts/pipeline-maestro. Do not start P2 or merge master without a new instruction.",
   "writer": "Codex",
-  "parent_head": "239fb1ca21209ba1c2dcd60cf17315130dfbdb90",
-  "date": "2026-09-18T17:42:38.905703+00:00",
+  "parent_head": "9ed52bdd45258b031ed46681eaaf19a796f17242",
+  "date": "2026-09-18T18:46:02.311754+00:00",
   "branch": "chore/pipeline-p1-user-tests",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"
