@@ -1,0 +1,17 @@
+appId: org.phoneboost.app
+name: Worker participation and advanced details
+tags:
+  - controls
+---
+- launchApp:
+    clearState: true
+- tapOn: "PhoneBoost participation switch"
+- assertVisible: "OFF"
+- assertNotVisible: "READY"
+- tapOn: "PhoneBoost participation switch"
+- assertVisible: "ON"
+- assertNotVisible: "READY"
+- tapOn: "Advanced details toggle"
+- assertVisible: "LOCAL · ANDROID WORKER"
+- assertVisible: "REMOTE · CONTROLLER"
+- assertVisible: "Provider ready: UNAVAILABLE"

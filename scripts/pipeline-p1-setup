@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Install pinned P1 tools into ignored .tooling after SHA-256 verification."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import urllib.request
+import venv
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+BASE = ROOT / ".tooling" / "p1"
+BIN = BASE / "bin"
+CACHE = BASE / "cache"
+LOCK = json.loads((ROOT / ".pipeline" / "p1-toolchain.json").read_text())
+GROUPS = {
+    "core": ("cargo-deny", "cargo-nextest", "sccache"),
+    "cache": ("sccache",),
+    "trivy": ("trivy",),
+    "maestro": ("maestro",),
+    "pre-commit": ("pre-commit",),
+}
+
+
+def digest(path: Path) -> str:
+    value = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            value.update(block)
+    return value.hexdigest()
+
+
+def download(name: str, item: dict) -> Path:
+    CACHE.mkdir(parents=True, exist_ok=True)
+    archive = CACHE / Path(item["url"]).name
+    if not archive.exists() or digest(archive) != item["sha256"]:
+        pending = archive.with_suffix(archive.suffix + ".pending")
+        pending.unlink(missing_ok=True)
+        print(f"download {name} {item['version']}", flush=True)
+        with urllib.request.urlopen(item["url"], timeout=120) as source, pending.open("wb") as target:
+            shutil.copyfileobj(source, target)
+        if digest(pending) != item["sha256"]:
+            pending.unlink(missing_ok=True)
+            raise RuntimeError(f"checksum mismatch for {name}")
+        os.replace(pending, archive)
+    return archive
+
+
+def extract_binary(name: str, item: dict) -> None:
+    destination = BIN / item["binary"]
+    if destination.is_file():
+        return
+    archive = download(name, item)
+    with tempfile.TemporaryDirectory(prefix=f"phoneboost-{name}-") as temp:
+        temp_path = Path(temp)
+        if archive.name.endswith(".zip"):
+            with zipfile.ZipFile(archive) as bundle:
+                bundle.extractall(temp_path)
+        else:
+            with tarfile.open(archive, "r:gz") as bundle:
+                bundle.extractall(temp_path, filter="data")
+        candidates = [p for p in temp_path.rglob(item["binary"]) if p.is_file()]
+        if len(candidates) != 1:
+            raise RuntimeError(f"expected one {item['binary']} in {archive.name}")
+        BIN.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(candidates[0], destination)
+        destination.chmod(0o755)
+
+
+def install_maestro(item: dict) -> None:
+    destination = BASE / f"maestro-{item['version']}"
+    executable = destination / "bin" / "maestro"
+    link = BIN / "maestro"
+    if not executable.is_file():
+        archive = download("maestro", item)
+        pending = BASE / f".maestro-{item['version']}.pending"
+        shutil.rmtree(pending, ignore_errors=True)
+        pending.mkdir(parents=True)
+        with zipfile.ZipFile(archive) as bundle:
+            bundle.extractall(pending)
+        roots = [p.parent.parent for p in pending.rglob("bin/maestro") if p.is_file()]
+        if len(roots) != 1:
+            raise RuntimeError("unexpected Maestro archive layout")
+        shutil.move(str(roots[0]), destination)
+        shutil.rmtree(pending, ignore_errors=True)
+    executable.chmod(0o755)
+    BIN.mkdir(parents=True, exist_ok=True)
+    link.unlink(missing_ok=True)
+    link.symlink_to(executable)
+
+
+def install_pre_commit(item: dict) -> None:
+    environment = BASE / f"pre-commit-{item['version']}"
+    executable = environment / "bin" / "pre-commit"
+    if not executable.is_file():
+        venv.EnvBuilder(with_pip=True, clear=True).create(environment)
+        subprocess.run(
+            [str(environment / "bin" / "python"), "-m", "pip", "install", "--disable-pip-version-check", f"pre-commit=={item['version']}"],
+            check=True,
+        )
+    BIN.mkdir(parents=True, exist_ok=True)
+    link = BIN / "pre-commit"
+    link.unlink(missing_ok=True)
+    link.symlink_to(executable)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("groups", nargs="*", choices=(*GROUPS, "all"), default=["core", "trivy", "pre-commit"])
+    args = parser.parse_args()
+    if sys.platform != "linux" or os.uname().machine != "x86_64":
+        raise RuntimeError("pinned P1 installer currently supports Linux x86_64 only")
+    groups = list(GROUPS) if "all" in args.groups else args.groups
+    names = dict.fromkeys(name for group in groups for name in GROUPS[group])
+    for name in names:
+        item = LOCK["tools"][name]
+        if name == "pre-commit":
+            install_pre_commit(item)
+        elif name == "maestro":
+            install_maestro(item)
+        else:
+            extract_binary(name, item)
+    for name in names:
+        print(f"installed {name} {LOCK['tools'][name]['version']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

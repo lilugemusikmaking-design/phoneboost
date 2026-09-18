@@ -134,13 +134,20 @@ def check(full=False, component='all'):
     if component in ('all','rust'):
         commands += [['cargo','fmt','--all','--','--check']]
         if full:
-            commands += [['cargo','clippy','--locked','--workspace','--all-targets'],['cargo','test','--locked','--workspace']]
+            commands += [['scripts/pipeline-with-sccache','cargo','clippy','--locked','--workspace','--all-targets'],
+                         ['scripts/pipeline-with-sccache','cargo','nextest','run','--locked','--workspace','--profile','ci'],
+                         ['scripts/pipeline-with-sccache','cargo','test','--locked','--workspace']]
     if full and component in ('all','frontend'):
         commands += [['yarn','--cwd','frontend','install','--frozen-lockfile','--non-interactive'],
                      ['yarn','--cwd','frontend','test','--watchAll=false','--runInBand'],
-                     ['yarn','--cwd','frontend','build']]
+                     ['yarn','--cwd','frontend','build'],
+                     ['scripts/pipeline-playwright','test']]
     if full and component in ('all','android'):
         commands += [['bash','scripts/pipeline-android']]
+    if full and component in ('all','security'):
+        commands += [['scripts/pipeline-security']]
+    if full and component in ('all','maestro'):
+        commands += [['scripts/pipeline-maestro','--syntax-only']]
     results=[]
     for cmd in commands:
         print('+ '+' '.join(cmd),flush=True)
@@ -162,7 +169,7 @@ def main():
         sub.add_parser(name)
     for name in ['check-fast','check-full']:
         c=sub.add_parser(name)
-        c.add_argument('--component',choices=['all','pipeline','rust','frontend','android'],default='all')
+        c.add_argument('--component',choices=['all','pipeline','rust','frontend','android','security','maestro'],default='all')
     c=sub.add_parser('checkpoint')
     c.add_argument('--message',required=True)
     c.add_argument('--next',required=True)

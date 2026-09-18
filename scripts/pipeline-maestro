@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$root/.tooling/pipeline-android/env.sh" ]]; then
+    source "$root/.tooling/pipeline-android/env.sh"
+fi
+python="$root/.tooling/p1/pre-commit-4.6.2/bin/python"
+test -x "$python" || { printf '%s\n' 'run scripts/pipeline-p1-setup pre-commit first' >&2; exit 2; }
+cd "$root"
+"$python" scripts/validate-maestro-flows.py
+if [[ "${1:-}" == "--syntax-only" ]]; then
+    printf '%s\n' 'Maestro execution SKIPPED: syntax-only mode.'
+    exit 0
+fi
+if ! command -v adb >/dev/null 2>&1; then
+    printf '%s\n' 'Maestro execution SKIPPED: adb is unavailable; flow structure passed.'
+    exit 0
+fi
+device_count="$(adb devices 2>/dev/null | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }')"
+if [[ "$device_count" -eq 0 ]]; then
+    printf '%s\n' 'Maestro execution SKIPPED: no authorized Android device or emulator.'
+    exit 0
+fi
+export MAESTRO_CLI_NO_ANALYTICS=1
+export MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
+export MAESTRO_OPTS="-Duser.home=$root/.tooling/p1/maestro-home"
+mkdir -p "$root/.tooling/p1/maestro-home" "$root/.tooling/p1/maestro-results"
+exec "$root/.tooling/p1/bin/maestro" test \
+    --no-ansi \
+    --format JUNIT \
+    --output "$root/.tooling/p1/maestro-results/junit.xml" \
+    "$root/.maestro"

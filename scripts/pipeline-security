@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+bin="$root/.tooling/p1/bin"
+test -x "$bin/cargo-deny" || { printf '%s\n' 'run scripts/pipeline-p1-setup core first' >&2; exit 2; }
+test -x "$bin/trivy" || { printf '%s\n' 'run scripts/pipeline-p1-setup trivy first' >&2; exit 2; }
+mkdir -p "$root/.tooling/p1/reports"
+cd "$root"
+"$bin/cargo-deny" --locked check advisories bans licenses sources
+"$bin/trivy" fs \
+    --timeout 15m \
+    --scanners vuln,misconfig \
+    --severity HIGH,CRITICAL \
+    --ignore-unfixed \
+    --cache-dir "$root/.tooling/p1/trivy-cache" \
+    --skip-dirs .git \
+    --skip-dirs .tooling \
+    --skip-dirs target \
+    --skip-dirs frontend/node_modules \
+    --skip-dirs android/app/build \
+    --format json \
+    --output "$root/.tooling/p1/reports/trivy-high-critical.json" \
+    --exit-code 0 \
+    .
+"$bin/trivy" fs \
+    --timeout 15m \
+    --scanners vuln,misconfig \
+    --severity CRITICAL \
+    --ignore-unfixed \
+    --cache-dir "$root/.tooling/p1/trivy-cache" \
+    --skip-dirs .git \
+    --skip-dirs .tooling \
+    --skip-dirs target \
+    --skip-dirs frontend/node_modules \
+    --skip-dirs android/app/build \
+    --exit-code 1 \
+    .
+printf '%s\n' 'Trivy policy: HIGH/CRITICAL report retained; fixed CRITICAL findings gate.'

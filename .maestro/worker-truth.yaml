@@ -1,0 +1,14 @@
+appId: org.phoneboost.app
+name: Worker truth and startup
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- assertVisible: "PhoneBoost Worker"
+- assertVisible: "ON"
+- assertVisible: "Runtime"
+- assertNotVisible: "READY"
+- assertVisible: "Status|Statut"
+- assertVisible: "Activity|Activité"
+- assertVisible: "More|Plus"

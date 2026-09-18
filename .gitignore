@@ -9,6 +9,9 @@
 /android/app/build/
 /android/.idea/
 /android/local.properties
+/frontend/test-results/
+/frontend/playwright-report/
+/test-results/
 /.idea/
 /.vscode/
 *.zip

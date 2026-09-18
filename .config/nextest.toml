@@ -1,0 +1,17 @@
+[profile.default]
+fail-fast = false
+status-level = "fail"
+final-status-level = "pass"
+slow-timeout = { period = "30s", terminate-after = 2 }
+
+# The end-to-end 64 MiB encrypted transfer takes about 130 seconds in an
+# unoptimized build on the reference runner. Keep the proof intact and give
+# only this measured bulk-transfer case enough time to complete.
+[[profile.default.overrides]]
+filter = 'test(remote_blake3_64_mib_is_exact_when_practical)'
+slow-timeout = { period = "180s", terminate-after = 1 }
+
+[profile.ci]
+retries = 0
+fail-fast = false
+junit = { path = "target/nextest/ci/junit.xml" }

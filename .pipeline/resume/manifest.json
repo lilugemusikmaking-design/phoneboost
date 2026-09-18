@@ -1,9 +1,9 @@
 {
-  "next_action": "STOP. Resume only on a new instruction; do not start P1, merge master, or claim physical UI proof.",
+  "next_action": "Run scripts/project-pipeline check-full, record actual result, final checkpoint, push, then STOP.",
   "writer": "Codex",
-  "parent_head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
-  "date": "2026-09-17T10:51:17.149347+00:00",
-  "branch": "feat/ui-control-center-v1",
+  "parent_head": "239fb1ca21209ba1c2dcd60cf17315130dfbdb90",
+  "date": "2026-09-18T17:42:38.905703+00:00",
+  "branch": "chore/pipeline-p1-user-tests",
   "push": "verify remote on resume",
   "physical_proof": "unchanged; no readiness promotion"
 }

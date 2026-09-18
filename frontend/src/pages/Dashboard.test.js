@@ -88,15 +88,29 @@ test("participation preference never fabricates runtime readiness", () => {
     ready: false,
   });
   expect(runtimeSummary({ fresh: true, runtime: {
+    authenticated_session: { state: "UNAVAILABLE" },
+    controller_lease: { state: "UNAVAILABLE" },
+    resource_guard_admission_proof: { state: "FAILED" },
     remote_blake3_available: false,
     provider_readiness: { state: "UNAVAILABLE" },
     auto_use: { state: "AVAILABLE", reason: "READY" },
   } }, true)).toEqual({ state: "AVAILABLE", ready: false });
   expect(runtimeSummary({ fresh: true, runtime: {
+    authenticated_session: { state: "AUTHENTICATED" },
+    controller_lease: { state: "ACTIVE" },
+    resource_guard_admission_proof: { state: "FRESH_PASS" },
     remote_blake3_available: true,
     provider_readiness: { state: "AVAILABLE" },
     auto_use: { state: "AVAILABLE", reason: "READY" },
   } }, false)).toEqual({ state: "DISABLED", ready: false });
+  expect(runtimeSummary({ fresh: true, runtime: {
+    authenticated_session: { state: "AUTHENTICATED" },
+    controller_lease: { state: "ACTIVE" },
+    resource_guard_admission_proof: { state: "FRESH_PASS" },
+    remote_blake3_available: true,
+    provider_readiness: { state: "AVAILABLE" },
+    auto_use: { state: "AVAILABLE", reason: "READY" },
+  } }, true)).toEqual({ state: "READY", ready: true });
 });
 
 test("evidence drawer clears old content when its evidence item changes", async () => {

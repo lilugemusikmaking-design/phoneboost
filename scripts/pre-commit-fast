@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+git diff --cached --check
+python3 -m unittest discover -s tests/pipeline -v
+if [[ -x "$root/.tooling/pipeline-bin/actionlint" ]]; then
+    "$root/.tooling/pipeline-bin/actionlint"
+else
+    printf '%s\n' 'actionlint unavailable; skipped locally (required in CI)' >&2
+fi
+cargo fmt --all -- --check

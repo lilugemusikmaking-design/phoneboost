@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: phoneboost-fast-checks
+        name: PhoneBoost deterministic fast checks
+        entry: scripts/pre-commit-fast
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

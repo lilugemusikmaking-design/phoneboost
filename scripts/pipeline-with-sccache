@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sccache="$root/.tooling/p1/bin/sccache"
+export PATH="$root/.tooling/p1/bin:$PATH"
+if [[ -x "$sccache" ]] && "$sccache" --start-server >/dev/null 2>&1; then
+    export RUSTC_WRAPPER="$sccache"
+    export SCCACHE_DIR="${SCCACHE_DIR:-$root/.tooling/p1/sccache}"
+else
+    unset RUSTC_WRAPPER
+    printf '%s\n' 'sccache unavailable; continuing without compiler cache' >&2
+fi
+exec "$@"

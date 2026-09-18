@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$root/.tooling/p1/ms-playwright}"
+export PLAYWRIGHT_OUTPUT_DIR="${PLAYWRIGHT_OUTPUT_DIR:-$root/.tooling/p1/playwright-results}"
+export PLAYWRIGHT_REPORT_DIR="${PLAYWRIGHT_REPORT_DIR:-$root/.tooling/p1/playwright-report}"
+cd "$root/frontend"
+case "${1:-}" in
+    install)
+        shift
+        exec "$root/frontend/node_modules/.bin/playwright" install "$@"
+        ;;
+    test)
+        shift
+        exec "$root/frontend/node_modules/.bin/playwright" test "$@"
+        ;;
+    *)
+        printf '%s\n' 'usage: scripts/pipeline-playwright install|test [args...]' >&2
+        exit 2
+        ;;
+esac

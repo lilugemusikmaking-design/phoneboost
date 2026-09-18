@@ -1,0 +1,10 @@
+# P1 finding triage
+
+- REJECT — cargo-deny initially reported wildcard versions for workspace path dependencies. These are internal path edges, not registry ambiguity; `allow-wildcard-paths = true` records that narrow policy.
+- REJECT — cargo-deny reported `cpufeatures` 0.2/0.3 duplication through independent cryptographic dependency lines. The older transitive version is explicitly skipped to keep the duplicate report actionable; no dependency was replaced without upstream justification.
+- REJECT — the first Playwright Local/Remote wording assertion matched the honest phrase saying remote compute is not a RAM/swap extension. The assertion was narrowed to require that explicit negation; product wording stayed truthful.
+- ACCEPT — the 64 MiB Rust proof was terminated by the new global nextest policy. An isolated cargo test passed in 129.91 seconds and the corrected targeted nextest run passed in 126.43 seconds. A 180-second override is scoped to this exact bulk-transfer test; the test and runtime are unchanged.
+- ACCEPT — Trivy's first official database download exceeded its default five-minute timeout after reaching 98.9/114.4 MiB. The scanner timeout is 15 minutes; severity policy and finding gates are unchanged.
+- ACCEPT — Maestro flow validation passed but the execution wrapper returned 127 when `adb` itself was unavailable. The wrapper now reports a successful, explicit device-execution skip after structural validation when `adb` is absent.
+- ACCEPT — Trivy reported fixed HIGH advisories in `fast-uri`, `js-yaml`, `postcss`, `react-router` and the `svgo` 2.x build path. Existing exact Yarn resolutions make patch/minor remediation deterministic; they were advanced to the first fully fixed lines and the direct router package was advanced with its paired dependency.
+- VERIFY — `react-scripts` retains a legacy `svgo` 1.3.x build-only path whose fixes require a major-version substitution. It is kept visible in the HIGH report pending an upstream build-stack replacement; forcing an incompatible optimizer through CRA is outside this focused P1 and could alter generated assets.

@@ -1,7 +1,7 @@
 name: Project pipeline
 on:
   push:
-    branches: ['chore/dev-pipeline-v1']
+    branches: ['chore/**', 'feat/**']
     paths-ignore: ['.pipeline/**']
   pull_request:
   workflow_dispatch:
@@ -24,8 +24,8 @@ jobs:
           go-version: '1.26.8'
           cache: false
       - run: scripts/pipeline-install-tools
-      - run: python3 -m unittest discover -s tests/pipeline -v
-      - run: .tooling/pipeline-bin/actionlint
+      - run: scripts/pipeline-p1-setup pre-commit
+      - run: .tooling/p1/bin/pre-commit run --all-files
       - name: Secret scan (all reachable commits, redacted)
         run: .tooling/pipeline-bin/gitleaks git --redact --no-banner --log-opts="--all"
   rust:
@@ -36,9 +36,14 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
+      - run: scripts/pipeline-p1-setup core
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --locked --workspace --all-targets
-      - run: cargo test --locked --workspace
+      - run: scripts/pipeline-with-sccache cargo clippy --locked --workspace --all-targets
+      - run: scripts/pipeline-with-sccache cargo nextest run --locked --workspace --profile ci
+      - name: Existing cargo test proof
+        run: scripts/pipeline-with-sccache cargo test --locked --workspace
+      - if: always()
+        run: .tooling/p1/bin/sccache --show-stats || true
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -61,6 +66,49 @@ jobs:
         run: yarn build
         env:
           CI: 'true'
+  playwright:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --global yarn@1.22.22
+      - run: yarn --cwd frontend install --frozen-lockfile --non-interactive
+      - run: scripts/pipeline-playwright install --with-deps chromium
+      - run: scripts/pipeline-playwright test
+        env:
+          CI: 'true'
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            .tooling/p1/playwright-results
+            .tooling/p1/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+  security-dependency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: scripts/pipeline-p1-setup core trivy
+      - run: scripts/pipeline-security
+  maestro-structure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: scripts/pipeline-p1-setup pre-commit
+      - run: scripts/pipeline-maestro --syntax-only
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -70,5 +118,6 @@ jobs:
           persist-credentials: false
       - name: Install verified official Android toolchain
         run: scripts/pipeline-android-setup
+      - run: scripts/pipeline-p1-setup cache
       - run: rustup target add aarch64-linux-android
       - run: scripts/pipeline-android

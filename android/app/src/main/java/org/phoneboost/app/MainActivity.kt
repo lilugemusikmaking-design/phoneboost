@@ -153,7 +153,7 @@ class MainActivity : Activity() {
         addView(label(text("Ce téléphone peut aider votre ordinateur lorsque le runtime l’autorise.", "This phone can help your computer when the runtime permits it."), 19f, PRIMARY), margin(top = 16))
         switchView = label("", 23f, Color.BLACK, true).apply {
             gravity = Gravity.CENTER
-            contentDescription = text("Autoriser la participation PhoneBoost", "Allow PhoneBoost participation")
+            contentDescription = "PhoneBoost participation switch"
             setOnClickListener {
                 participationEnabled = !participationEnabled
                 applyParticipationPreference()
@@ -213,7 +213,7 @@ class MainActivity : Activity() {
         setPadding(dp(22), dp(18), dp(22), dp(18))
         background = rounded(PANEL, 20f, BORDER)
         val header = label("▥   " + text("Détails avancés", "Advanced details") + "                                      ⌄", 18f, PRIMARY, true).apply {
-            contentDescription = text("Afficher ou masquer les détails avancés", "Show or hide advanced details")
+            contentDescription = "Advanced details toggle"
         }
         addView(header)
         addView(label(text("Portes de confiance, ressources locales et distantes, diagnostics", "Trust gates, local and remote resources, diagnostics"), 13f, MUTED), margin(top = 6))

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "platform": "linux-x86_64",
+  "tools": {
+    "cargo-deny": {
+      "version": "0.20.2",
+      "url": "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f",
+      "binary": "cargo-deny"
+    },
+    "cargo-nextest": {
+      "version": "0.9.145",
+      "url": "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.145/cargo-nextest-0.9.145-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "32aa82416099eb12fffae9cf1a279ad201fecbd3f74826c613e32e9006b29867",
+      "binary": "cargo-nextest"
+    },
+    "sccache": {
+      "version": "0.18.0",
+      "url": "https://github.com/mozilla/sccache/releases/download/v0.18.0/sccache-v0.18.0-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "45f1447fbe231e3037bde351ef70677dd212216c8d62ae7ca409fecc4d6acc89",
+      "binary": "sccache"
+    },
+    "trivy": {
+      "version": "0.74.0",
+      "url": "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz",
+      "sha256": "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a",
+      "binary": "trivy"
+    },
+    "maestro": {
+      "version": "2.10.0",
+      "url": "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip",
+      "sha256": "29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991",
+      "binary": "maestro"
+    },
+    "pre-commit": {
+      "version": "4.6.2"
+    },
+    "playwright": {
+      "version": "1.63.0"
+    }
+  }
+}

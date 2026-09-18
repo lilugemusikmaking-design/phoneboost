@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/ui-control-center-v1",
-  "head": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
-  "task": "UI / Design V1 complete; desktop and Android worker aligned; STOP",
+  "branch": "chore/pipeline-p1-user-tests",
+  "head": "239fb1ca21209ba1c2dcd60cf17315130dfbdb90",
+  "task": "P1 quality tooling and automated user tests integrated; final check-full pending",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -22,7 +22,12 @@
     "pipeline: checkpoint F2 Android build and validation passed",
     "F1/F2 final full check executed and actual outcome archived",
     "pipeline: final F1 F2 full-check validation and closure",
-    "ui: align Android worker with control center"
+    "ui: align Android worker with control center",
+    "P1: pinned quality/security tooling and structured CI integrated",
+    "P1: ten Playwright Control Center user journeys integrated",
+    "P1: two Maestro Android flows structurally validated",
+    "P1: targeted local validation and actionable dependency remediation complete",
+    "pipeline: integrate P1 quality and user tests"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -42,7 +47,15 @@
     "UI handoff files copied byte-identically from the validated local archive",
     "Desktop Control Center frontend tests PASS: 331/331; production build PASS",
     "Android Worker assembleDebug, deterministic lease-state test 5/5, and lintDebug PASS",
-    "UI branch check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt"
+    "UI branch check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt",
+    "P1 pre-commit fast checks PASS",
+    "P1 cargo-deny advisories/bans/licenses/sources PASS",
+    "P1 Trivy CRITICAL gate PASS; 16 fixed HIGH findings remediated; two legacy build-only svgo HIGH findings retained as VERIFY",
+    "P1 frontend tests PASS 331/331 and production build PASS after dependency remediation",
+    "P1 Playwright PASS 10/10 after dependency remediation",
+    "P1 Android assembleDebug, ControllerLeaseStateName 5/5, and lintDebug PASS",
+    "P1 Maestro flow structure PASS; physical execution skipped because adb is unavailable",
+    "P1 64 MiB Rust proof PASS under scoped measured nextest timeout (126.43s)"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -50,7 +63,7 @@
     "Physical evidence"
   ],
   "blockers": [],
-  "next_action": "STOP. Resume only on a new instruction; do not start P1, merge master, or claim physical UI proof.",
+  "next_action": "Run scripts/project-pipeline check-full, record actual result, final checkpoint, push, then STOP.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -103,11 +116,11 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-09-17T10:51:17.144680+00:00",
-    "commit": "8decbcb7fc70235774c8bafa0396eacb0f6f4604",
+    "date": "2026-09-18T17:42:38.900829+00:00",
+    "commit": "239fb1ca21209ba1c2dcd60cf17315130dfbdb90",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "PASS: UI frontend tests/build, Android build/test/lint, and check-fast",
+  "software_proof": "P1 targeted PASS: pre-commit, cargo-deny, Trivy gate, frontend 331/331/build, Playwright 10/10, Android build/test/lint, Maestro structure",
   "physical_proof": "UNCHANGED; no hardware proof, deployment, READY/LIVE/PASS promotion",
   "canonical_documents": {
     "order": [
@@ -167,9 +180,12 @@
     ]
   },
   "known_limitations": [
-    "Separate CI run 35135773943 had an intermittent unchanged remote_blake3_64_mib_is_exact_when_practical TransportLost failure; latest CI passes, root cause not investigated in F1/F2",
     "Dependabot activation awaits an independently approved default-branch merge; no merge during this mission",
     "Original canonical documents remain external/not-local; scoped user-supplied HOST_STARTUP excerpt hash recorded",
-    "Local generated Android/Cargo caches use /var/tmp/phoneboost-p0-fo4lub9x; reproducible tool installer retained"
+    "Local generated Android/Cargo caches use /var/tmp/phoneboost-p0-fo4lub9x; reproducible tool installer retained",
+    "The measured 64 MiB encrypted Rust proof takes about 126-130 seconds in debug mode and has a scoped 180-second nextest allowance",
+    "Two HIGH advisories remain in the legacy react-scripts svgo 1.3.x build-only path; major substitution is deferred and findings remain visible",
+    "Maestro flows are structurally validated but not run on hardware because adb/device is unavailable; physical proof unchanged",
+    "Trivy warns that the project HTTPS tarball dependency is not parsed as a registry package; Yarn installs it from the existing project source"
   ]
 }
