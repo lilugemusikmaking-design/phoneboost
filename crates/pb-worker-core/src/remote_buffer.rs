@@ -829,6 +829,20 @@ impl RemoteBufferStore {
         }
     }
 
+    pub(crate) fn lease_ended(
+        &mut self,
+        guard: &mut ResourceGuard,
+        lease_id: LeaseId,
+        now_ms: u64,
+    ) {
+        self.expire_and_purge(guard, now_ms);
+        for record in self.buffers.values_mut() {
+            if record.owner_controller_lease_id == lease_id && !record.state.is_terminal() {
+                Self::terminalize(record, guard, BufferState::Evicted, now_ms);
+            }
+        }
+    }
+
     pub(crate) fn tick(&mut self, guard: &mut ResourceGuard, now_ms: u64) {
         self.expire_and_purge(guard, now_ms);
     }
@@ -1256,5 +1270,45 @@ mod tests {
             now,
         );
         assert_eq!(oversized.reason, BufferReason::ResourceExhausted);
+    }
+
+    #[test]
+    fn lease_end_evicts_backing_and_releases_budget_exactly_once() {
+        let now = 20_000;
+        let (mut guard, mut store, proof, mut leases, session) = setup(now);
+        let reservation =
+            committed_reservation(&mut guard, &mut leases, &session, proof, 70, 4, now);
+        let (_, alloc) = store.apply(
+            &mut guard,
+            proof,
+            SessionBinding::test_only(1),
+            alloc_request(proof, reservation, 4),
+            now,
+        );
+        let buffer_id = alloc.buffer.expect("allocated buffer").buffer_id;
+        assert_eq!(guard.held_bytes(), 4);
+
+        store.lease_ended(&mut guard, proof.lease_id, now + 1);
+        assert_eq!(guard.held_bytes(), 0);
+        let (_, evicted) = store.apply(
+            &mut guard,
+            proof,
+            SessionBinding::test_only(1),
+            RemoteBufferRequest::Stat {
+                lease_id: proof.lease_id.into_bytes(),
+                worker_incarnation_id: proof.incarnation.into_bytes(),
+                buffer_id,
+            },
+            now + 2,
+        );
+        assert_eq!(evicted.reason, BufferReason::BufferEvicted);
+        assert_eq!(evicted.buffer.unwrap().state, BufferState::Evicted);
+
+        store.lease_ended(&mut guard, proof.lease_id, now + 3);
+        assert_eq!(
+            guard.held_bytes(),
+            0,
+            "repeat cleanup cannot double release"
+        );
     }
 }

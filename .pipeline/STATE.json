@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "feat/android-durable-background-worker",
-  "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
-  "task": "P2 Controller Lease + ResourceGuard reconciliation and minimal closure complete",
+  "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
+  "task": "P3 RemoteBuffer reconciliation, minimal lease-lifecycle closure, and validation",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -41,7 +41,8 @@
     "Android durable worker: reproducible screen-off and sticky-recovery harnesses added",
     "fix(android): keep durable worker restartable",
     "test(android): archive one-hour durable worker soak",
-    "test(p2): close lease and ResourceGuard proof"
+    "test(p2): close lease and ResourceGuard proof",
+    "fix(worker): release RemoteBuffer capacity with lease"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -94,7 +95,13 @@
     "P2 targeted: Controller Lease 20/20, ResourceGuard 23/23, four host authority/failure integrations, and C07/C08-C09/C10 wire checkers PASS",
     "P2 harness: secure partial-record fail-closed test bootstrap uses bounded observation wait; all four failure injections retained and PASS",
     "P2 final check-full PASS: 14/14 commands including nextest 359/359, mandatory workspace cargo test, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax",
-    "P2 physical evidence reused: authenticated lease/admission, real REMOTE_SUCCESS, controlled loss with explicit local fallback, reconnect, second REMOTE_SUCCESS; no new physical run required"
+    "P2 physical evidence reused: authenticated lease/admission, real REMOTE_SUCCESS, controlled loss with explicit local fallback, reconnect, second REMOTE_SUCCESS; no new physical run required",
+    "P3 authority: locked C08/C09 addendum and registry resolution mapped without changing external canonical authority",
+    "P3 baseline: C08/C09 checker PASS; RemoteBuffer store 3/3, PBMUX 3/3, authenticated JNI lifecycle and active-C09 transport-loss tests PASS",
+    "P3 root gap closed: C07 RELEASE/expiry now policy-evicts dependent RemoteBuffers and releases consumed class-1 accounting exactly once",
+    "P3 targeted: pb-worker-core 53/53 plus 2/2 doc tests; RemoteBuffer 4/4; authenticated JNI RELEASE/successor full-capacity admission PASS",
+    "P3 integration: host automatic IK C08-C09-C10 Remote BLAKE3 truth path PASS; secure transport stop during active C09 PASS",
+    "P3 final check-fast PASS and check-full PASS 14/14, including nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -106,7 +113,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "STOP before P3; await explicit user instruction.",
+  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -120,8 +127,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:40.497058+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:10.131910+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -134,16 +141,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:40.509399+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:10.176472+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:41.130694+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:11.610986+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -154,8 +161,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:41.144586+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:11.629442+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -167,8 +174,8 @@
         "--all-targets"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:41.715023+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:12.857329+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -182,8 +189,8 @@
         "ci"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:42:43.888896+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T18:59:17.836292+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -194,8 +201,8 @@
         "--workspace"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:44:10.940093+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:00:52.799164+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -207,8 +214,8 @@
         "--non-interactive"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:49:06.316655+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:05:48.011046+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -220,8 +227,8 @@
         "--runInBand"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:49:08.358294+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:05:49.032265+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -231,8 +238,8 @@
         "build"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:49:19.089476+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:05:52.308257+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -240,8 +247,8 @@
         "test"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:49:54.719837+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:06:32.595653+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -249,16 +256,16 @@
         "scripts/pipeline-android"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:50:35.640222+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:07:04.171560+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
         "scripts/pipeline-security"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:52:11.816955+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:08:29.671409+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     },
     {
       "command": [
@@ -266,17 +273,17 @@
         "--syntax-only"
       ],
       "returncode": 0,
-      "date": "2026-09-20T15:53:30.108614+00:00",
-      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+      "date": "2026-09-20T19:09:02.081581+00:00",
+      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-20T15:55:06.590549+00:00",
-    "commit": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
+    "date": "2026-09-20T19:10:17.450754+00:00",
+    "commit": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P2 targeted Lease/ResourceGuard/integration/wire checks PASS; secure transport harness regression PASS; final check-full 14/14 PASS.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid.",
+  "software_proof": "P3 RemoteBuffer authority and ALLOC/PUT/GET/FREE coverage mapped; lease-end capacity retention fixed; targeted store, lease, JNI, transport, host integration and wire checks PASS; final check-full 14/14 PASS.",
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts.",
   "canonical_documents": {
     "order": [
       {
@@ -361,5 +368,20 @@
     "evidence_sha256": "84362c3bc509e91d11576da2659fc8eceaef84274fef0889dc541f40aad9ecce",
     "observations": "docs/evidence/android-durable-worker-screen-off-1h-observations.txt",
     "observations_sha256": "bc29eca210a62db3fadeed13d11a8a5a376dfd71c5908aca3289db26910a6db9"
+  },
+  "p3_remote_buffer": {
+    "baseline": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
+    "authority": [
+      "docs/protocol/PHONEBOOST_C08_C09_WIRE_ADDENDUM_V0_1_LOCKED_001.md",
+      "docs/protocol/PHONEBOOST_C08_C09_REGISTRY_RESOLUTION_V0_1_001.md"
+    ],
+    "coverage_matrix": "docs/evidence/p3-remotebuffer-coverage-before-changes.md",
+    "root_gap": "Consumed C09 backing retained global class-1 capacity after C07 authority ended until buffer TTL",
+    "closure": "Exact-lease policy eviction on explicit RELEASE and detected expiry; backing and budget released once",
+    "targeted_result": "PASS",
+    "check_fast": "PASS",
+    "check_full": "PASS 14/14",
+    "physical_test": "NOT RUN; existing P2 evidence retained without promotion",
+    "status": "LOCAL_COMPLETE_CI_PENDING"
   }
 }

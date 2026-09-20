@@ -220,7 +220,7 @@ impl ControllerLeaseManager {
         session: &AuthenticatedSession,
         now_ms: u64,
     ) -> Result<ControllerCommandResult, ControllerCommandError> {
-        self.expire_if_needed(now_ms);
+        let _ = self.expire_if_needed(now_ms);
         if let Some(active) = self.active.as_ref() {
             return Ok(if active.peer_id == session.peer_id {
                 ControllerCommandResult::Completed {
@@ -267,7 +267,7 @@ impl ControllerLeaseManager {
         command_seq: u64,
         now_ms: u64,
     ) -> Result<ControllerCommandResult, ControllerCommandError> {
-        self.expire_if_needed(now_ms);
+        let _ = self.expire_if_needed(now_ms);
         if self.validate(session, lease_id, now_ms).is_err() {
             return Ok(self.released_admission(session, lease_id, command_seq));
         }
@@ -296,7 +296,7 @@ impl ControllerLeaseManager {
         command_seq: u64,
         now_ms: u64,
     ) -> Result<ControllerCommandResult, ControllerCommandError> {
-        self.expire_if_needed(now_ms);
+        let _ = self.expire_if_needed(now_ms);
         if self.validate(session, lease_id, now_ms).is_err() {
             return Ok(self.released_admission(session, lease_id, command_seq));
         }
@@ -489,7 +489,7 @@ impl ControllerLeaseManager {
         lease_id: LeaseId,
         now_ms: u64,
     ) -> Result<(), LeaseError> {
-        self.expire_if_needed(now_ms);
+        let _ = self.expire_if_needed(now_ms);
         if self.released.as_ref().is_some_and(|released| {
             released.id == lease_id
                 && released.peer_id == session.peer_id
@@ -605,7 +605,7 @@ impl ControllerLeaseManager {
         lease_id: LeaseId,
         now_ms: u64,
     ) -> Result<LeaseProof, LeaseError> {
-        self.expire_if_needed(now_ms);
+        let _ = self.expire_if_needed(now_ms);
         let active = self.active.as_ref().ok_or(LeaseError::StaleLease)?;
         if active.id != lease_id
             || active.peer_id != session.peer_id
@@ -620,18 +620,19 @@ impl ControllerLeaseManager {
         })
     }
 
-    fn expire_if_needed(&mut self, now_ms: u64) {
+    pub(crate) fn expire_if_needed(&mut self, now_ms: u64) -> Option<LeaseId> {
         let expired = self
             .active
             .as_ref()
-            .is_some_and(|active| now_ms >= active.expires_at_ms);
-        if expired {
+            .and_then(|active| (now_ms >= active.expires_at_ms).then_some(active.id));
+        if expired.is_some() {
             self.state = LeaseState::Expired;
             self.last_transition = Some(LeaseTransition::ActiveToExpired);
             self.active = None;
             self.state = LeaseState::Free;
             self.last_transition = Some(LeaseTransition::ExpiredToFree);
         }
+        expired
     }
 }
 
@@ -924,6 +925,7 @@ mod tests {
     fn l_t04_ttl_is_exactly_sixty_seconds_with_no_grace() {
         let (mut manager, session, lease) = active();
         assert!(manager.validate(&session, lease, 60_999).is_ok());
+        assert_eq!(manager.expire_if_needed(61_000), Some(lease));
         assert_eq!(
             manager.validate(&session, lease, 61_000),
             Err(LeaseError::StaleLease)

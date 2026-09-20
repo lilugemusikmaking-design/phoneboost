@@ -164,6 +164,7 @@ impl WorkerCore {
         // Resource authority and provider TTLs share one worker-owned monotonic
         // domain; JNI-supplied timestamps are observations, not clock authority.
         let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
         sample.monotonic_ms = now_ms;
         let status = self.resource_guard.record_health(sample);
         self.resource_guard.tick(now_ms);
@@ -216,6 +217,7 @@ impl WorkerCore {
     ) -> Result<ControllerCommandResult, ControllerCommandError> {
         let session = AuthenticatedSession::from_verified(verified_session);
         let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
         let released_lease = match command {
             ControllerCommand::Release { lease_id, .. } => Some(lease_id),
             _ => None,
@@ -230,6 +232,8 @@ impl WorkerCore {
         {
             self.compute_jobs
                 .lease_ended(&mut self.resource_guard, lease_id, now_ms);
+            self.remote_buffers
+                .lease_ended(&mut self.resource_guard, lease_id, now_ms);
         }
         Ok(result)
     }
@@ -243,6 +247,7 @@ impl WorkerCore {
         request: ResourceRequest,
     ) -> (ResourceResponseKind, ResourceResult) {
         let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
         let kind = resource_response_kind(&request);
         let lease_id = LeaseId::from_bytes(*request.lease_id());
         let wire_lease_id = *request.lease_id();
@@ -541,6 +546,7 @@ impl WorkerCore {
         request: RemoteBufferRequest,
     ) -> (RemoteBufferResponseKind, BufferResult) {
         let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
         let kind = remote_buffer_response_kind(&request);
         let wire_lease_id = *request.lease_id();
         if request.worker_incarnation_id() != &self.incarnation.into_bytes() {
@@ -587,6 +593,7 @@ impl WorkerCore {
         request: ComputeRequest,
     ) -> ComputeResponse {
         let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
         if request.worker_incarnation_id() != &self.incarnation.into_bytes() {
             return compute_request_failure(
                 request,
@@ -815,6 +822,16 @@ impl WorkerCore {
             .session_lost(&mut self.resource_guard, session_id, now_ms);
         self.remote_buffers
             .session_lost(&mut self.resource_guard, session_id, now_ms);
+    }
+
+    fn reconcile_expired_controller_lease(&mut self, now_ms: u64) {
+        let Some(lease_id) = self.lease_manager.expire_if_needed(now_ms) else {
+            return;
+        };
+        self.compute_jobs
+            .lease_ended(&mut self.resource_guard, lease_id, now_ms);
+        self.remote_buffers
+            .lease_ended(&mut self.resource_guard, lease_id, now_ms);
     }
 }
 

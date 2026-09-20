@@ -1,9 +1,9 @@
 {
-  "next_action": "STOP before P3; await explicit user instruction.",
+  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
   "writer": "Codex",
-  "parent_head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
-  "date": "2026-09-20T15:55:06.595426+00:00",
+  "parent_head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
+  "date": "2026-09-20T19:10:17.526118+00:00",
   "branch": "feat/android-durable-background-worker",
   "push": "verify remote on resume",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid."
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts."
 }

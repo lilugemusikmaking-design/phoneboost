@@ -2383,7 +2383,7 @@ mod tests {
                         .state
                         == pb_pbmux::ResourceResultState::Completed
                 );
-                let lost = client.remote(
+                let release_eviction_probe = client.remote(
                     113,
                     RemoteBufferRequest::Alloc {
                         lease_id: lease.lease_id,
@@ -2393,9 +2393,85 @@ mod tests {
                         allocation_flags: AllocationFlags::NONE,
                     },
                 );
+                assert!(release_eviction_probe.completed);
+                let released = client.command(
+                    114,
+                    CommandPayload {
+                        command_type: 3,
+                        lease_present: 1,
+                        lease_id: lease.lease_id,
+                        command_seq: 0,
+                        trace_id: [2; 16],
+                        provider_present: 0,
+                        provider_id: 0,
+                        payload_len: 0,
+                    },
+                );
+                assert_eq!(released.ack_state, 2);
+                assert_eq!(released.result_ref_present, 0);
+
+                let successor = client.command(
+                    115,
+                    CommandPayload {
+                        command_type: 1,
+                        lease_present: 0,
+                        lease_id: [0; 16],
+                        command_seq: 0,
+                        trace_id: [3; 16],
+                        provider_present: 0,
+                        provider_id: 0,
+                        payload_len: 0,
+                    },
+                );
+                assert_eq!(successor.ack_state, 2);
+                let full_capacity = client.resource(
+                    201,
+                    ResourceRequest::Reserve {
+                        lease_id: successor.lease_id,
+                        worker_incarnation_id: successor.worker_incarnation,
+                        resource_class: WireResourceClass::RemoteBufferBytes,
+                        requested_bytes: 128 * 1024 * 1024,
+                    },
+                );
+                assert_eq!(
+                    full_capacity.state,
+                    pb_pbmux::ResourceResultState::Completed
+                );
+                let full_capacity_id = full_capacity.reservation.unwrap().reservation_id;
+                let released_capacity = client.resource(
+                    202,
+                    ResourceRequest::Release {
+                        lease_id: successor.lease_id,
+                        worker_incarnation_id: successor.worker_incarnation,
+                        reservation_id: full_capacity_id,
+                    },
+                );
+                assert_eq!(
+                    released_capacity.reservation.unwrap().state,
+                    WireReservationState::Released
+                );
+                let mut successor_request_id = 203;
+                let lost_reservation = reserve_and_commit(
+                    client,
+                    &mut successor_request_id,
+                    successor.lease_id,
+                    successor.worker_incarnation,
+                    WireResourceClass::RemoteBufferBytes,
+                    4,
+                );
+                let lost = client.remote(
+                    successor_request_id,
+                    RemoteBufferRequest::Alloc {
+                        lease_id: successor.lease_id,
+                        worker_incarnation_id: successor.worker_incarnation,
+                        reservation_id: lost_reservation,
+                        size_bytes: 4,
+                        allocation_flags: AllocationFlags::NONE,
+                    },
+                );
                 (
-                    lease.lease_id,
-                    lease.worker_incarnation,
+                    successor.lease_id,
+                    successor.worker_incarnation,
                     lost.buffer.unwrap().buffer_id,
                 )
             },
