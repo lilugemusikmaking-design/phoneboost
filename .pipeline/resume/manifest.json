@@ -1,8 +1,8 @@
 {
-  "next_action": "STOP before P2; await a new explicit instruction.",
+  "next_action": "STOP before P3; await explicit user instruction.",
   "writer": "Codex",
-  "parent_head": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
-  "date": "2026-09-20T14:52:04.924196+00:00",
+  "parent_head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
+  "date": "2026-09-20T15:55:06.595426+00:00",
   "branch": "feat/android-durable-background-worker",
   "push": "verify remote on resume",
   "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid."

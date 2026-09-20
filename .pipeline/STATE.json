@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "feat/android-durable-background-worker",
-  "head": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
-  "task": "Android durable background worker audit, sticky process recovery, and physical screen-off endurance proof complete",
+  "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
+  "task": "P2 Controller Lease + ResourceGuard reconciliation and minimal closure complete",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -40,7 +40,8 @@
     "Android durable worker: physical screen-off 5-minute and 30-minute REMOTE_SUCCESS PASS",
     "Android durable worker: reproducible screen-off and sticky-recovery harnesses added",
     "fix(android): keep durable worker restartable",
-    "test(android): archive one-hour durable worker soak"
+    "test(android): archive one-hour durable worker soak",
+    "test(p2): close lease and ResourceGuard proof"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -88,17 +89,24 @@
     "Galaxy A15 screen-off endurance: 3600 seconds Dozing, Activity absent, new job submitted after wait, exact REMOTE_SUCCESS, screen stayed Dozing",
     "Post-soak runtime: worker AUTHENTICATED, auto-use AVAILABLE/READY, controller lease ACTIVE, Remote BLAKE3 AVAILABLE, connectedDevice FGS active",
     "Post-soak device observations: thermal status 0, battery 24.8 C at 100% on USB, TOTAL PSS 50844 KiB, CPU samples 3.5%/3.5%/0.0%",
-    "Persistent T440 pairing restored after reboot; stale temporary C05 test identity diagnosed and replaced through SAS-verified pairing"
+    "Persistent T440 pairing restored after reboot; stale temporary C05 test identity diagnosed and replaced through SAS-verified pairing",
+    "P2 recon: Controller Lease and ResourceGuard implementation satisfies the local locked contract surface; no production gap demonstrated",
+    "P2 targeted: Controller Lease 20/20, ResourceGuard 23/23, four host authority/failure integrations, and C07/C08-C09/C10 wire checkers PASS",
+    "P2 harness: secure partial-record fail-closed test bootstrap uses bounded observation wait; all four failure injections retained and PASS",
+    "P2 final check-full PASS: 14/14 commands including nextest 359/359, mandatory workspace cargo test, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax",
+    "P2 physical evidence reused: authenticated lease/admission, real REMOTE_SUCCESS, controlled loss with explicit local fallback, reconnect, second REMOTE_SUCCESS; no new physical run required"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
     "Canonical documents",
     "Physical evidence",
     "Android durable worker 5-minute and 30-minute physical screen-off proofs",
-    "Android sticky process recovery physical proof"
+    "Android sticky process recovery physical proof",
+    "P2 Galaxy A15 remote success/loss/fallback/reconnect proof",
+    "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "STOP before P2; await a new explicit instruction.",
+  "next_action": "STOP before P3; await explicit user instruction.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -112,8 +120,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:46:10.776856+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:42:40.497058+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
@@ -126,16 +134,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:46:10.801720+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:42:40.509399+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:46:12.187301+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:42:41.130694+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
@@ -146,61 +154,128 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:46:12.265083+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:42:41.144586+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
-        "scripts/pipeline-android"
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "clippy",
+        "--locked",
+        "--workspace",
+        "--all-targets"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:48:25.581312+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:42:41.715023+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "nextest",
+        "run",
+        "--locked",
+        "--workspace",
+        "--profile",
+        "ci"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:42:43.888896+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "test",
+        "--locked",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:44:10.940093+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "install",
+        "--frozen-lockfile",
+        "--non-interactive"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:49:06.316655+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "test",
+        "--watchAll=false",
+        "--runInBand"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:49:08.358294+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "build"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:49:19.089476+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-playwright",
+        "test"
+      ],
+      "returncode": 0,
+      "date": "2026-09-20T15:49:54.719837+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
         "bash",
-        "-n",
-        "scripts/test_android_durable_worker_physical.sh",
-        "scripts/test_android_sticky_worker_physical.sh"
+        "scripts/pipeline-android"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:48:25.581312+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:50:35.640222+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
-        "scripts/test_android_sticky_worker_physical.sh"
+        "scripts/pipeline-security"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:48:25.581312+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:52:11.816955+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     },
     {
       "command": [
-        "scripts/test_android_durable_worker_physical.sh",
-        "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=300"
+        "scripts/pipeline-maestro",
+        "--syntax-only"
       ],
       "returncode": 0,
-      "date": "2026-09-20T11:48:25.581312+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
-    },
-    {
-      "command": [
-        "scripts/test_android_durable_worker_physical.sh",
-        "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=1800"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T11:48:25.581312+00:00",
-      "head": "f4451c1675d976c497e07962f5f32f443960846b"
+      "date": "2026-09-20T15:53:30.108614+00:00",
+      "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-20T14:52:04.915929+00:00",
-    "commit": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
+    "date": "2026-09-20T15:55:06.590549+00:00",
+    "commit": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "Targeted Android gate PASS on the changed APK: assembleDebug, lease-state 5/5, SAS display 4/4, lintDebug; check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt.",
+  "software_proof": "P2 targeted Lease/ResourceGuard/integration/wire checks PASS; secure transport harness regression PASS; final check-full 14/14 PASS.",
   "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid.",
   "canonical_documents": {
     "order": [

@@ -6,8 +6,8 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:46:10.776856+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:42:40.497058+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
@@ -20,16 +20,16 @@
       "-v"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:46:10.801720+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:42:40.509399+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
       "actionlint"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:46:12.187301+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:42:41.130694+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
@@ -40,52 +40,119 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:46:12.265083+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:42:41.144586+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
-      "scripts/pipeline-android"
+      "scripts/pipeline-with-sccache",
+      "cargo",
+      "clippy",
+      "--locked",
+      "--workspace",
+      "--all-targets"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:48:25.581312+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:42:41.715023+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "scripts/pipeline-with-sccache",
+      "cargo",
+      "nextest",
+      "run",
+      "--locked",
+      "--workspace",
+      "--profile",
+      "ci"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:42:43.888896+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "scripts/pipeline-with-sccache",
+      "cargo",
+      "test",
+      "--locked",
+      "--workspace"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:44:10.940093+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "yarn",
+      "--cwd",
+      "frontend",
+      "install",
+      "--frozen-lockfile",
+      "--non-interactive"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:49:06.316655+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "yarn",
+      "--cwd",
+      "frontend",
+      "test",
+      "--watchAll=false",
+      "--runInBand"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:49:08.358294+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "yarn",
+      "--cwd",
+      "frontend",
+      "build"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:49:19.089476+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
+  },
+  {
+    "command": [
+      "scripts/pipeline-playwright",
+      "test"
+    ],
+    "returncode": 0,
+    "date": "2026-09-20T15:49:54.719837+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
       "bash",
-      "-n",
-      "scripts/test_android_durable_worker_physical.sh",
-      "scripts/test_android_sticky_worker_physical.sh"
+      "scripts/pipeline-android"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:48:25.581312+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:50:35.640222+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
-      "scripts/test_android_sticky_worker_physical.sh"
+      "scripts/pipeline-security"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:48:25.581312+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:52:11.816955+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   },
   {
     "command": [
-      "scripts/test_android_durable_worker_physical.sh",
-      "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=300"
+      "scripts/pipeline-maestro",
+      "--syntax-only"
     ],
     "returncode": 0,
-    "date": "2026-09-20T11:48:25.581312+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
-  },
-  {
-    "command": [
-      "scripts/test_android_durable_worker_physical.sh",
-      "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=1800"
-    ],
-    "returncode": 0,
-    "date": "2026-09-20T11:48:25.581312+00:00",
-    "head": "f4451c1675d976c497e07962f5f32f443960846b"
+    "date": "2026-09-20T15:53:30.108614+00:00",
+    "head": "d74fd4a30d7b246d6cb3c8b6788b0faa8615a13d"
   }
 ]

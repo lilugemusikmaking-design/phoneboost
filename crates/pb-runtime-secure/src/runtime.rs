@@ -2181,8 +2181,10 @@ mod tests {
         let pong = receive_test_frame(&mut stream, &mut transport).unwrap();
         assert_eq!(pong.header.message_type, ControlType::Pong as u16);
         assert_eq!(pong.header.request_id, 9);
-        assert!(android.snapshot().authenticated);
-        assert!(android.snapshot().heartbeat_count > 0);
+        wait_until(|| {
+            let snapshot = android.snapshot();
+            snapshot.authenticated && snapshot.heartbeat_count > 0
+        });
         (stream, transport, android, responder)
     }
 
