@@ -1,9 +1,9 @@
 {
-  "next_action": "Run the prepared >=1 hour screen-off soak on the paired Galaxy A15 and archive its exact output; STOP before P2.",
+  "next_action": "STOP before P2; await a new explicit instruction.",
   "writer": "Codex",
-  "parent_head": "f4451c1675d976c497e07962f5f32f443960846b",
-  "date": "2026-09-20T11:48:54.728595+00:00",
+  "parent_head": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
+  "date": "2026-09-20T14:52:04.924196+00:00",
   "branch": "feat/android-durable-background-worker",
   "push": "verify remote on resume",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; new genuine REMOTE_SUCCESS after 300 s and 1800 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake. Existing P1 transport-loss/reconnect proof remains valid."
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid."
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "branch": "feat/android-durable-background-worker",
-  "head": "f4451c1675d976c497e07962f5f32f443960846b",
-  "task": "Android durable background worker audit, sticky process recovery, and physical screen-off proofs complete; extended soak pending",
+  "head": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
+  "task": "Android durable background worker audit, sticky process recovery, and physical screen-off endurance proof complete",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -39,7 +39,8 @@
     "Android durable worker: physical sticky process recovery PASS",
     "Android durable worker: physical screen-off 5-minute and 30-minute REMOTE_SUCCESS PASS",
     "Android durable worker: reproducible screen-off and sticky-recovery harnesses added",
-    "fix(android): keep durable worker restartable"
+    "fix(android): keep durable worker restartable",
+    "test(android): archive one-hour durable worker soak"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -83,7 +84,11 @@
     "Galaxy A15 screen-off medium: 1800 seconds Dozing, Activity absent, new job REMOTE_SUCCESS, screen stayed Dozing",
     "No PhoneBoost-attributed active wake lock; no ADB forward/reverse tunnel; no product ADB dependency",
     "Targeted Android build PASS: assembleDebug, ControllerLeaseStateName 5/5, PairingSasDisplay 4/4, lintDebug",
-    "Mission check-fast PASS: git diff, 12 pipeline tests, actionlint, cargo fmt"
+    "Mission check-fast PASS: git diff, 12 pipeline tests, actionlint, cargo fmt",
+    "Galaxy A15 screen-off endurance: 3600 seconds Dozing, Activity absent, new job submitted after wait, exact REMOTE_SUCCESS, screen stayed Dozing",
+    "Post-soak runtime: worker AUTHENTICATED, auto-use AVAILABLE/READY, controller lease ACTIVE, Remote BLAKE3 AVAILABLE, connectedDevice FGS active",
+    "Post-soak device observations: thermal status 0, battery 24.8 C at 100% on USB, TOTAL PSS 50844 KiB, CPU samples 3.5%/3.5%/0.0%",
+    "Persistent T440 pairing restored after reboot; stale temporary C05 test identity diagnosed and replaced through SAS-verified pairing"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -93,7 +98,7 @@
     "Android sticky process recovery physical proof"
   ],
   "blockers": [],
-  "next_action": "Run the prepared >=1 hour screen-off soak on the paired Galaxy A15 and archive its exact output; STOP before P2.",
+  "next_action": "STOP before P2; await a new explicit instruction.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -191,12 +196,12 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-09-20T11:48:54.725250+00:00",
-    "commit": "f4451c1675d976c497e07962f5f32f443960846b",
+    "date": "2026-09-20T14:52:04.915929+00:00",
+    "commit": "7e58245b4a12455fd4e6530d8bcf99db019c7b61",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "Targeted Android gate PASS on the changed APK: assembleDebug, lease-state 5/5, SAS display 4/4, lintDebug; check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; new genuine REMOTE_SUCCESS after 300 s and 1800 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake. Existing P1 transport-loss/reconnect proof remains valid.",
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid.",
   "canonical_documents": {
     "order": [
       {
@@ -263,7 +268,23 @@
     "Trivy warns that the project HTTPS tarball dependency is not parsed as a registry package; Yarn installs it from the existing project source",
     "Forced deep Doze while unplugged was not run; Android documents that Doze suspends network access",
     "Automatic post-reboot worker start is not implemented or claimed; pairing and ON preference persist, but the user must open PhoneBoost after reboot",
-    "Raw USB without an Android IP interface is not a PhoneBoost product transport",
-    "Extended screen-off soak of at least one hour remains pending; 5-minute and 30-minute proofs passed"
-  ]
+    "Raw USB without an Android IP interface is not a PhoneBoost product transport"
+  ],
+  "physical_soak": {
+    "duration_seconds": 3600,
+    "device_id": "RZ8X500LL3A",
+    "model": "SM_A155F",
+    "result": "PASS",
+    "activity": "ABSENT",
+    "foreground_service": "CONNECTED_DEVICE",
+    "worker": "AUTHENTICATED",
+    "job_submitted_after_wait": true,
+    "execution_source": "REMOTE_SUCCESS",
+    "screen_after_job": "Dozing",
+    "adb_tunnel": "NONE",
+    "evidence": "docs/evidence/android-durable-worker-screen-off-1h.txt",
+    "evidence_sha256": "84362c3bc509e91d11576da2659fc8eceaef84274fef0889dc541f40aad9ecce",
+    "observations": "docs/evidence/android-durable-worker-screen-off-1h-observations.txt",
+    "observations_sha256": "bc29eca210a62db3fadeed13d11a8a5a376dfd71c5908aca3289db26910a6db9"
+  }
 }
