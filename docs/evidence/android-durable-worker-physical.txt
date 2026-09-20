@@ -1,0 +1,113 @@
+PhoneBoost Android durable worker evidence
+Date: 2026-09-20 (Europe/Paris)
+Device: Samsung Galaxy A15 SM-A155F / RZ8X500LL3A
+Android: release 16, API 36, arm64-v8a
+Product transport: direct LAN; ADB forward/reverse tunnels absent
+
+AUDIT
+- MainActivity owns preferences and user actions, but does not own or stop the runtime on pause/destroy.
+- PhoneBoostService owns WorkerNative, the secure runtime, ResourceGuard sampling, the TCP listener, and DNS-SD.
+- Manifest FGS type is connectedDevice with FOREGROUND_SERVICE_CONNECTED_DEVICE and CHANGE_NETWORK_STATE.
+- compileSdk/targetSdk/minSdk: 37/37/29. AGP 9.3.0, Gradle 9.5.0, Java 17.
+- Pairing state and the ON preference are persisted. Worker incarnation, lease, sessions, and listener are process-local.
+- No product path uses ADB, USB debugging, WorkManager, AlarmManager, CompanionDeviceManager,
+  CompanionDeviceService, BOOT_COMPLETED, FLAG_KEEP_SCREEN_ON, or a wake lock.
+- The product transport is IP. Wi-Fi is preferred for the diagnostic address; another site-local IPv4
+  interface, including USB Ethernet when provided by Android, can be selected. A raw USB cable is not a
+  PhoneBoost transport.
+
+PLATFORM DECISION
+- A user-started connectedDevice foreground service is the narrow supported mechanism for this continuous,
+  user-visible external-device interaction.
+- Companion Device Manager was not selected: it performs a user-approved Bluetooth/BLE/Wi-Fi companion
+  association but does not create the connection, and PhoneBoost already has its own authenticated LAN peer.
+- WorkManager was not selected: a long-running worker still uses an FGS and does not improve the live listener.
+- No battery-optimization exemption or permanent/bounded wake lock was added. The screen-off job completed
+  without one.
+- Android Doze can suspend network access. The physical proof below used USB power and proves screen-off/
+  keyguard behavior, not forced deep Doze.
+- Android Service.START_STICKY is appropriate for a user-enabled service intended to run for an arbitrary
+  period. Android user stop/force-stop remains authoritative and is not bypassed.
+
+ROOT CAUSE
+- Previous screen wake requirement: MAESTRO_ONLY + KEYGUARD_AUTOMATION_LIMITATION for UI/SAS actions.
+- It was not an Activity lifecycle, socket background, ADB transport, or screen-off runtime failure.
+- Separate durability gap found: SERVICE_LIFECYCLE_BUG. START_NOT_STICKY instructed Android not to recreate
+  the service after process reclamation. The service now returns START_STICKY and reloads persisted trust.
+
+UNCHANGED PRODUCT BASELINE
+- Existing FGS observed alive for approximately 21 h 7 min with screen off and USB charging.
+- 37,781 ResourceGuard health samples were observed at the required approximately 2 s cadence.
+- Activity foreground: genuine REMOTE_SUCCESS.
+- Activity background: genuine REMOTE_SUCCESS.
+- Activity absent, same process and FGS retained: genuine REMOTE_SUCCESS.
+- Screen already off/Dozing for 300 s, Activity absent, then a NEW job: genuine REMOTE_SUCCESS.
+- Screen remained Dozing after the job.
+- One earlier 300 s attempt was rejected because event logs proved a human wake and app navigation before
+  submission. It is retained only as invalid-attempt evidence and is not counted as PASS.
+
+POST-CHANGE PHYSICAL PROOF
+- Android build gate: PASS (assembleDebug, unit tasks, lintDebug).
+- Abrupt process kill under the app UID: PASS.
+- Process PID changed: PASS.
+- Activity after restart: ABSENT.
+- connectedDevice FGS restart: PASS.
+- Android pairing identity persisted: PASS.
+- listener restart: PASS.
+- Screen already off/Dozing before job submission: YES.
+- Screen-off wait: 300 s.
+- Activity before job: ABSENT.
+- Worker: AUTHENTICATED.
+- New BLAKE3 job submitted after wait: YES.
+- Exact execution source: REMOTE_SUCCESS.
+- Screen after job: Dozing.
+- Manual wake/unlock required for runtime job: NO.
+- ADB tunnel: NONE.
+- Medium screen-off wait: 1,800 s PASS under the same invariants, followed by a new exact REMOTE_SUCCESS;
+  screen remained Dozing.
+- Exact outputs:
+  - docs/evidence/android-sticky-worker-physical.txt
+  - docs/evidence/android-durable-worker-screen-off-5m.txt
+  - docs/evidence/android-durable-worker-screen-off-30m.txt
+
+RESOURCE OBSERVATIONS
+- Idle CPU, three one-second top samples after the screen-off job: 3.5%, 0.0%, 0.0%.
+- Memory: TOTAL PSS 46,758 KiB; TOTAL RSS 57,816 KiB; TOTAL SWAP PSS 36,808 KiB.
+- Android thermal status: 0. Observed AP 30.3/31.9 C, battery 29.5 C, USB 29.3 C,
+  skin 30.5/37.8 C; dumpsys exposed multiple sensor entries, so these are raw observations.
+- Battery: USB powered=true, charging status=2, level=40%, voltage=3957 (raw dumpsys value),
+  temperature=295 (tenths C), current now=964 (raw vendor value; unit not asserted).
+- Battery level rose during the session; this does not prove charging headroom under sustained heavy compute.
+- Current wake locks were system/other-app locks only. No PhoneBoost-attributed active wake lock was present.
+- ResourceGuard: ACTIVE; last sample reported safety=5, thermal=0, battery=0, charging=true.
+- Per-app idle network bytes/wakeups: NOT MEASURED reliably.
+
+REUSED VALID P1 EVIDENCE
+- Secure SAS pairing, mutual confirmation, persistence, IK reconnect, and no ADB tunnel: PASS.
+- Controlled Wi-Fi loss, truthful fallback without false REMOTE_SUCCESS, authenticated reconnect, and second
+  REMOTE_SUCCESS: PASS.
+- Existing force-stop evidence remains valid: an explicit stop kills the runtime and reopening creates a new
+  incarnation. Sticky restart does not change force-stop semantics.
+
+LIMITS
+- Forced deep Doze while unplugged: NOT RUN; Android documents that Doze suspends network access.
+- Reboot auto-start: NOT IMPLEMENTED / NOT CLAIMED. ON preference and pairing persist, but the user must open
+  PhoneBoost after reboot. No BOOT_COMPLETED FGS start was added.
+- Raw USB without an IP interface: unsupported as a product transport.
+- Medium 30-minute proof: PASS.
+- Extended >=1 h proof: PENDING SOAK TEST.
+
+OFFICIAL PLATFORM REFERENCES
+- https://developer.android.com/develop/background-work/services/fgs/service-types
+- https://developer.android.com/reference/android/app/Service
+- https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start
+- https://developer.android.com/training/monitoring-device-state/doze-standby
+- https://developer.android.com/develop/connectivity/bluetooth/companion-device-pairing
+- https://developer.android.com/develop/background-work/services/fgs/handle-user-stopping
+- https://developer.samsung.com/mobile/app-management.html
+
+SOAK COMMAND (after an authenticated phoneboostd is running)
+PHONEBOOST_SHARED_TOOLING=/path/to/shared-tooling \
+XDG_RUNTIME_DIR=/path/to/runtime \
+PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=3600 \
+scripts/test_android_durable_worker_physical.sh | tee /path/to/screen-off-1h-proof.txt

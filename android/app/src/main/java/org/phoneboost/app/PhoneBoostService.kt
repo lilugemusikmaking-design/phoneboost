@@ -102,7 +102,11 @@ class PhoneBoostService : Service() {
         if (secureReady && localIpTransport == null && lanPermissionState() != LanPermissionState.DENIED) {
             startLocalIpTransport()
         }
-        return START_NOT_STICKY
+        // This worker is explicitly enabled/disabled by the user and is meant to
+        // remain available for an arbitrary period. If Android reclaims the
+        // process, recreate the FGS and reload the persisted secure state. An
+        // explicit stop (including participation OFF) still ends the service.
+        return START_STICKY
     }
 
     override fun onDestroy() {

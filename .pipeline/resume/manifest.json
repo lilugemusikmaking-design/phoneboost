@@ -1,9 +1,9 @@
 {
-  "next_action": "STOP. P1 physical validation complete; do not start P2 or merge master without a new instruction.",
+  "next_action": "Run the prepared >=1 hour screen-off soak on the paired Galaxy A15 and archive its exact output; STOP before P2.",
   "writer": "Codex",
-  "parent_head": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
-  "date": "2026-09-18T22:12:54.471559+00:00",
-  "branch": "chore/pipeline-p1-user-tests",
+  "parent_head": "f4451c1675d976c497e07962f5f32f443960846b",
+  "date": "2026-09-20T11:48:54.728595+00:00",
+  "branch": "feat/android-durable-background-worker",
   "push": "verify remote on resume",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: Maestro 2/2 PASS; C05/C06 secure pairing and IK reconnect PASS; remote compute closure PASS with active lease, admission/readiness proof, controlled Wi-Fi loss, truthful local fallback, authenticated reconnect, and second REMOTE_SUCCESS."
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; new genuine REMOTE_SUCCESS after 300 s and 1800 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake. Existing P1 transport-loss/reconnect proof remains valid."
 }

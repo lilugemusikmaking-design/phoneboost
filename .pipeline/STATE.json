@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "chore/pipeline-p1-user-tests",
-  "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
-  "task": "P1 quality tooling, automated user tests, Galaxy A15 Maestro validation, and targeted remote regression complete",
+  "branch": "feat/android-durable-background-worker",
+  "head": "f4451c1675d976c497e07962f5f32f443960846b",
+  "task": "Android durable background worker audit, sticky process recovery, and physical screen-off proofs complete; extended soak pending",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -32,7 +32,14 @@
     "P1 physical: Galaxy A15 Maestro flows 2/2 PASS",
     "P1 physical: secure SAS pairing, persistence, and IK reconnect PASS",
     "P1 physical: targeted remote compute loss/fallback/reconnect closure PASS",
-    "test(android): validate Galaxy A15 physical path"
+    "test(android): validate Galaxy A15 physical path",
+    "Android durable worker: read-only architecture and official platform audit complete",
+    "Android durable worker: unchanged baseline proved Activity-independent remote compute",
+    "Android durable worker: replace START_NOT_STICKY with supported sticky FGS recovery",
+    "Android durable worker: physical sticky process recovery PASS",
+    "Android durable worker: physical screen-off 5-minute and 30-minute REMOTE_SUCCESS PASS",
+    "Android durable worker: reproducible screen-off and sticky-recovery harnesses added",
+    "fix(android): keep durable worker restartable"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -67,15 +74,26 @@
     "P1 Maestro physical PASS 2/2 on Galaxy A15: controls/advanced details and truth/startup",
     "C05/C06 physical PASS: SAS match, mutual encrypted confirmation, persisted trust, ping/pong, restart reload, IK reconnect, no ADB tunnel",
     "Targeted remote regression PASS: authenticated worker, active lease, readiness/admission proof, two exact REMOTE_SUCCESS jobs",
-    "Controlled Wi-Fi loss PASS: session and lease invalidated, explicit local fallback, no false REMOTE_SUCCESS, authenticated reconnect"
+    "Controlled Wi-Fi loss PASS: session and lease invalidated, explicit local fallback, no false REMOTE_SUCCESS, authenticated reconnect",
+    "Galaxy A15 unchanged baseline: Activity foreground/background/absent all produced genuine REMOTE_SUCCESS",
+    "Galaxy A15 pre-change service remained alive approximately 21 hours with screen off and USB charging",
+    "Root cause: prior screen wake was Maestro/keyguard UI automation; runtime remained reachable",
+    "Galaxy A15 sticky recovery: abrupt process loss changed PID, restored connectedDevice FGS and listener without Activity, pairing identity persisted",
+    "Galaxy A15 screen-off short: 300 seconds Dozing, Activity absent, new job REMOTE_SUCCESS, screen stayed Dozing",
+    "Galaxy A15 screen-off medium: 1800 seconds Dozing, Activity absent, new job REMOTE_SUCCESS, screen stayed Dozing",
+    "No PhoneBoost-attributed active wake lock; no ADB forward/reverse tunnel; no product ADB dependency",
+    "Targeted Android build PASS: assembleDebug, ControllerLeaseStateName 5/5, PairingSasDisplay 4/4, lintDebug",
+    "Mission check-fast PASS: git diff, 12 pipeline tests, actionlint, cargo fmt"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
     "Canonical documents",
-    "Physical evidence"
+    "Physical evidence",
+    "Android durable worker 5-minute and 30-minute physical screen-off proofs",
+    "Android sticky process recovery physical proof"
   ],
   "blockers": [],
-  "next_action": "STOP. P1 physical validation complete; do not start P2 or merge master without a new instruction.",
+  "next_action": "Run the prepared >=1 hour screen-off soak on the paired Galaxy A15 and archive its exact output; STOP before P2.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -89,8 +107,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:10:59.234840+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:46:10.776856+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
@@ -103,16 +121,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:10:59.336599+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:46:10.801720+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:11:04.764825+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:46:12.187301+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
@@ -123,57 +141,62 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:11:04.939337+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:46:12.265083+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
         "scripts/pipeline-android"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:12:10.152469+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:48:25.581312+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
-        "scripts/test_c05_android_physical.sh"
+        "bash",
+        "-n",
+        "scripts/test_android_durable_worker_physical.sh",
+        "scripts/test_android_sticky_worker_physical.sh"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:12:10.152469+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:48:25.581312+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
-        "scripts/prove_c12_auto_use_blake3_physical.sh"
+        "scripts/test_android_sticky_worker_physical.sh"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:12:10.152469+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:48:25.581312+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
-        "scripts/prove_p0_remote_compute_closure_physical.sh"
+        "scripts/test_android_durable_worker_physical.sh",
+        "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=300"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:12:10.152469+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:48:25.581312+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     },
     {
       "command": [
-        "scripts/pipeline-maestro"
+        "scripts/test_android_durable_worker_physical.sh",
+        "PHONEBOOST_SCREEN_OFF_WAIT_SECONDS=1800"
       ],
       "returncode": 0,
-      "date": "2026-09-18T22:12:10.152469+00:00",
-      "head": "9acdaea066699e0f0355dd0b1172d965e79bcf59"
+      "date": "2026-09-20T11:48:25.581312+00:00",
+      "head": "f4451c1675d976c497e07962f5f32f443960846b"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-18T22:12:54.456138+00:00",
-    "commit": "9acdaea066699e0f0355dd0b1172d965e79bcf59",
+    "date": "2026-09-20T11:48:54.725250+00:00",
+    "commit": "f4451c1675d976c497e07962f5f32f443960846b",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P1 final check-full 14/14 remains valid for unchanged baseline; targeted Android gate PASS after physical-test fixes: assembleDebug, lease-state 5/5, SAS display 4/4, lint; Maestro syntax and physical flows PASS.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: Maestro 2/2 PASS; C05/C06 secure pairing and IK reconnect PASS; remote compute closure PASS with active lease, admission/readiness proof, controlled Wi-Fi loss, truthful local fallback, authenticated reconnect, and second REMOTE_SUCCESS.",
+  "software_proof": "Targeted Android gate PASS on the changed APK: assembleDebug, lease-state 5/5, SAS display 4/4, lintDebug; check-fast PASS: diff check, 12 pipeline tests, actionlint, cargo fmt.",
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; new genuine REMOTE_SUCCESS after 300 s and 1800 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake. Existing P1 transport-loss/reconnect proof remains valid.",
   "canonical_documents": {
     "order": [
       {
@@ -237,6 +260,10 @@
     "Local generated Android/Cargo caches use /var/tmp/phoneboost-p0-fo4lub9x; reproducible tool installer retained",
     "Nextest runs the ordinary suite without the CPU-heavy JNI package and pb-host 64 MiB proof; the mandatory cargo-test pass executes those unchanged proofs, and an explicit nextest selection of the 64 MiB test retains its scoped 180-second allowance",
     "Two HIGH advisories remain in the legacy react-scripts svgo 1.3.x build-only path; major substitution is deferred and findings remain visible",
-    "Trivy warns that the project HTTPS tarball dependency is not parsed as a registry package; Yarn installs it from the existing project source"
+    "Trivy warns that the project HTTPS tarball dependency is not parsed as a registry package; Yarn installs it from the existing project source",
+    "Forced deep Doze while unplugged was not run; Android documents that Doze suspends network access",
+    "Automatic post-reboot worker start is not implemented or claimed; pairing and ON preference persist, but the user must open PhoneBoost after reboot",
+    "Raw USB without an Android IP interface is not a PhoneBoost product transport",
+    "Extended screen-off soak of at least one hour remains pending; 5-minute and 30-minute proofs passed"
   ]
 }

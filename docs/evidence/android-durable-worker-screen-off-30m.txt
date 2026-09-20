@@ -1,0 +1,69 @@
+SCREEN_STATE elapsed_s=0 wakefulness=Dozing
+SCREEN_STATE elapsed_s=30 wakefulness=Dozing
+SCREEN_STATE elapsed_s=60 wakefulness=Dozing
+SCREEN_STATE elapsed_s=90 wakefulness=Dozing
+SCREEN_STATE elapsed_s=120 wakefulness=Dozing
+SCREEN_STATE elapsed_s=150 wakefulness=Dozing
+SCREEN_STATE elapsed_s=180 wakefulness=Dozing
+SCREEN_STATE elapsed_s=210 wakefulness=Dozing
+SCREEN_STATE elapsed_s=240 wakefulness=Dozing
+SCREEN_STATE elapsed_s=270 wakefulness=Dozing
+SCREEN_STATE elapsed_s=300 wakefulness=Dozing
+SCREEN_STATE elapsed_s=330 wakefulness=Dozing
+SCREEN_STATE elapsed_s=360 wakefulness=Dozing
+SCREEN_STATE elapsed_s=390 wakefulness=Dozing
+SCREEN_STATE elapsed_s=420 wakefulness=Dozing
+SCREEN_STATE elapsed_s=450 wakefulness=Dozing
+SCREEN_STATE elapsed_s=480 wakefulness=Dozing
+SCREEN_STATE elapsed_s=510 wakefulness=Dozing
+SCREEN_STATE elapsed_s=540 wakefulness=Dozing
+SCREEN_STATE elapsed_s=570 wakefulness=Dozing
+SCREEN_STATE elapsed_s=600 wakefulness=Dozing
+SCREEN_STATE elapsed_s=630 wakefulness=Dozing
+SCREEN_STATE elapsed_s=660 wakefulness=Dozing
+SCREEN_STATE elapsed_s=690 wakefulness=Dozing
+SCREEN_STATE elapsed_s=720 wakefulness=Dozing
+SCREEN_STATE elapsed_s=750 wakefulness=Dozing
+SCREEN_STATE elapsed_s=780 wakefulness=Dozing
+SCREEN_STATE elapsed_s=810 wakefulness=Dozing
+SCREEN_STATE elapsed_s=840 wakefulness=Dozing
+SCREEN_STATE elapsed_s=870 wakefulness=Dozing
+SCREEN_STATE elapsed_s=900 wakefulness=Dozing
+SCREEN_STATE elapsed_s=930 wakefulness=Dozing
+SCREEN_STATE elapsed_s=960 wakefulness=Dozing
+SCREEN_STATE elapsed_s=990 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1020 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1050 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1080 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1110 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1140 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1170 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1200 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1230 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1260 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1290 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1320 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1350 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1380 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1410 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1440 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1470 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1500 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1530 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1560 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1590 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1620 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1650 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1680 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1710 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1740 wakefulness=Dozing
+SCREEN_STATE elapsed_s=1770 wakefulness=Dozing
+ANDROID_DURABLE_WORKER PASS
+SCREEN_OFF_WAIT_SECONDS=1800
+ACTIVITY=ABSENT
+FGS=CONNECTED_DEVICE
+WORKER=AUTHENTICATED
+JOB_SUBMITTED_AFTER_SCREEN_OFF=YES
+EXECUTION_SOURCE=REMOTE_SUCCESS
+SCREEN_AFTER_JOB=Dozing
+ADB_TUNNEL=NONE
