@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/android-durable-background-worker",
-  "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
-  "task": "P3 RemoteBuffer reconciliation, minimal lease-lifecycle closure, and validation",
+  "branch": "feat/p4-native-ops-c10",
+  "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+  "task": "P4 General Compute / native.ops C10 reconciliation and evidence closure",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -42,7 +42,11 @@
     "fix(android): keep durable worker restartable",
     "test(android): archive one-hour durable worker soak",
     "test(p2): close lease and ResourceGuard proof",
-    "fix(worker): release RemoteBuffer capacity with lease"
+    "fix(worker): release RemoteBuffer capacity with lease",
+    "P4: General Compute architecture and A-Z coverage-before-changes matrix archived",
+    "P4: targeted C10, WorkerCore, JNI, host and C12 reconciliation passed without product changes",
+    "P4: final check-fast and check-full 14/14 passed; evidence-only closure ready for CI",
+    "docs(p4): close native ops C10 evidence"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -101,7 +105,13 @@
     "P3 root gap closed: C07 RELEASE/expiry now policy-evicts dependent RemoteBuffers and releases consumed class-1 accounting exactly once",
     "P3 targeted: pb-worker-core 53/53 plus 2/2 doc tests; RemoteBuffer 4/4; authenticated JNI RELEASE/successor full-capacity admission PASS",
     "P3 integration: host automatic IK C08-C09-C10 Remote BLAKE3 truth path PASS; secure transport stop during active C09 PASS",
-    "P3 final check-fast PASS and check-full PASS 14/14, including nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax"
+    "P3 final check-fast PASS and check-full PASS 14/14, including nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax",
+    "P4 C10 wire checker PASS: 17 vectors plus registry, manifest, offsets, replay/conflict, exact-once release, non-resurrection and negative matrices",
+    "P4 targeted Rust PASS: PBMUX C10 2/2, WorkerCore compute 3/3, C12 local API 16/16",
+    "P4 authenticated JNI PASS: 64 MiB exact BLAKE3 plus nine same-buffer repeats, nine deterministic loss/reconnect cases, and active C10 session revocation",
+    "P4 host PASS: full IK/C07/C08/C09/C10 authority path and truthful ambiguous fallback/recovery",
+    "P4 check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
+    "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -113,7 +123,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
+  "next_action": "Observe exact-head GitHub CI; require all applicable jobs green; STOP before C11/P5.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -127,8 +137,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:10.131910+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:31.070138+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -141,16 +151,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:10.176472+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:31.120433+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:11.610986+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:33.663715+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -161,8 +171,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:11.629442+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:33.717436+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -174,8 +184,8 @@
         "--all-targets"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:12.857329+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:35.685305+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -189,8 +199,8 @@
         "ci"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:17.836292+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:01:36.976670+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -201,8 +211,8 @@
         "--workspace"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:00:52.799164+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:03:09.102906+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -214,8 +224,8 @@
         "--non-interactive"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:05:48.011046+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:10:22.718692+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -227,8 +237,8 @@
         "--runInBand"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:05:49.032265+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:10:26.720979+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -238,8 +248,8 @@
         "build"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:05:52.308257+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:10:39.943132+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -247,8 +257,8 @@
         "test"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:06:32.595653+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:11:24.025411+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -256,16 +266,16 @@
         "scripts/pipeline-android"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:07:04.171560+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:12:19.712595+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
         "scripts/pipeline-security"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:08:29.671409+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:14:15.402443+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     },
     {
       "command": [
@@ -273,17 +283,17 @@
         "--syntax-only"
       ],
       "returncode": 0,
-      "date": "2026-09-20T19:09:02.081581+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-09-21T19:16:20.706224+00:00",
+      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-20T19:10:17.450754+00:00",
-    "commit": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
+    "date": "2026-09-21T19:18:01.534881+00:00",
+    "commit": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P3 RemoteBuffer authority and ALLOC/PUT/GET/FREE coverage mapped; lease-end capacity retention fixed; targeted store, lease, JNI, transport, host integration and wire checks PASS; final check-full 14/14 PASS.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts.",
+  "software_proof": "P4 General Compute/native.ops C10 is already implemented end to end. Coverage matrix and targeted reconciliation prove the locked RemoteBuffer-only BLAKE3 profile, authority chain, exact results, replay, loss truth, cleanup and fallback semantics without a product change.",
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A retained evidence proves authenticated authority, ResourceGuard admission, real REMOTE_SUCCESS, controlled loss with explicit fallback, reconnect, second REMOTE_SUCCESS, and durable screen-off execution. P4 physical test NOT RUN because this closure changes evidence/state only and no Android/runtime/compute/transport behavior; retained evidence is not promoted beyond its recorded facts.",
   "canonical_documents": {
     "order": [
       {
@@ -382,6 +392,22 @@
     "check_fast": "PASS",
     "check_full": "PASS 14/14",
     "physical_test": "NOT RUN; existing P2 evidence retained without promotion",
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p4_native_ops_c10": {
+    "baseline": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+    "authority": [
+      "docs/protocol/PHONEBOOST_C10_REGISTRY_RESOLUTION_V0_1_001.md",
+      "docs/protocol/PHONEBOOST_C10_WIRE_ADDENDUM_V0_1_LOCKED_001.md",
+      "docs/protocol/PHONEBOOST_C12_AUTO_USE_BLAKE3_PROFILE_V0_1_LOCKED_20260901.md"
+    ],
+    "coverage_matrix": "docs/evidence/p4-native-ops-c10-coverage-before-changes.md",
+    "root_gap": "Consolidated P4 architecture, A-Z coverage, gap decision and closure evidence were absent; no product defect was demonstrated",
+    "closure": "Evidence and pipeline state only; no production, wire, Android, JNI, host or test implementation changed",
+    "targeted_result": "PASS",
+    "check_fast": "PASS",
+    "check_full": "PASS 14/14",
+    "physical_test": "NOT RUN; no runtime behavior changed and existing physical evidence retained without promotion",
     "status": "LOCAL_COMPLETE_CI_PENDING"
   }
 }

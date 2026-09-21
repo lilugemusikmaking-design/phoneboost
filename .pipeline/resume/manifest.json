@@ -1,9 +1,9 @@
 {
-  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
+  "next_action": "Observe exact-head GitHub CI; require all applicable jobs green; STOP before C11/P5.",
   "writer": "Codex",
-  "parent_head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
-  "date": "2026-09-20T19:10:17.526118+00:00",
-  "branch": "feat/android-durable-background-worker",
+  "parent_head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+  "date": "2026-09-21T19:18:01.551709+00:00",
+  "branch": "feat/p4-native-ops-c10",
   "push": "verify remote on resume",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts."
+  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A retained evidence proves authenticated authority, ResourceGuard admission, real REMOTE_SUCCESS, controlled loss with explicit fallback, reconnect, second REMOTE_SUCCESS, and durable screen-off execution. P4 physical test NOT RUN because this closure changes evidence/state only and no Android/runtime/compute/transport behavior; retained evidence is not promoted beyond its recorded facts."
 }
