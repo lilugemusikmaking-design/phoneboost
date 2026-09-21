@@ -193,3 +193,11 @@ the minimal closure artifact; final pipeline and CI outcomes are recorded in
   vulnerabilities, and checkpoint secret scan.
 - Maestro: PASS for syntax only; physical execution was intentionally NOT RUN
   for this evidence-only closure.
+
+## GitHub CI
+
+GitHub Actions run `35643969840` for checkpoint
+`bc6cb01d39c6bc336a0e916cc40cec057d353a9d` completed PASS with 7/7 jobs:
+deterministic, Maestro structure, Rust, frontend, security/dependency, Android,
+and Playwright. GitHub's Node 20 deprecation annotations did not fail a job and
+do not change the P4 result.

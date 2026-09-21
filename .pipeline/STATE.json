@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p4-native-ops-c10",
-  "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+  "head": "bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
   "task": "P4 General Compute / native.ops C10 reconciliation and evidence closure",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -46,7 +46,9 @@
     "P4: General Compute architecture and A-Z coverage-before-changes matrix archived",
     "P4: targeted C10, WorkerCore, JNI, host and C12 reconciliation passed without product changes",
     "P4: final check-fast and check-full 14/14 passed; evidence-only closure ready for CI",
-    "docs(p4): close native ops C10 evidence"
+    "P4: GitHub Actions run 35643969840 passed 7/7 on checkpoint bc6cb01",
+    "docs(p4): close native ops C10 evidence",
+    "docs(p4): record green CI closure"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -111,7 +113,8 @@
     "P4 authenticated JNI PASS: 64 MiB exact BLAKE3 plus nine same-buffer repeats, nine deterministic loss/reconnect cases, and active C10 session revocation",
     "P4 host PASS: full IK/C07/C08/C09/C10 authority path and truthful ambiguous fallback/recovery",
     "P4 check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
-    "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax"
+    "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P4 GitHub CI run 35643969840 PASS 7/7 for bc6cb01d39c6bc336a0e916cc40cec057d353a9d"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -123,7 +126,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Observe exact-head GitHub CI; require all applicable jobs green; STOP before C11/P5.",
+  "next_action": "P4 complete after exact-head CI; STOP before C11/P5 and wait for explicit instruction.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -288,8 +291,8 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-09-21T19:18:01.534881+00:00",
-    "commit": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+    "date": "2026-09-21T19:29:10.731749+00:00",
+    "commit": "bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P4 General Compute/native.ops C10 is already implemented end to end. Coverage matrix and targeted reconciliation prove the locked RemoteBuffer-only BLAKE3 profile, authority chain, exact results, replay, loss truth, cleanup and fallback semantics without a product change.",
@@ -408,6 +411,8 @@
     "check_fast": "PASS",
     "check_full": "PASS 14/14",
     "physical_test": "NOT RUN; no runtime behavior changed and existing physical evidence retained without promotion",
-    "status": "LOCAL_COMPLETE_CI_PENDING"
+    "ci_run": 35643969840,
+    "ci_result": "PASS 7/7 at bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
+    "status": "COMPLETE_CI_PASS"
   }
 }
