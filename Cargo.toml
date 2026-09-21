@@ -25,7 +25,7 @@ blake3 = { version = "=1.8.6", default-features = false, features = ["std"] }
 hex = "0.4.3"
 rand_core = "0.6.4"
 serde_json = "1.0.149"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 snow = "=0.9.6"
 rustix = "=1.1.4"
 curve25519-dalek = "=4.1.3"
