@@ -354,6 +354,7 @@ struct RuntimeInner {
     sas: Option<String>,
     begin_requested: bool,
     confirm_requested: bool,
+    confirm_dispatched: bool,
     cancel_requested: bool,
     mismatch_requested: bool,
     authenticated: bool,
@@ -417,6 +418,7 @@ impl SecureRuntime {
                 sas: None,
                 begin_requested: false,
                 confirm_requested: false,
+                confirm_dispatched: false,
                 cancel_requested: false,
                 mismatch_requested: false,
                 authenticated: false,
@@ -600,6 +602,7 @@ impl SecureRuntime {
         }
         inner.sas = None;
         inner.confirm_requested = false;
+        inner.confirm_dispatched = false;
         inner.cancel_requested = false;
         inner.mismatch_requested = false;
         inner.state = if xx {
@@ -625,6 +628,7 @@ impl SecureRuntime {
         inner.sas = None;
         inner.begin_requested = false;
         inner.confirm_requested = false;
+        inner.confirm_dispatched = false;
         inner.cancel_requested = false;
         inner.mismatch_requested = false;
         if !matches!(
@@ -676,8 +680,10 @@ impl SecureRuntime {
             .inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let confirm = inner.confirm_requested && !inner.confirm_dispatched;
+        inner.confirm_dispatched |= confirm;
         (
-            std::mem::take(&mut inner.confirm_requested),
+            confirm,
             std::mem::take(&mut inner.cancel_requested),
             std::mem::take(&mut inner.mismatch_requested),
         )

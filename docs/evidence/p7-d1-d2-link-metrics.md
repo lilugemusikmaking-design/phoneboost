@@ -89,4 +89,28 @@ Correction evidence before the follow-up checkpoint:
   dependency graph.
 - `git diff --check`: PASS.
 
-The corrected exact-head CI result is recorded only after it executes.
+The corrected primary exact-head Project pipeline run `38166504245` passed all
+7/7 jobs at checkpoint `73a3538f6d0d793cdf28bb5a74b5eab734192209`.
+CodeQL run `38166509049` passed all four language analyses and its aggregate
+gate; the pointer alert is absent.
+
+An intentionally cancelled duplicate Project pipeline run was restarted to
+restore its GitHub status. That duplicate exposed a pre-existing pairing-test
+race: the secure-session thread could consume `confirm_requested` between two
+immediate local confirmations, so the second call could be accepted rather
+than classified as a duplicate. Confirmation acceptance is now retained for
+the lifetime of the session while a separate one-shot dispatch bit prevents a
+second wire confirmation. This changes neither the pairing protocol nor its
+user-visible success semantics; it makes duplicate classification independent
+of thread scheduling.
+
+Pairing-race correction evidence before the follow-up checkpoint:
+
+- Exact formerly failing test: PASS, 1/1.
+- Complete `pb-runtime-secure` library suite: PASS, 24/24.
+- Formatting and `git diff --check`: PASS.
+- Targeted Clippy reaches only the existing `pb-pbmux` manual-range warning
+  when warnings are promoted globally; no warning is emitted for the changed
+  runtime code.
+
+The final follow-up exact-head CI result is recorded only after it executes.
