@@ -43,8 +43,10 @@ pub use startup::{
     StartupOutcome, StartupReport, host_startup,
 };
 pub use transport::{
-    AUTHENTICATED_BACKOFF_RESET, CONNECT_TIMEOUT, ConnectAttemptLimiter,
-    MAX_CONCURRENT_ATTEMPTS_PER_DEVICE, PermissionState, RETRY_BASE_MS, TransportCandidate,
-    TransportError, TransportManager, TransportMetrics, TransportState, TransportType,
-    os_jitter_sample, retry_delay_ms,
+    AUTHENTICATED_BACKOFF_RESET, AuthenticatedGoodputMeasurement, AuthenticatedRttMeasurement,
+    CONNECT_TIMEOUT, ConnectAttemptLimiter, LIVE_LINK_FRESHNESS, LinkClassObservation,
+    LinkClassSource, LinkCostRequirements, LiveLinkSnapshot, MAX_CONCURRENT_ATTEMPTS_PER_DEVICE,
+    MINIMUM_GOODPUT_WINDOW, MINIMUM_RTT_SAMPLES, NormalizedLinkClass, PermissionState,
+    RETRY_BASE_MS, TransportCandidate, TransportError, TransportManager, TransportMetrics,
+    TransportState, TransportType, ValidatedLinkCostInput, os_jitter_sample, retry_delay_ms,
 };

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "docs/agentic-integration-decision-v0-1",
-  "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d",
-  "task": "Agentic integration pre-C13 and C12 boundary decision preparation",
+  "branch": "feat/p7-d1-d2-link-metrics",
+  "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51",
+  "task": "P7 D1/D2 normalized link identity and authenticated live-metric foundations",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -66,7 +66,10 @@
     "fix(runtime): preserve authenticated transfers under backpressure",
     "docs(p6): record Galaxy A15 capacity proof",
     "docs: draft pre-C13 and C12 boundary decisions",
-    "docs: approve and test agentic boundary contract"
+    "docs: approve and test agentic boundary contract",
+    "P7 D1: connected-route link classification and exact pb-link-v1 signatures implemented",
+    "P7 D2: authenticated-session-bound live metric validation foundations implemented",
+    "feat(host): add normalized link metric foundations"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -146,7 +149,9 @@
     "P6 corrected secure runtime PASS 24/24, host PASS 181/181, deterministic JNI disconnect scenario PASS 1/1, full JNI PASS 16/16",
     "P6 corrected final check-full PASS 14/14: nextest 377/377, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
     "P6 corrected exact-head GitHub Actions run 38152665185 PASS 7/7 for 5b31b89f26694ff04402591aa22dd045d44cf117",
-    "P6 Galaxy A15 physical PASS: fresh authenticated capacity metrics produced REMOTE_SUCCESS; metrics older than six seconds with an active lease produced truthful WORKER_UNHEALTHY local fallback; resumed fresh metrics restored REMOTE_SUCCESS"
+    "P6 Galaxy A15 physical PASS: fresh authenticated capacity metrics produced REMOTE_SUCCESS; metrics older than six seconds with an active lease produced truthful WORKER_UNHEALTHY local fallback; resumed fresh metrics restored REMOTE_SUCCESS",
+    "Agentic boundary preparation PR 13 exact-head c7b267a PASS: Project pipeline, CodeQL and CodeRabbit all green; merge state CLEAN",
+    "P7 D1/D2 targeted PASS: transport 11/11, discovery 3/3, pb-host full library 187/187 including 64 MiB authenticated proof, targeted check and clippy PASS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -158,7 +163,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Create a separate D1/D2 implementation increment; keep C12 ingress and MCP blocked",
+  "next_action": "Monitor exact-head CI; then implement C13 in a separate stacked increment while C12 ingress and MCP remain blocked",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -172,8 +177,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:27:12.420513+00:00",
-      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
+      "date": "2026-10-11T18:48:41.661183+00:00",
+      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
     },
     {
       "command": [
@@ -186,16 +191,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:27:12.463606+00:00",
-      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
+      "date": "2026-10-11T18:48:42.049710+00:00",
+      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:27:15.187199+00:00",
-      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
+      "date": "2026-10-11T18:48:44.159498+00:00",
+      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
     },
     {
       "command": [
@@ -206,13 +211,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:27:15.239476+00:00",
-      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
+      "date": "2026-10-11T18:48:44.255478+00:00",
+      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T18:27:34.758430+00:00",
-    "commit": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d",
+    "date": "2026-10-11T18:49:38.761231+00:00",
+    "commit": "c7b267a889ef3545a90ed580f6191d4c54ee1f51",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -384,5 +389,16 @@
     "stop_conditions_preserved": true,
     "contract_check": "PASS: four unique transport signatures, live metric provenance/freshness, valid C13 fixture plus 11 negative profiles, C12/MCP stop conditions",
     "status": "APPROVED_DIRECTION_CONTRACT_CANDIDATE_GREEN"
+  },
+  "p7_d1_d2_link_metrics": {
+    "baseline": "c7b267a889ef3545a90ed580f6191d4c54ee1f51",
+    "coverage_evidence": "docs/evidence/p7-d1-d2-link-metrics.md",
+    "scope": "D1 connected-route normalized link identity plus D2 validated live-metric value types; no sampling producer, C13 persistence, SPEED/BALANCED activation, C12 ingress or MCP",
+    "route_binding": "Classification occurs after TCP connect from the kernel-selected local address and positive Linux interface metadata; ambiguous evidence fails closed to local_ip_unknown",
+    "targeted_result": "PASS: transport 11/11, discovery 3/3, pb-host library 187/187 including the 64 MiB proof",
+    "check_fast": "PASS",
+    "contract_check": "PASS",
+    "physical_test": "NOT RUN; no speed placement or Android behavior enabled",
+    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_CI_PENDING"
   }
 }

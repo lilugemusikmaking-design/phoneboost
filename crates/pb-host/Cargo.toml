@@ -18,6 +18,7 @@ required-features = ["c04-test-probe"]
 [dependencies]
 blake3.workspace = true
 dbus.workspace = true
+libc.workspace = true
 pb-pbmux = { path = "../pb-pbmux" }
 pb-runtime-secure = { path = "../pb-runtime-secure" }
 pb-types = { path = "../pb-types" }
