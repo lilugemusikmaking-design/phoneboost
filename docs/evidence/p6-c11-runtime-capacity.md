@@ -150,6 +150,23 @@ Final correction evidence before the new checkpoint:
 Exact-head GitHub Actions for this correction is recorded only after the new
 checkpoint is pushed and completes.
 
-No authorized Android device was attached when the physical check was probed.
-The new Android-to-host heartbeat path therefore remains explicitly
-`PHYSICAL_NOT_RUN`; prior Galaxy A15 evidence is retained without promotion.
+## Galaxy A15 physical closure
+
+The exact corrected commit was installed and exercised on the authorized
+Galaxy A15 (`SM-A155F`, serial `RZ8X500LL3A`). After human-confirmed SAS
+pairing, fresh authenticated capacity metrics produced the exact BLAKE3 digest
+with `REMOTE_SUCCESS`.
+
+The Android process was then suspended for 6.59 seconds: long enough to cross
+the strict six-second capacity-metric freshness bound, but shorter than the
+ten-second transport liveness bound. Authentication remained present, the
+node remained `AVAILABLE / READY`, and the controller lease remained
+`ACTIVE / C07_ACK_FRESH`. The same request returned the exact local digest as
+`LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE / WORKER_UNHEALTHY`, never a false
+remote success. Resuming the process restored a second genuine
+`REMOTE_SUCCESS` without re-pairing.
+
+The sanitized transcript, hashes, timings, cleanup, and scope limits are in
+`docs/evidence/p6-c11-runtime-capacity-physical.txt`. No ADB forward or reverse
+tunnel was present; ADB was used only to inject and safely recover the bounded
+physical pause.

@@ -1,9 +1,9 @@
 {
-  "next_action": "Connect and authorize Galaxy A15, prove authenticated heartbeat remote success and stale-metrics local fallback, then request an explicit decision before any C12, C13, or agentic-integration change",
+  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
   "writer": "Codex",
-  "parent_head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53",
-  "date": "2026-10-11T15:45:54.097743+00:00",
+  "parent_head": "5b31b89f26694ff04402591aa22dd045d44cf117",
+  "date": "2026-10-11T17:31:29.907678+00:00",
   "branch": "feat/p6-c11-runtime-capacity",
   "push": "verify remote on resume",
-  "physical_proof": "P6 physical test NOT RUN because no authorized Android device was attached at the probe. This increment changes Android-to-host authenticated heartbeat behavior, so historical Galaxy A15 evidence is retained without promotion."
+  "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

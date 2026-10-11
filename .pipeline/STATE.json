@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p6-c11-runtime-capacity",
-  "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53",
+  "head": "5b31b89f26694ff04402591aa22dd045d44cf117",
   "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -63,7 +63,8 @@
     "P6 closure follow-up: authenticated transport backpressure and active-request liveness corrected without changing product deadlines",
     "P6 closure follow-up: JNI resilience harness aligned with the existing 35-second application request bound",
     "P6 closure follow-up: final local check-full passed all 14 commands",
-    "fix(runtime): preserve authenticated transfers under backpressure"
+    "fix(runtime): preserve authenticated transfers under backpressure",
+    "docs(p6): record Galaxy A15 capacity proof"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -141,7 +142,9 @@
     "P6 closure CI run 38127226539 failed twice only on the 64 MiB host proof; bounded rerun stopped and load-sensitive transport loss reproduced locally",
     "P6 transport correction: bounded encrypted-record writes, queued authenticated traffic before idle expiry, idle 10-second bound preserved, active request bounded by the existing 35-second deadline",
     "P6 corrected secure runtime PASS 24/24, host PASS 181/181, deterministic JNI disconnect scenario PASS 1/1, full JNI PASS 16/16",
-    "P6 corrected final check-full PASS 14/14: nextest 377/377, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax"
+    "P6 corrected final check-full PASS 14/14: nextest 377/377, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P6 corrected exact-head GitHub Actions run 38152665185 PASS 7/7 for 5b31b89f26694ff04402591aa22dd045d44cf117",
+    "P6 Galaxy A15 physical PASS: fresh authenticated capacity metrics produced REMOTE_SUCCESS; metrics older than six seconds with an active lease produced truthful WORKER_UNHEALTHY local fallback; resumed fresh metrics restored REMOTE_SUCCESS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -153,7 +156,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Connect and authorize Galaxy A15, prove authenticated heartbeat remote success and stale-metrics local fallback, then request an explicit decision before any C12, C13, or agentic-integration change",
+  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -167,8 +170,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T15:44:02.165021+00:00",
-      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
+      "date": "2026-10-11T17:31:01.690758+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
@@ -181,16 +184,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T15:44:02.214936+00:00",
-      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
+      "date": "2026-10-11T17:31:01.745259+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T15:44:05.050089+00:00",
-      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
+      "date": "2026-10-11T17:31:05.031292+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
@@ -201,17 +204,17 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T15:44:05.126199+00:00",
-      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
+      "date": "2026-10-11T17:31:05.173033+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T15:45:54.090269+00:00",
-    "commit": "c0246adbf0723bb5513ae9fd72e01cf34a017a53",
+    "date": "2026-10-11T17:31:29.896649+00:00",
+    "commit": "5b31b89f26694ff04402591aa22dd045d44cf117",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P6 software PASS: targeted planner/runtime/worker/JNI/host tests; final check-full PASS 14/14 including nextest 376/376 and mandatory workspace tests; exact-head GitHub Actions run 38126598519 PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d.",
-  "physical_proof": "P6 physical test NOT RUN because no authorized Android device was attached at the probe. This increment changes Android-to-host authenticated heartbeat behavior, so historical Galaxy A15 evidence is retained without promotion.",
+  "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
+  "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present.",
   "canonical_documents": {
     "order": [
       {
