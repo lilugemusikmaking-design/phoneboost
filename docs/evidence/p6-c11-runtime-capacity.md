@@ -81,3 +81,28 @@ The same first run also found that this fresh worktree did not point at the
 already verified ignored Playwright, Android, security, and pre-commit caches.
 The worktree-local ignored tool paths were connected to those existing caches;
 no dependency version or product source was changed for that environment fix.
+
+## Final software and CI result
+
+- Full repository pipeline: PASS, 14/14 commands.
+- Rust nextest: PASS, 376/376 ordinary tests; the scoped 64 MiB test remained
+  excluded from nextest and passed in the mandatory workspace `cargo test`.
+- Mandatory Rust workspace tests: PASS, including `phoneboost-core-jni` 16/16
+  and `pb-host` 181/181.
+- Frontend: PASS, 331/331 tests and production build.
+- Playwright: PASS, 10/10 journeys.
+- Android: PASS, release JNI build, debug APK, lease-state 5/5, SAS-display 4/4,
+  and lint.
+- Security: cargo-deny PASS; Trivy reported zero detected vulnerabilities in
+  Cargo, Python, and Yarn inputs and the CRITICAL gate passed.
+- Maestro structure: PASS for both flows.
+- First CI checkpoint `96c001d590bbe71afd2d42e0439a94627aff311f`:
+  FAIL only in the Rust job because of the asynchronous JNI test-client issue
+  documented above; the other six jobs passed.
+- Corrected exact-head CI checkpoint
+  `67c00547626ff57d258f0dceeadf122878dea04d`: PASS 7/7 in GitHub Actions,
+  run `38126598519`.
+
+No authorized Android device was attached when the physical check was probed.
+The new Android-to-host heartbeat path therefore remains explicitly
+`PHYSICAL_NOT_RUN`; prior Galaxy A15 evidence is retained without promotion.

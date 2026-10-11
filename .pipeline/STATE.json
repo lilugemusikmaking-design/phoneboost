@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p6-c11-runtime-capacity",
-  "head": "96c001d590bbe71afd2d42e0439a94627aff311f",
+  "head": "67c00547626ff57d258f0dceeadf122878dea04d",
   "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -55,8 +55,11 @@
     "P6: authenticated metrics bridge and C11 CAPACITY runtime wiring implemented",
     "P6: targeted runtime, planner, worker and host tests passed",
     "P6: JNI test client consumes authenticated unsolicited metrics while awaiting application responses",
+    "P6: final local check-full passed all 14 commands",
+    "P6: corrected exact-head GitHub Actions passed 7/7",
     "feat(host): wire authenticated C11 capacity placement",
-    "test(android): handle unsolicited capacity metrics"
+    "test(android): handle unsolicited capacity metrics",
+    "docs(p6): record capacity runtime software closure"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -128,7 +131,9 @@
     "P6 targeted: secure/runtime and WorkerCore suites PASS 22/22 and 53/53 before the added heartbeat binding test; added binding test PASS 1/1",
     "P6 host: deterministic planner PASS 14/14, runtime CAPACITY gate test PASS 1/1, authenticated remote path PASS 1/1, full pb-host PASS 181/181",
     "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt",
-    "P6 first full-run diagnostic: nextest 376/376 PASS; JNI async-frame assumption identified and corrected; phoneboost-core-jni 16/16 PASS"
+    "P6 first full-run diagnostic: nextest 376/376 PASS; JNI async-frame assumption identified and corrected; phoneboost-core-jni 16/16 PASS",
+    "P6 final check-full PASS 14/14: nextest 376/376, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P6 GitHub CI run 38126598519 PASS 7/7 for 67c00547626ff57d258f0dceeadf122878dea04d"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -140,7 +145,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Rerun full repository pipeline with verified local tool caches, then close exact-head CI and physical heartbeat proof",
+  "next_action": "Connect and authorize Galaxy A15, prove authenticated heartbeat remote success and stale-metrics local fallback, then scope C13 persistence",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -154,8 +159,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:11.500794+00:00",
-      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
+      "date": "2026-10-11T08:56:53.783865+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
     },
     {
       "command": [
@@ -168,16 +173,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:11.522192+00:00",
-      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
+      "date": "2026-10-11T08:56:53.791961+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:12.091862+00:00",
-      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
+      "date": "2026-10-11T08:56:54.312192+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
     },
     {
       "command": [
@@ -188,17 +193,129 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:12.104263+00:00",
-      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
+      "date": "2026-10-11T08:56:54.325340+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "clippy",
+        "--locked",
+        "--workspace",
+        "--all-targets"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:56:54.895624+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "nextest",
+        "run",
+        "--locked",
+        "--workspace",
+        "--profile",
+        "ci"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:56:56.118838+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-with-sccache",
+        "cargo",
+        "test",
+        "--locked",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:58:25.809846+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "install",
+        "--frozen-lockfile",
+        "--non-interactive"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:03:23.051951+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "test",
+        "--watchAll=false",
+        "--runInBand"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:03:23.926757+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "build"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:03:26.152716+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-playwright",
+        "test"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:03:34.564767+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/pipeline-android"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:03:56.680019+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-security"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:05:41.088244+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    },
+    {
+      "command": [
+        "scripts/pipeline-maestro",
+        "--syntax-only"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T09:05:47.592934+00:00",
+      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T08:56:40.380239+00:00",
-    "commit": "96c001d590bbe71afd2d42e0439a94627aff311f",
+    "date": "2026-10-11T09:06:59.920426+00:00",
+    "commit": "67c00547626ff57d258f0dceeadf122878dea04d",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P6 targeted software PASS: compile across secure runtime, worker, host and JNI; planner 14/14; pb-host 181/181; authenticated heartbeat binding 1/1; native check-fast PASS. Full pipeline and exact-head CI pending.",
-  "physical_proof": "P6 physical test NOT YET RUN. This increment changes Android-to-host authenticated heartbeat behavior, so historical device evidence is retained without promotion until the new path is exercised physically.",
+  "software_proof": "P6 software PASS: targeted planner/runtime/worker/JNI/host tests; final check-full PASS 14/14 including nextest 376/376 and mandatory workspace tests; exact-head GitHub Actions run 38126598519 PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d.",
+  "physical_proof": "P6 physical test NOT RUN because no authorized Android device was attached at the probe. This increment changes Android-to-host authenticated heartbeat behavior, so historical Galaxy A15 evidence is retained without promotion.",
   "canonical_documents": {
     "order": [
       {
@@ -345,9 +462,9 @@
     "runtime_binding": "Authenticated responder identity plus active C07 lease, worker incarnation and C08 health freshness; host TTL is six seconds.",
     "targeted_result": "PASS: planner 14/14, pb-host 181/181, secure heartbeat binding 1/1, worker baseline 53/53",
     "check_fast": "PASS",
-    "check_full": "PENDING",
-    "physical_test": "PENDING",
-    "ci_result": "PENDING",
-    "status": "SOFTWARE_TARGETED_PASS"
+    "check_full": "PASS 14/14",
+    "physical_test": "NOT RUN; no authorized Android device attached",
+    "ci_result": "PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d, run 38126598519",
+    "status": "SOFTWARE_CI_PASS_PENDING_PHYSICAL"
   }
 }
