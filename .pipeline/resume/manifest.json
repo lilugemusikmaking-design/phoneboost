@@ -1,9 +1,9 @@
 {
-  "next_action": "Require corrected PR 14 exact-head Project pipeline and CodeQL green; then create the separate C13 persistence increment",
+  "next_action": "Require PR exact-head Project pipeline and CodeQL green; keep SPEED/BALANCED, C12 ingress and MCP blocked",
   "writer": "Codex",
-  "parent_head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9",
-  "date": "2026-10-11T19:04:43.684474+00:00",
-  "branch": "feat/p7-d1-d2-link-metrics",
+  "parent_head": "3d81ec56a875659e8d597ae616a1392069fab548",
+  "date": "2026-10-11T19:48:20.842758+00:00",
+  "branch": "feat/p8-c13-performance-profile",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

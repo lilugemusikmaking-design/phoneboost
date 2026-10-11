@@ -23,6 +23,7 @@ pb-pbmux = { path = "../pb-pbmux" }
 pb-runtime-secure = { path = "../pb-runtime-secure" }
 pb-types = { path = "../pb-types" }
 rustix = { workspace = true, features = ["fs", "net", "process"] }
+serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
