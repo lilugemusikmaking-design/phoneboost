@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p4-native-ops-c10",
-  "head": "bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
-  "task": "P4 General Compute / native.ops C10 reconciliation and evidence closure",
+  "branch": "feat/p5-planner-c11",
+  "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
+  "task": "P5 C11 deterministic planner core",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -48,7 +48,8 @@
     "P4: final check-fast and check-full 14/14 passed; evidence-only closure ready for CI",
     "P4: GitHub Actions run 35643969840 passed 7/7 on checkpoint bc6cb01",
     "docs(p4): close native ops C10 evidence",
-    "docs(p4): record green CI closure"
+    "docs(p4): record green CI closure",
+    "feat(host): add fail-closed C11 planner core"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -126,45 +127,13 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "P4 complete after exact-head CI; STOP before C11/P5 and wait for explicit instruction.",
+  "next_action": "Wait for exact-head CI; then scope separate C11 runtime wiring without changing C12 schema.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
     "Grok manual milestone review; non-blocking P0"
   ],
   "last_tests": [
-    {
-      "command": [
-        "git",
-        "diff",
-        "--check"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:01:31.070138+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "python3",
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        "tests/pipeline",
-        "-v"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:01:31.120433+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "actionlint"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:01:33.663715+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
     {
       "command": [
         "cargo",
@@ -174,8 +143,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-21T19:01:33.717436+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+      "date": "2026-10-11T07:45:28.788971+00:00",
+      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
     },
     {
       "command": [
@@ -187,8 +156,8 @@
         "--all-targets"
       ],
       "returncode": 0,
-      "date": "2026-09-21T19:01:35.685305+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+      "date": "2026-10-11T07:45:29.610530+00:00",
+      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
     },
     {
       "command": [
@@ -202,8 +171,8 @@
         "ci"
       ],
       "returncode": 0,
-      "date": "2026-09-21T19:01:36.976670+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+      "date": "2026-10-11T07:45:37.226096+00:00",
+      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
     },
     {
       "command": [
@@ -214,89 +183,17 @@
         "--workspace"
       ],
       "returncode": 0,
-      "date": "2026-09-21T19:03:09.102906+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "install",
-        "--frozen-lockfile",
-        "--non-interactive"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:10:22.718692+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "test",
-        "--watchAll=false",
-        "--runInBand"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:10:26.720979+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "build"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:10:39.943132+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "scripts/pipeline-playwright",
-        "test"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:11:24.025411+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "bash",
-        "scripts/pipeline-android"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:12:19.712595+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "scripts/pipeline-security"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:14:15.402443+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-    },
-    {
-      "command": [
-        "scripts/pipeline-maestro",
-        "--syntax-only"
-      ],
-      "returncode": 0,
-      "date": "2026-09-21T19:16:20.706224+00:00",
-      "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+      "date": "2026-10-11T07:47:24.477046+00:00",
+      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-21T19:29:10.731749+00:00",
-    "commit": "bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
+    "date": "2026-10-11T08:01:05.856801+00:00",
+    "commit": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P4 General Compute/native.ops C10 is already implemented end to end. Coverage matrix and targeted reconciliation prove the locked RemoteBuffer-only BLAKE3 profile, authority chain, exact results, replay, loss truth, cleanup and fallback semantics without a product change.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A retained evidence proves authenticated authority, ResourceGuard admission, real REMOTE_SUCCESS, controlled loss with explicit fallback, reconnect, second REMOTE_SUCCESS, and durable screen-off execution. P4 physical test NOT RUN because this closure changes evidence/state only and no Android/runtime/compute/transport behavior; retained evidence is not promoted beyond its recorded facts.",
+  "software_proof": "P5 C11 planner core exact tests PASS 14/14, pb-host PASS 180/180, native check-fast PASS, and Rust check-full PASS including nextest 374/374 plus the mandatory workspace cargo test.",
+  "physical_proof": "P5 C11 planner core physical test NOT RUN because this bounded increment does not wire the planner into runtime behavior and changes no Android, transport, compute or device lifecycle path. Historical evidence is retained without promotion.",
   "canonical_documents": {
     "order": [
       {
@@ -414,5 +311,26 @@
     "ci_run": 35643969840,
     "ci_result": "PASS 7/7 at bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
     "status": "COMPLETE_CI_PASS"
+  },
+  "p5_planner_c11_core": {
+    "baseline": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
+    "authority": [
+      "PHONEBOOST_CONTRACT_SET_V1_3_QR01A_QR01B_LOCKED.docx#C11",
+      "PHONEBOOST_TECH_SHEET_V1_3_QR01A_QR01B_LOCKED_IMPLEMENTATION_HANDOFF.docx#14",
+      "PHONEBOOST_PSEUDOCODE_CRITICAL_PATHS_V1_1_FINAL.docx#17.15"
+    ],
+    "authority_sha256": {
+      "contract_set": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+      "tech_sheet": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1"
+    },
+    "coverage_matrix": "docs/evidence/p5-c11-planner-core-coverage-before-changes.md",
+    "root_gap": "No C11 host planner or performance-profile decision model existed.",
+    "scope": "Pure deterministic host decision core only; no runtime wiring, persistence, benchmark producer or claim.",
+    "targeted_result": "PASS 14/14",
+    "pb_host_result": "PASS 180/180",
+    "check_fast": "PASS",
+    "rust_check_full": "PASS: clippy, nextest 374/374, mandatory workspace cargo test",
+    "physical_test": "NOT RUN; no runtime or Android behavior changed",
+    "status": "SOFTWARE_PASS_PENDING_CI"
   }
 }

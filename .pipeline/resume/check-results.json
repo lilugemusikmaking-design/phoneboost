@@ -1,38 +1,6 @@
 [
   {
     "command": [
-      "git",
-      "diff",
-      "--check"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:01:31.070138+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "python3",
-      "-m",
-      "unittest",
-      "discover",
-      "-s",
-      "tests/pipeline",
-      "-v"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:01:31.120433+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "actionlint"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:01:33.663715+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
       "cargo",
       "fmt",
       "--all",
@@ -40,8 +8,8 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-09-21T19:01:33.717436+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+    "date": "2026-10-11T07:45:28.788971+00:00",
+    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
   },
   {
     "command": [
@@ -53,8 +21,8 @@
       "--all-targets"
     ],
     "returncode": 0,
-    "date": "2026-09-21T19:01:35.685305+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+    "date": "2026-10-11T07:45:29.610530+00:00",
+    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
   },
   {
     "command": [
@@ -68,8 +36,8 @@
       "ci"
     ],
     "returncode": 0,
-    "date": "2026-09-21T19:01:36.976670+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+    "date": "2026-10-11T07:45:37.226096+00:00",
+    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
   },
   {
     "command": [
@@ -80,79 +48,7 @@
       "--workspace"
     ],
     "returncode": 0,
-    "date": "2026-09-21T19:03:09.102906+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "install",
-      "--frozen-lockfile",
-      "--non-interactive"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:10:22.718692+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "test",
-      "--watchAll=false",
-      "--runInBand"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:10:26.720979+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "build"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:10:39.943132+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "scripts/pipeline-playwright",
-      "test"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:11:24.025411+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "bash",
-      "scripts/pipeline-android"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:12:19.712595+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "scripts/pipeline-security"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:14:15.402443+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
-  },
-  {
-    "command": [
-      "scripts/pipeline-maestro",
-      "--syntax-only"
-    ],
-    "returncode": 0,
-    "date": "2026-09-21T19:16:20.706224+00:00",
-    "head": "17817c11c2bc556e17d984dcb52a05b9a8497c2f"
+    "date": "2026-10-11T07:47:24.477046+00:00",
+    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
   }
 ]

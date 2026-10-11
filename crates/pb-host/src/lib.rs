@@ -7,6 +7,7 @@ mod admission;
 mod auto_use;
 mod discovery;
 mod local_api;
+mod planner;
 mod remote_secure;
 mod startup;
 mod transport;
@@ -27,6 +28,11 @@ pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE
 pub use local_api::{
     A4_DEFERRED_HANDLER, LocalApiContext, LocalApiRequestEvent, LocalHandlerDomain,
     serve_local_client,
+};
+pub use planner::{
+    BatteryPolicy, CostInput, PERFORMANCE_PROFILE_TTL, PerformanceEvidence, PerformanceProfile,
+    PerformanceProfileKey, PlacementDecision, PlacementMode, PlacementReason, PlacementTarget,
+    PlannerInput, ProfileInvalidationReason, ProfileStatus, RemoteGates, ThermalClass,
 };
 pub use remote_secure::{
     initialize_remote_secure, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,
