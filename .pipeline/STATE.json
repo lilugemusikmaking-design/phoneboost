@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p6-c11-runtime-capacity",
-  "head": "5b31b89f26694ff04402591aa22dd045d44cf117",
-  "task": "P6 C11 authenticated runtime capacity placement",
+  "branch": "docs/agentic-integration-decision-v0-1",
+  "head": "25103de799d56866df50c3aeb3146872f45a0699",
+  "task": "Agentic integration pre-C13 and C12 boundary decision preparation",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -64,7 +64,8 @@
     "P6 closure follow-up: JNI resilience harness aligned with the existing 35-second application request bound",
     "P6 closure follow-up: final local check-full passed all 14 commands",
     "fix(runtime): preserve authenticated transfers under backpressure",
-    "docs(p6): record Galaxy A15 capacity proof"
+    "docs(p6): record Galaxy A15 capacity proof",
+    "docs: draft pre-C13 and C12 boundary decisions"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -156,7 +157,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
+  "next_action": "Request explicit D1-D4 review; do not implement transport-key, C13 persistence, C12 ingress, or MCP changes without approval",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -170,8 +171,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T17:31:01.690758+00:00",
-      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
+      "date": "2026-10-11T18:08:12.762798+00:00",
+      "head": "25103de799d56866df50c3aeb3146872f45a0699"
     },
     {
       "command": [
@@ -184,16 +185,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T17:31:01.745259+00:00",
-      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
+      "date": "2026-10-11T18:08:12.797780+00:00",
+      "head": "25103de799d56866df50c3aeb3146872f45a0699"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T17:31:05.031292+00:00",
-      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
+      "date": "2026-10-11T18:08:15.808279+00:00",
+      "head": "25103de799d56866df50c3aeb3146872f45a0699"
     },
     {
       "command": [
@@ -204,13 +205,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T17:31:05.173033+00:00",
-      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
+      "date": "2026-10-11T18:08:15.845737+00:00",
+      "head": "25103de799d56866df50c3aeb3146872f45a0699"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T17:31:29.896649+00:00",
-    "commit": "5b31b89f26694ff04402591aa22dd045d44cf117",
+    "date": "2026-10-11T18:09:30.940382+00:00",
+    "commit": "25103de799d56866df50c3aeb3146872f45a0699",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -362,8 +363,20 @@
     "targeted_result": "PASS: planner 14/14, pb-host 181/181, secure heartbeat binding 1/1, worker baseline 53/53",
     "check_fast": "PASS",
     "check_full": "PASS 14/14",
-    "physical_test": "NOT RUN; no authorized Android device attached",
-    "ci_result": "PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d, run 38126598519",
-    "status": "SOFTWARE_CI_PASS_PENDING_PHYSICAL"
+    "physical_test": "PASS on Galaxy A15 SM-A155F: fresh metrics remote success, stale metrics truthful local fallback, resumed metrics remote success",
+    "ci_result": "PASS 7/7 at f9fd5ef80cc1a8c6f7d6382110a8f0110041c0d1, run 38160029348; PR checks and CodeQL all PASS",
+    "status": "COMPLETE_CI_AND_PHYSICAL_PASS"
+  },
+  "agentic_integration_preparation": {
+    "base": "f9fd5ef80cc1a8c6f7d6382110a8f0110041c0d1",
+    "source_branch": "origin/docs/agentic-integration-prep-v0-1",
+    "source_documents": [
+      "docs/agentic-integration/PHONEBOOST_AGENTIC_INTEGRATION_PREP_HANDOFF_V0_1.md",
+      "docs/agentic-integration/PHONEBOOST_MCP_CONNECTOR_SPIKE_BRIEF_V0_1.md"
+    ],
+    "decision_draft": "docs/agentic-integration/PHONEBOOST_PRE_C13_C12_BOUNDARY_DECISION_DRAFT_V0_1.md",
+    "scope": "Non-normative D1-D4 decision preparation only; no C12/C13/runtime/MCP implementation",
+    "stop_conditions_preserved": true,
+    "status": "PROPOSED_FOR_EXPLICIT_REVIEW"
   }
 }
