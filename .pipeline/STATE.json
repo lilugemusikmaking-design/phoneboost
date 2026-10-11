@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p8-c13-performance-profile",
-  "head": "3d81ec56a875659e8d597ae616a1392069fab548",
-  "task": "P8 C13 private atomic performance-profile persistence",
+  "branch": "docs/c12-import-resource-contract-v0-1",
+  "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
+  "task": "P9 proposed exact C12 import resource and lifecycle contract",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -77,7 +77,11 @@
     "P8 C13: exact typed private atomic performance-profile persistence implemented",
     "P8 C13: complete-key, expiry, filesystem and malformed-input negative oracles PASS",
     "P8 C13: full pb-host 195/195 including authenticated 64 MiB proof PASS",
-    "feat(host): persist private C13 performance profiles"
+    "feat(host): persist private C13 performance profiles",
+    "P8 C13 exact-head Project pipeline and CodeQL PASS; PR 15 CLEAN",
+    "P9 C12 import: exact resource/lifecycle proposal drafted without product implementation",
+    "P9 C12 import: deterministic consistency and 11 negative contract oracles PASS",
+    "docs: propose exact C12 import resource contract"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -166,7 +170,10 @@
     "P7 pairing race correction: formerly failing exact test PASS 1/1 and complete pb-runtime-secure PASS 24/24",
     "P8 C13 targeted PASS: persistence 8/8, planner 14/14, complete pb-host 195/195 including authenticated 64 MiB proof",
     "P8 C13 static/security PASS: offline check, targeted Clippy with no changed-code warning, cargo-deny advisories/bans/licenses/sources, agentic boundary checker and diff check",
-    "P8 C13 native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt"
+    "P8 C13 native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
+    "P8 C13 exact-head PASS at cd02dbe813e4fd3b0dd577e28635a0c9bee81d67: Project pipeline runs 38169755643 and 38169752853 7/7, CodeQL 38169755646 and CodeRabbit PASS, PR 15 CLEAN",
+    "P9 C12 import proposal checker PASS: repository ceiling alignment, resource, authority, privacy and 11/11 negative oracles",
+    "P9 C12 import proposal native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -177,8 +184,10 @@
     "P2 Galaxy A15 remote success/loss/fallback/reconnect proof",
     "Android durable worker one-hour physical screen-off proof"
   ],
-  "blockers": [],
-  "next_action": "Require PR exact-head Project pipeline and CodeQL green; keep SPEED/BALANCED, C12 ingress and MCP blocked",
+  "blockers": [
+    "Explicit product-owner approval or revision of the proposed C12 import byte, count, aggregate, TTL, requester-binding and cancellation limits"
+  ],
+  "next_action": "Request explicit product-owner approval or revision; do not change C12 schema, implement ingress, or start MCP",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -192,8 +201,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:47:21.634436+00:00",
-      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
+      "date": "2026-10-11T20:03:27.167509+00:00",
+      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
     },
     {
       "command": [
@@ -206,16 +215,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:47:21.697052+00:00",
-      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
+      "date": "2026-10-11T20:03:27.563915+00:00",
+      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:47:24.768229+00:00",
-      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
+      "date": "2026-10-11T20:03:30.043560+00:00",
+      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
     },
     {
       "command": [
@@ -226,13 +235,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:47:24.923344+00:00",
-      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
+      "date": "2026-10-11T20:03:30.130383+00:00",
+      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T19:48:20.834377+00:00",
-    "commit": "3d81ec56a875659e8d597ae616a1392069fab548",
+    "date": "2026-10-11T20:04:11.550635+00:00",
+    "commit": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -430,6 +439,19 @@
     "check_fast": "PASS",
     "dependency_security": "PASS: cargo-deny advisories, bans, licenses and sources",
     "physical_test": "NOT RUN; no performance placement or Android runtime behavior enabled",
-    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_CI_PENDING"
+    "ci_result": "PASS 7/7 in runs 38169755643 and 38169752853 at cd02dbe813e4fd3b0dd577e28635a0c9bee81d67; CodeQL and CodeRabbit PASS; PR 15 CLEAN",
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p9_c12_import_contract_proposal": {
+    "baseline": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
+    "decision": "docs/agentic-integration/PHONEBOOST_C12_IMPORT_RESOURCE_DECISION_V0_1.md",
+    "machine_contract": "docs/agentic-integration/contracts/phoneboost-c12-import-v1.proposed.json",
+    "checker": "scripts/check_c12_import_contract_v0_1.py",
+    "scope": "Exact resource and lifecycle proposal only; no C12 schema, IPC path, product implementation or MCP",
+    "proposal": "128 MiB object, 4 per requester, 8 per UID, 256 MiB aggregate, one/two concurrent receivers, 60 s receive deadline, 5 min ready TTL, 5 s cancellation acknowledgement, connection-bound 256-bit handles",
+    "contract_check": "PASS: repository ceiling alignment and 11/11 negative mutations rejected",
+    "check_fast": "PASS",
+    "approval": "REQUIRED",
+    "status": "PROPOSED_BLOCKED_ON_PRODUCT_OWNER_DECISION"
   }
 }
