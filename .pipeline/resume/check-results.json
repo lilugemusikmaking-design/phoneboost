@@ -1,6 +1,38 @@
 [
   {
     "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "returncode": 0,
+    "date": "2026-10-11T08:13:07.726373+00:00",
+    "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests/pipeline",
+      "-v"
+    ],
+    "returncode": 0,
+    "date": "2026-10-11T08:13:07.768109+00:00",
+    "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+  },
+  {
+    "command": [
+      "actionlint"
+    ],
+    "returncode": 0,
+    "date": "2026-10-11T08:13:08.742340+00:00",
+    "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+  },
+  {
+    "command": [
       "cargo",
       "fmt",
       "--all",
@@ -8,47 +40,7 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-10-11T07:45:28.788971+00:00",
-    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "clippy",
-      "--locked",
-      "--workspace",
-      "--all-targets"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T07:45:29.610530+00:00",
-    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "nextest",
-      "run",
-      "--locked",
-      "--workspace",
-      "--profile",
-      "ci"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T07:45:37.226096+00:00",
-    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "test",
-      "--locked",
-      "--workspace"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T07:47:24.477046+00:00",
-    "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
+    "date": "2026-10-11T08:13:08.781976+00:00",
+    "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
   }
 ]

@@ -39,5 +39,5 @@
     "platform-tools": "37.0.1"
   },
   "sdk_repository": "https://dl.google.com/android/repository/repository2-3.xml",
-  "android_cli_version": "1.0.16261425"
+  "android_cli_version": "1.0.16500706"
 }

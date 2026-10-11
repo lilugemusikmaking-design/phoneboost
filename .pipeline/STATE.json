@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p5-planner-c11",
-  "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
+  "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b",
   "task": "P5 C11 deterministic planner core",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -49,7 +49,8 @@
     "P4: GitHub Actions run 35643969840 passed 7/7 on checkpoint bc6cb01",
     "docs(p4): close native ops C10 evidence",
     "docs(p4): record green CI closure",
-    "feat(host): add fail-closed C11 planner core"
+    "feat(host): add fail-closed C11 planner core",
+    "fix(ci): refresh Android and vulnerable web locks"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -127,13 +128,45 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Wait for exact-head CI; then scope separate C11 runtime wiring without changing C12 schema.",
+  "next_action": "Wait for exact-head CI; then complete P5 evidence if every required job passes.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
     "Grok manual milestone review; non-blocking P0"
   ],
   "last_tests": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:13:07.726373+00:00",
+      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/pipeline",
+        "-v"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:13:07.768109+00:00",
+      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+    },
+    {
+      "command": [
+        "actionlint"
+      ],
+      "returncode": 0,
+      "date": "2026-10-11T08:13:08.742340+00:00",
+      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+    },
     {
       "command": [
         "cargo",
@@ -143,53 +176,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T07:45:28.788971+00:00",
-      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "clippy",
-        "--locked",
-        "--workspace",
-        "--all-targets"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T07:45:29.610530+00:00",
-      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "nextest",
-        "run",
-        "--locked",
-        "--workspace",
-        "--profile",
-        "ci"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T07:45:37.226096+00:00",
-      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "test",
-        "--locked",
-        "--workspace"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T07:47:24.477046+00:00",
-      "head": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196"
+      "date": "2026-10-11T08:13:08.781976+00:00",
+      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T08:01:05.856801+00:00",
-    "commit": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
+    "date": "2026-10-11T08:13:51.642697+00:00",
+    "commit": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P5 C11 planner core exact tests PASS 14/14, pb-host PASS 180/180, native check-fast PASS, and Rust check-full PASS including nextest 374/374 plus the mandatory workspace cargo test.",
