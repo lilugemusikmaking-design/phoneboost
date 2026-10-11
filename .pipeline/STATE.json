@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p6-c11-runtime-capacity",
-  "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+  "head": "96c001d590bbe71afd2d42e0439a94627aff311f",
   "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -54,7 +54,9 @@
     "docs(p5): close C11 planner core evidence",
     "P6: authenticated metrics bridge and C11 CAPACITY runtime wiring implemented",
     "P6: targeted runtime, planner, worker and host tests passed",
-    "feat(host): wire authenticated C11 capacity placement"
+    "P6: JNI test client consumes authenticated unsolicited metrics while awaiting application responses",
+    "feat(host): wire authenticated C11 capacity placement",
+    "test(android): handle unsolicited capacity metrics"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -125,7 +127,8 @@
     "P5 GitHub CI run 38124078271 PASS 7/7 for 7d3b34f733d4ede3ce9498633fabdfcf20199940, including Android and fixed-CRITICAL security gates",
     "P6 targeted: secure/runtime and WorkerCore suites PASS 22/22 and 53/53 before the added heartbeat binding test; added binding test PASS 1/1",
     "P6 host: deterministic planner PASS 14/14, runtime CAPACITY gate test PASS 1/1, authenticated remote path PASS 1/1, full pb-host PASS 181/181",
-    "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt"
+    "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt",
+    "P6 first full-run diagnostic: nextest 376/376 PASS; JNI async-frame assumption identified and corrected; phoneboost-core-jni 16/16 PASS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -137,7 +140,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Run the full repository pipeline, record exact-head CI, then exercise the new heartbeat path on Galaxy A15 if available",
+  "next_action": "Rerun full repository pipeline with verified local tool caches, then close exact-head CI and physical heartbeat proof",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -151,8 +154,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:45:05.690907+00:00",
-      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
+      "date": "2026-10-11T08:56:11.500794+00:00",
+      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
     },
     {
       "command": [
@@ -165,16 +168,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:45:05.712861+00:00",
-      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
+      "date": "2026-10-11T08:56:11.522192+00:00",
+      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:45:06.232984+00:00",
-      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
+      "date": "2026-10-11T08:56:12.091862+00:00",
+      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
     },
     {
       "command": [
@@ -185,13 +188,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:45:06.269920+00:00",
-      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
+      "date": "2026-10-11T08:56:12.104263+00:00",
+      "head": "96c001d590bbe71afd2d42e0439a94627aff311f"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T08:47:07.767623+00:00",
-    "commit": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+    "date": "2026-10-11T08:56:40.380239+00:00",
+    "commit": "96c001d590bbe71afd2d42e0439a94627aff311f",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 targeted software PASS: compile across secure runtime, worker, host and JNI; planner 14/14; pb-host 181/181; authenticated heartbeat binding 1/1; native check-fast PASS. Full pipeline and exact-head CI pending.",

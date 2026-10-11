@@ -63,3 +63,21 @@ product default is added. C13 persistence remains a separate increment.
 
 The full repository pipeline and exact-head GitHub CI results are intentionally
 recorded only after they execute.
+
+## First full-pipeline diagnostic and correction
+
+The first full run passed Clippy and nextest (376/376), then exposed that the
+JNI protocol test client assumed every next encrypted frame was its solicited
+response. A valid unsolicited heartbeat could therefore be parsed as a C09
+response and fail the test. Production initiator dispatch already handled the
+asynchronous metrics channel correctly.
+
+The JNI test client now validates and consumes `METRICS/1` frames while waiting
+for its application response, including ambiguous-delivery probes. The complete
+`phoneboost-core-jni` suite then passed 16/16, including the 64 MiB repeated
+remote proof and randomized disconnect/restart cases.
+
+The same first run also found that this fresh worktree did not point at the
+already verified ignored Playwright, Android, security, and pre-commit caches.
+The worktree-local ignored tool paths were connected to those existing caches;
+no dependency version or product source was changed for that environment fix.

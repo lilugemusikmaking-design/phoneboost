@@ -736,7 +736,7 @@ mod tests {
         RemoteBufferRequest, ResourceRequest, WireReservationState, WireResourceClass,
         build_command_frame, build_compute_request_frame, build_remote_buffer_request_frames,
         build_resource_request_frame, decode, encode, parse_command_ack_frame,
-        parse_compute_response_frame, parse_remote_buffer_result_frame,
+        parse_compute_response_frame, parse_heartbeat_frame, parse_remote_buffer_result_frame,
         parse_resource_result_frame,
     };
     use pb_runtime_secure::VerifiedSessionId;
@@ -1193,12 +1193,33 @@ mod tests {
     }
 
     impl ProductionClient {
+        fn receive_application_frame(&mut self) -> Frame {
+            loop {
+                let frame = receive_encrypted(&mut self.stream, &mut self.transport);
+                if frame.header.channel == Channel::Metrics {
+                    parse_heartbeat_frame(&frame).expect("valid unsolicited heartbeat");
+                    continue;
+                }
+                return frame;
+            }
+        }
+
+        fn try_receive_application_frame(&mut self) -> Result<Frame, ()> {
+            loop {
+                let frame = try_receive_encrypted(&mut self.stream, &mut self.transport)?;
+                if frame.header.channel == Channel::Metrics {
+                    parse_heartbeat_frame(&frame).map_err(|_| ())?;
+                    continue;
+                }
+                return Ok(frame);
+            }
+        }
+
         fn command(&mut self, request_id: u64, command: CommandPayload) -> AckPayload {
             let frame = build_command_frame(&command, request_id, self.send_sequence).unwrap();
             self.send_sequence += 1;
             send_encrypted(&mut self.stream, &mut self.transport, &frame);
-            parse_command_ack_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
-                .unwrap()
+            parse_command_ack_frame(&self.receive_application_frame()).unwrap()
         }
 
         fn resource(
@@ -1210,7 +1231,7 @@ mod tests {
                 build_resource_request_frame(&request, request_id, self.send_sequence).unwrap();
             self.send_sequence += 1;
             send_encrypted(&mut self.stream, &mut self.transport, &frame);
-            parse_resource_result_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
+            parse_resource_result_frame(&self.receive_application_frame())
                 .unwrap()
                 .1
         }
@@ -1227,12 +1248,9 @@ mod tests {
             for frame in frames {
                 send_encrypted(&mut self.stream, &mut self.transport, &frame);
             }
-            parse_remote_buffer_result_frame(&receive_encrypted(
-                &mut self.stream,
-                &mut self.transport,
-            ))
-            .unwrap()
-            .1
+            parse_remote_buffer_result_frame(&self.receive_application_frame())
+                .unwrap()
+                .1
         }
 
         fn compute(&mut self, request_id: u64, request: ComputeRequest) -> ComputeResponse {
@@ -1240,8 +1258,7 @@ mod tests {
                 build_compute_request_frame(&request, request_id, self.send_sequence).unwrap();
             self.send_sequence += 1;
             send_encrypted(&mut self.stream, &mut self.transport, &frame);
-            parse_compute_response_frame(&receive_encrypted(&mut self.stream, &mut self.transport))
-                .unwrap()
+            parse_compute_response_frame(&self.receive_application_frame()).unwrap()
         }
 
         fn send_remote_without_waiting(&mut self, request_id: u64, request: RemoteBufferRequest) {
@@ -1255,7 +1272,7 @@ mod tests {
         }
 
         fn receive_remote_delivery(&mut self) -> HostDelivery<BufferResult> {
-            let Ok(frame) = try_receive_encrypted(&mut self.stream, &mut self.transport) else {
+            let Ok(frame) = self.try_receive_application_frame() else {
                 return HostDelivery::UnknownAfterDisconnect;
             };
             match parse_remote_buffer_result_frame(&frame) {
@@ -1272,7 +1289,7 @@ mod tests {
         }
 
         fn receive_compute_delivery(&mut self) -> HostDelivery<ComputeResponse> {
-            let Ok(frame) = try_receive_encrypted(&mut self.stream, &mut self.transport) else {
+            let Ok(frame) = self.try_receive_application_frame() else {
                 return HostDelivery::UnknownAfterDisconnect;
             };
             match parse_compute_response_frame(&frame) {

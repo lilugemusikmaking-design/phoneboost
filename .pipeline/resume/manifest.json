@@ -1,8 +1,8 @@
 {
-  "next_action": "Run the full repository pipeline, record exact-head CI, then exercise the new heartbeat path on Galaxy A15 if available",
+  "next_action": "Rerun full repository pipeline with verified local tool caches, then close exact-head CI and physical heartbeat proof",
   "writer": "Codex",
-  "parent_head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
-  "date": "2026-10-11T08:47:07.770179+00:00",
+  "parent_head": "96c001d590bbe71afd2d42e0439a94627aff311f",
+  "date": "2026-10-11T08:56:40.383234+00:00",
   "branch": "feat/p6-c11-runtime-capacity",
   "push": "verify remote on resume",
   "physical_proof": "P6 physical test NOT YET RUN. This increment changes Android-to-host authenticated heartbeat behavior, so historical device evidence is retained without promotion until the new path is exercised physically."
