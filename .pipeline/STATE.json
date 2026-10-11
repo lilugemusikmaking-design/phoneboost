@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "docs/agentic-integration-decision-v0-1",
-  "head": "25103de799d56866df50c3aeb3146872f45a0699",
+  "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d",
   "task": "Agentic integration pre-C13 and C12 boundary decision preparation",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -65,7 +65,8 @@
     "P6 closure follow-up: final local check-full passed all 14 commands",
     "fix(runtime): preserve authenticated transfers under backpressure",
     "docs(p6): record Galaxy A15 capacity proof",
-    "docs: draft pre-C13 and C12 boundary decisions"
+    "docs: draft pre-C13 and C12 boundary decisions",
+    "docs: approve and test agentic boundary contract"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -157,7 +158,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Request explicit D1-D4 review; do not implement transport-key, C13 persistence, C12 ingress, or MCP changes without approval",
+  "next_action": "Create a separate D1/D2 implementation increment; keep C12 ingress and MCP blocked",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -171,8 +172,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:08:12.762798+00:00",
-      "head": "25103de799d56866df50c3aeb3146872f45a0699"
+      "date": "2026-10-11T18:27:12.420513+00:00",
+      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
     },
     {
       "command": [
@@ -185,16 +186,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:08:12.797780+00:00",
-      "head": "25103de799d56866df50c3aeb3146872f45a0699"
+      "date": "2026-10-11T18:27:12.463606+00:00",
+      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:08:15.808279+00:00",
-      "head": "25103de799d56866df50c3aeb3146872f45a0699"
+      "date": "2026-10-11T18:27:15.187199+00:00",
+      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
     },
     {
       "command": [
@@ -205,13 +206,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:08:15.845737+00:00",
-      "head": "25103de799d56866df50c3aeb3146872f45a0699"
+      "date": "2026-10-11T18:27:15.239476+00:00",
+      "head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T18:09:30.940382+00:00",
-    "commit": "25103de799d56866df50c3aeb3146872f45a0699",
+    "date": "2026-10-11T18:27:34.758430+00:00",
+    "commit": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -375,8 +376,13 @@
       "docs/agentic-integration/PHONEBOOST_MCP_CONNECTOR_SPIKE_BRIEF_V0_1.md"
     ],
     "decision_draft": "docs/agentic-integration/PHONEBOOST_PRE_C13_C12_BOUNDARY_DECISION_DRAFT_V0_1.md",
-    "scope": "Non-normative D1-D4 decision preparation only; no C12/C13/runtime/MCP implementation",
+    "decision_approval": "docs/agentic-integration/PHONEBOOST_PRE_C13_C12_BOUNDARY_DECISION_APPROVAL_V0_1.md",
+    "boundary_contract": "docs/agentic-integration/contracts/phoneboost-boundary-v1.json",
+    "c13_schema_candidate": "docs/agentic-integration/schemas/phoneboost-perf-profile-v1.schema.json",
+    "checker": "scripts/check_agentic_boundary_v0_1.py",
+    "scope": "Approved D1-D4 contract and deterministic test preparation only; no C12/C13/runtime/MCP implementation in this branch",
     "stop_conditions_preserved": true,
-    "status": "PROPOSED_FOR_EXPLICIT_REVIEW"
+    "contract_check": "PASS: four unique transport signatures, live metric provenance/freshness, valid C13 fixture plus 11 negative profiles, C12/MCP stop conditions",
+    "status": "APPROVED_DIRECTION_CONTRACT_CANDIDATE_GREEN"
   }
 }

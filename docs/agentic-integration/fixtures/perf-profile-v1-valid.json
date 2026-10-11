@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "created_wall_ms": 1791744000000,
+  "expires_wall_ms": 1791830400000,
+  "key": {
+    "peer_id_sha256_hex": "4bb06f8e4e3a7715d201d573d0aa423762e55dabd61a2c02278fa56cc6d294e0",
+    "worker_build_id": "android-worker-0.1.0+fixture",
+    "provider_id": "pb.native",
+    "operation_id": "pb.native.blake3/1",
+    "core_protocol_version": 1,
+    "provider_protocol_version": 1,
+    "transport_signature": "pb-link-v1:usb_network",
+    "workload_signature": "pb-workload-v1:blake3:64m:fixture",
+    "thermal_class": "nominal",
+    "battery_policy": "external_power"
+  },
+  "evidence": {
+    "local_warmup_complete": true,
+    "remote_warmup_complete": true,
+    "measured_local_runs": 15,
+    "measured_remote_runs": 15,
+    "local_median_duration_ns": 1000000000,
+    "remote_median_duration_ns": 900000000,
+    "remote_median_gain_basis_points": 1000,
+    "bootstrap_95_lower_bound_basis_points": 500,
+    "sustained_check_duration_ms": 300000,
+    "thermal_severe_observed": false
+  },
+  "provenance": {
+    "benchmark_contract": "pb-bench-v1",
+    "benchmark_build_id": "phoneboost-bench-0.1.0+fixture",
+    "benchmark_config_id": "linux-native-c12-usb-v1",
+    "requester_path": "native_c12",
+    "link_measurement_contract": "pb-link-metrics-v1",
+    "median_rtt_ms": 8,
+    "median_tx_goodput_bytes_per_second": 25000000,
+    "median_rx_goodput_bytes_per_second": 30000000
+  }
+}

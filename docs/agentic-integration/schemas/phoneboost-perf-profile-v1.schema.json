@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://phoneboost.local/schemas/phoneboost-perf-profile-v1.schema.json",
+  "title": "PhoneBoost C13 performance profile v1 lock candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "created_wall_ms",
+    "expires_wall_ms",
+    "key",
+    "evidence",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "created_wall_ms": {
+      "$ref": "#/$defs/u64"
+    },
+    "expires_wall_ms": {
+      "$ref": "#/$defs/u64"
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peer_id_sha256_hex",
+        "worker_build_id",
+        "provider_id",
+        "operation_id",
+        "core_protocol_version",
+        "provider_protocol_version",
+        "transport_signature",
+        "workload_signature",
+        "thermal_class",
+        "battery_policy"
+      ],
+      "properties": {
+        "peer_id_sha256_hex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "worker_build_id": {
+          "$ref": "#/$defs/bounded_ascii_id"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/bounded_ascii_id"
+        },
+        "operation_id": {
+          "$ref": "#/$defs/bounded_ascii_id"
+        },
+        "core_protocol_version": {
+          "$ref": "#/$defs/u16"
+        },
+        "provider_protocol_version": {
+          "$ref": "#/$defs/u16"
+        },
+        "transport_signature": {
+          "enum": [
+            "pb-link-v1:wifi_lan",
+            "pb-link-v1:usb_network",
+            "pb-link-v1:ethernet_ip",
+            "pb-link-v1:local_ip_unknown"
+          ]
+        },
+        "workload_signature": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256,
+          "pattern": "^pb-workload-v1:[A-Za-z0-9._:+-]+$"
+        },
+        "thermal_class": {
+          "enum": [
+            "nominal",
+            "light",
+            "moderate",
+            "severe"
+          ]
+        },
+        "battery_policy": {
+          "enum": [
+            "external_power",
+            "battery_allowed",
+            "power_save",
+            "remote_disallowed"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_warmup_complete",
+        "remote_warmup_complete",
+        "measured_local_runs",
+        "measured_remote_runs",
+        "local_median_duration_ns",
+        "remote_median_duration_ns",
+        "remote_median_gain_basis_points",
+        "bootstrap_95_lower_bound_basis_points",
+        "sustained_check_duration_ms",
+        "thermal_severe_observed"
+      ],
+      "properties": {
+        "local_warmup_complete": {
+          "type": "boolean"
+        },
+        "remote_warmup_complete": {
+          "type": "boolean"
+        },
+        "measured_local_runs": {
+          "$ref": "#/$defs/u16"
+        },
+        "measured_remote_runs": {
+          "$ref": "#/$defs/u16"
+        },
+        "local_median_duration_ns": {
+          "$ref": "#/$defs/nonzero_u64"
+        },
+        "remote_median_duration_ns": {
+          "$ref": "#/$defs/nonzero_u64"
+        },
+        "remote_median_gain_basis_points": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "bootstrap_95_lower_bound_basis_points": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "sustained_check_duration_ms": {
+          "$ref": "#/$defs/u64"
+        },
+        "thermal_severe_observed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmark_contract",
+        "benchmark_build_id",
+        "benchmark_config_id",
+        "requester_path",
+        "link_measurement_contract",
+        "median_rtt_ms",
+        "median_tx_goodput_bytes_per_second",
+        "median_rx_goodput_bytes_per_second"
+      ],
+      "properties": {
+        "benchmark_contract": {
+          "const": "pb-bench-v1"
+        },
+        "benchmark_build_id": {
+          "$ref": "#/$defs/bounded_ascii_id"
+        },
+        "benchmark_config_id": {
+          "$ref": "#/$defs/bounded_ascii_id"
+        },
+        "requester_path": {
+          "enum": [
+            "native_c12",
+            "pb_cli",
+            "mcp_adapter"
+          ]
+        },
+        "link_measurement_contract": {
+          "const": "pb-link-metrics-v1"
+        },
+        "median_rtt_ms": {
+          "$ref": "#/$defs/nonzero_u64"
+        },
+        "median_tx_goodput_bytes_per_second": {
+          "$ref": "#/$defs/nonzero_u64"
+        },
+        "median_rx_goodput_bytes_per_second": {
+          "$ref": "#/$defs/nonzero_u64"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "u16": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "u64": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "nonzero_u64": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "bounded_ascii_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:/-]*$"
+    }
+  }
+}
