@@ -1,8 +1,8 @@
 {
-  "next_action": "Wait for exact-head CI; then complete P5 evidence if every required job passes.",
+  "next_action": "Scope a separate C11 runtime-wiring increment against the existing C12 request and C13 persistence boundaries before changing live placement.",
   "writer": "Codex",
-  "parent_head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b",
-  "date": "2026-10-11T08:13:51.646352+00:00",
+  "parent_head": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
+  "date": "2026-10-11T08:29:41.791321+00:00",
   "branch": "feat/p5-planner-c11",
   "push": "verify remote on resume",
   "physical_proof": "P5 C11 planner core physical test NOT RUN because this bounded increment does not wire the planner into runtime behavior and changes no Android, transport, compute or device lifecycle path. Historical evidence is retained without promotion."

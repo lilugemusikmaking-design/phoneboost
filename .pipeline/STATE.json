@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p5-planner-c11",
-  "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b",
+  "head": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
   "task": "P5 C11 deterministic planner core",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -50,7 +50,8 @@
     "docs(p4): close native ops C10 evidence",
     "docs(p4): record green CI closure",
     "feat(host): add fail-closed C11 planner core",
-    "fix(ci): refresh Android and vulnerable web locks"
+    "fix(ci): refresh Android and vulnerable web locks",
+    "docs(p5): close C11 planner core evidence"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -116,7 +117,9 @@
     "P4 host PASS: full IK/C07/C08/C09/C10 authority path and truthful ambiguous fallback/recovery",
     "P4 check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
     "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
-    "P4 GitHub CI run 35643969840 PASS 7/7 for bc6cb01d39c6bc336a0e916cc40cec057d353a9d"
+    "P4 GitHub CI run 35643969840 PASS 7/7 for bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
+    "P5 C11 planner core PASS: 14/14 exact planner tests, pb-host 180/180, Rust nextest 374/374 and mandatory workspace cargo test",
+    "P5 GitHub CI run 38124078271 PASS 7/7 for 7d3b34f733d4ede3ce9498633fabdfcf20199940, including Android and fixed-CRITICAL security gates"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -128,7 +131,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Wait for exact-head CI; then complete P5 evidence if every required job passes.",
+  "next_action": "Scope a separate C11 runtime-wiring increment against the existing C12 request and C13 persistence boundaries before changing live placement.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -181,11 +184,11 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T08:13:51.642697+00:00",
-    "commit": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b",
+    "date": "2026-10-11T08:29:41.787439+00:00",
+    "commit": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P5 C11 planner core exact tests PASS 14/14, pb-host PASS 180/180, native check-fast PASS, and Rust check-full PASS including nextest 374/374 plus the mandatory workspace cargo test.",
+  "software_proof": "P5 C11 planner core exact tests PASS 14/14, pb-host PASS 180/180, native check-fast PASS, Rust check-full PASS including nextest 374/374 plus mandatory workspace cargo test, and exact-head GitHub Actions run 38124078271 PASS 7/7 at 7d3b34f733d4ede3ce9498633fabdfcf20199940.",
   "physical_proof": "P5 C11 planner core physical test NOT RUN because this bounded increment does not wire the planner into runtime behavior and changes no Android, transport, compute or device lifecycle path. Historical evidence is retained without promotion.",
   "canonical_documents": {
     "order": [

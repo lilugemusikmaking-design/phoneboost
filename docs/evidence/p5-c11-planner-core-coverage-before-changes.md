@@ -53,3 +53,40 @@ existing fallback behavior, or published performance claims. Runtime wiring,
 profile persistence, benchmark production and observability require separate
 bounded increments because their schemas and lifecycle affect C12, C13, C14
 and C16.
+
+## Implemented outcome
+
+Checkpoint `7d3b34f733d4ede3ce9498633fabdfcf20199940` contains the
+fail-closed C11 decision core and its CI maintenance fix. The planner is
+exported by `pb-host` but remains deliberately disconnected from live request
+placement. It therefore introduces no runtime or device behavior claim.
+
+The implementation covers:
+
+- the four canonical planner modes and deterministic BALANCED rule order;
+- mandatory authenticated READY, lease, fresh-metrics, provider, C08,
+  thermal and battery gates before any remote placement;
+- current profile-key and 24-hour TTL validation;
+- the complete SPEED evidence threshold, including the positive 95 percent
+  bootstrap lower bound and sustained thermal observation;
+- locality accounting that charges zero upload bytes for READY resident data.
+
+## Validation outcome
+
+- planner unit tests: 14/14 PASS;
+- `pb-host` library tests: 180/180 PASS, including the heavy 64 MiB proof;
+- Rust full component check: clippy PASS, nextest 374/374 PASS with the
+  profile's one intentional heavy-test skip, mandatory workspace `cargo test`
+  PASS;
+- frontend regression tests: 331/331 PASS and production build PASS;
+- cargo-deny and Trivy fixed-CRITICAL gate: PASS, zero current critical
+  findings after updating `proxy-addr` and `shell-quote`;
+- native fast pipeline: 12/12 pipeline tests, actionlint, formatting and diff
+  checks PASS;
+- exact-head GitHub Actions run `38124078271`: 7/7 jobs PASS for
+  `7d3b34f733d4ede3ce9498633fabdfcf20199940`, including Android, Rust,
+  security, frontend, Playwright, deterministic checks and Maestro structure.
+
+No physical test was run for this increment because the planner is not wired
+into the runtime and no Android, transport, compute or lifecycle behavior was
+changed. Existing physical evidence is retained without promotion.
