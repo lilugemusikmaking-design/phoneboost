@@ -244,7 +244,7 @@ pub struct PlannerInput<'a> {
     pub workload_phoneboost_aware: bool,
     pub local_execution_fits: bool,
     pub remote_capacity_fits: bool,
-    pub current_profile_key: &'a PerformanceProfileKey,
+    pub current_profile_key: Option<&'a PerformanceProfileKey>,
     pub profile: Option<&'a PerformanceProfile>,
     pub now_wall_ms: u64,
 }
@@ -282,9 +282,10 @@ impl PlannerInput<'_> {
     }
 
     pub fn profile_status(&self) -> ProfileStatus {
-        self.profile.map_or(ProfileStatus::Missing, |profile| {
-            profile.status(self.current_profile_key, self.now_wall_ms)
-        })
+        match (self.current_profile_key, self.profile) {
+            (Some(key), Some(profile)) => profile.status(key, self.now_wall_ms),
+            _ => ProfileStatus::Missing,
+        }
     }
 
     fn speed_decision(&self) -> PlacementDecision {
@@ -414,7 +415,7 @@ mod tests {
             workload_phoneboost_aware: true,
             local_execution_fits: true,
             remote_capacity_fits: true,
-            current_profile_key: current_key,
+            current_profile_key: Some(current_key),
             profile,
             now_wall_ms: NOW,
         }

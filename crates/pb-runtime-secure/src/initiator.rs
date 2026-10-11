@@ -3,8 +3,8 @@ use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use pb_pbmux::{
-    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, RemoteBufferRequest,
-    ResourceRequest, ResourceResult,
+    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, HeartbeatPayload,
+    RemoteBufferRequest, ResourceRequest, ResourceResult,
 };
 use pb_types::PeerId;
 
@@ -44,6 +44,13 @@ pub struct InitiatorSessionSnapshot {
     pub peer_id: Option<PeerId>,
     pub generation: u64,
     pub liveness_age: Option<Duration>,
+    pub heartbeat: Option<InitiatorHeartbeatSnapshot>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InitiatorHeartbeatSnapshot {
+    pub payload: HeartbeatPayload,
+    pub age: Duration,
 }
 
 #[derive(Clone)]
@@ -70,6 +77,7 @@ struct InitiatorState {
     peer_id: Option<PeerId>,
     generation: u64,
     last_liveness: Option<Instant>,
+    last_heartbeat: Option<(HeartbeatPayload, Instant)>,
     driver_closed: bool,
 }
 
@@ -103,6 +111,7 @@ pub fn initiator_session_channel() -> (InitiatorSessionClient, InitiatorSessionD
             peer_id: None,
             generation: 0,
             last_liveness: None,
+            last_heartbeat: None,
             driver_closed: false,
         }),
         changed: Condvar::new(),
@@ -133,6 +142,12 @@ impl InitiatorSessionClient {
             peer_id: state.peer_id,
             generation: state.generation,
             liveness_age: state.last_liveness.map(|at| at.elapsed()),
+            heartbeat: state
+                .last_heartbeat
+                .map(|(payload, at)| InitiatorHeartbeatSnapshot {
+                    payload,
+                    age: at.elapsed(),
+                }),
         }
     }
 
@@ -153,6 +168,12 @@ impl InitiatorSessionClient {
                     peer_id: state.peer_id,
                     generation: state.generation,
                     liveness_age: state.last_liveness.map(|at| at.elapsed()),
+                    heartbeat: state.last_heartbeat.map(|(payload, at)| {
+                        InitiatorHeartbeatSnapshot {
+                            payload,
+                            age: at.elapsed(),
+                        }
+                    }),
                 });
             }
             if state.driver_closed {
@@ -189,6 +210,7 @@ impl InitiatorSessionClient {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         state.authenticated = false;
         state.last_liveness = None;
+        state.last_heartbeat = None;
         self.shared.changed.notify_all();
     }
 
@@ -312,6 +334,7 @@ impl InitiatorSessionDriver {
         state.peer_id = Some(peer_id);
         state.authenticated = !self.shared.cancel.load(Ordering::Acquire);
         state.last_liveness = Some(Instant::now());
+        state.last_heartbeat = None;
         state.driver_closed = false;
         self.generation = Some(state.generation);
         self.shared.changed.notify_all();
@@ -326,6 +349,20 @@ impl InitiatorSessionDriver {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if state.authenticated {
             state.last_liveness = Some(Instant::now());
+            self.shared.changed.notify_all();
+        }
+    }
+
+    pub(crate) fn mark_heartbeat(&self, payload: HeartbeatPayload) {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if state.authenticated && state.peer_id == Some(PeerId::from(payload.peer_id)) {
+            let now = Instant::now();
+            state.last_liveness = Some(now);
+            state.last_heartbeat = Some((payload, now));
             self.shared.changed.notify_all();
         }
     }
@@ -359,6 +396,7 @@ impl InitiatorSessionDriver {
         if generation == Some(state.generation) {
             state.authenticated = false;
             state.last_liveness = None;
+            state.last_heartbeat = None;
         }
         state.driver_closed = true;
         self.shared.changed.notify_all();
@@ -374,5 +412,54 @@ impl InitiatorSessionDriver {
 impl Drop for InitiatorSessionDriver {
     fn drop(&mut self) {
         self.end_session();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn heartbeat(peer_id: PeerId) -> HeartbeatPayload {
+        HeartbeatPayload {
+            peer_id: peer_id.into_bytes(),
+            worker_incarnation: [2; 16],
+            lease_present: 1,
+            lease_id: [3; 16],
+            monotonic_ms: 4,
+            thermal_status: 0,
+            headroom_present: 0,
+            headroom_f32_bits: 0,
+            battery_pct: 80,
+            charging: 0,
+            power_save: 0,
+            available_bytes: 2_000,
+            safe_budget_bytes: 1_000,
+            reserved_bytes: 100,
+            queue_depth: 0,
+            provider_count: 0,
+            transport_count: 0,
+        }
+    }
+
+    #[test]
+    fn heartbeat_is_bound_to_authenticated_peer_and_cleared_with_session() {
+        let (client, mut driver) = initiator_session_channel();
+        let peer_id = PeerId::from_sha256_digest([1; 32]);
+        driver.begin_session(peer_id);
+
+        driver.mark_heartbeat(heartbeat(PeerId::from_sha256_digest([9; 32])));
+        assert_eq!(client.snapshot().heartbeat, None);
+
+        let expected = heartbeat(peer_id);
+        driver.mark_heartbeat(expected);
+        assert_eq!(
+            client.snapshot().heartbeat.expect("heartbeat").payload,
+            expected
+        );
+
+        client.cancel_session();
+        let snapshot = client.snapshot();
+        assert!(!snapshot.authenticated);
+        assert_eq!(snapshot.heartbeat, None);
     }
 }

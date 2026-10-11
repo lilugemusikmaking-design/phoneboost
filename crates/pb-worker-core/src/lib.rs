@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use pb_pbmux::{
     BLAKE3_PROVIDER_ID, BLAKE3_PROVIDER_VERSION, BufferReason, BufferResult, ComputeReason,
-    ComputeRequest, ComputeResponse, ComputeSubmit, MAX_COMPUTE_INPUT_BYTES,
+    ComputeRequest, ComputeResponse, ComputeSubmit, HeartbeatPayload, MAX_COMPUTE_INPUT_BYTES,
     REMOTE_BUFFER_INPUT_KIND, RemoteBufferRequest, RemoteBufferResponseKind, ReservationResultRef,
     ResourceReason, ResourceRequest, ResourceResponseKind, ResourceResult, ResourceResultState,
     WireResourceClass,
@@ -186,6 +186,43 @@ impl WorkerCore {
 
     pub const fn resource_guard_state(&self) -> ResourceGuardState {
         self.resource_guard.state()
+    }
+
+    /// Returns only the redacted C08 health fields needed by C11, and only
+    /// while the caller owns the active controller lease for this session.
+    pub fn heartbeat_payload(
+        &mut self,
+        verified_session: &VerifiedPeerSession<'_>,
+    ) -> Option<HeartbeatPayload> {
+        let now_ms = self.clock.now_ms();
+        self.reconcile_expired_controller_lease(now_ms);
+        let session = AuthenticatedSession::from_verified(verified_session);
+        let lease = self.lease_manager.current_for_session(&session, now_ms)?;
+        let health = self.resource_guard.health_status(now_ms);
+        if !health.fresh || health.thermal == ThermalBand::Unknown {
+            return None;
+        }
+        Some(HeartbeatPayload {
+            // Filled from the responder's authenticated local identity by the
+            // secure runtime before the frame is encrypted and sent.
+            peer_id: [0; 32],
+            worker_incarnation: lease.worker_incarnation_id.into_bytes(),
+            lease_present: 1,
+            lease_id: lease.lease_id.into_bytes(),
+            monotonic_ms: now_ms,
+            thermal_status: health.thermal as u8,
+            headroom_present: 0,
+            headroom_f32_bits: 0,
+            battery_pct: health.battery_percent,
+            charging: u8::from(health.charging),
+            power_save: u8::from(health.power_save),
+            available_bytes: health.available_memory_bytes,
+            safe_budget_bytes: health.budget_bytes,
+            reserved_bytes: self.resource_guard.reserved_bytes(),
+            queue_depth: 0,
+            provider_count: 0,
+            transport_count: 0,
+        })
     }
 
     /// The sole production C07 lease-mutation entry point.

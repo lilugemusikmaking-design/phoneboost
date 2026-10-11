@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p5-planner-c11",
-  "head": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
-  "task": "P5 C11 deterministic planner core",
+  "branch": "feat/p6-c11-runtime-capacity",
+  "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+  "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -51,7 +51,10 @@
     "docs(p4): record green CI closure",
     "feat(host): add fail-closed C11 planner core",
     "fix(ci): refresh Android and vulnerable web locks",
-    "docs(p5): close C11 planner core evidence"
+    "docs(p5): close C11 planner core evidence",
+    "P6: authenticated metrics bridge and C11 CAPACITY runtime wiring implemented",
+    "P6: targeted runtime, planner, worker and host tests passed",
+    "feat(host): wire authenticated C11 capacity placement"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -119,7 +122,10 @@
     "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
     "P4 GitHub CI run 35643969840 PASS 7/7 for bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
     "P5 C11 planner core PASS: 14/14 exact planner tests, pb-host 180/180, Rust nextest 374/374 and mandatory workspace cargo test",
-    "P5 GitHub CI run 38124078271 PASS 7/7 for 7d3b34f733d4ede3ce9498633fabdfcf20199940, including Android and fixed-CRITICAL security gates"
+    "P5 GitHub CI run 38124078271 PASS 7/7 for 7d3b34f733d4ede3ce9498633fabdfcf20199940, including Android and fixed-CRITICAL security gates",
+    "P6 targeted: secure/runtime and WorkerCore suites PASS 22/22 and 53/53 before the added heartbeat binding test; added binding test PASS 1/1",
+    "P6 host: deterministic planner PASS 14/14, runtime CAPACITY gate test PASS 1/1, authenticated remote path PASS 1/1, full pb-host PASS 181/181",
+    "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -131,7 +137,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Scope a separate C11 runtime-wiring increment against the existing C12 request and C13 persistence boundaries before changing live placement.",
+  "next_action": "Run the full repository pipeline, record exact-head CI, then exercise the new heartbeat path on Galaxy A15 if available",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -145,8 +151,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:13:07.726373+00:00",
-      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+      "date": "2026-10-11T08:45:05.690907+00:00",
+      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
     },
     {
       "command": [
@@ -159,16 +165,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:13:07.768109+00:00",
-      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+      "date": "2026-10-11T08:45:05.712861+00:00",
+      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:13:08.742340+00:00",
-      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+      "date": "2026-10-11T08:45:06.232984+00:00",
+      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
     },
     {
       "command": [
@@ -179,17 +185,17 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:13:08.781976+00:00",
-      "head": "eebe4ab0189f8fdbc8f896564879ba3d28a1bf2b"
+      "date": "2026-10-11T08:45:06.269920+00:00",
+      "head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T08:29:41.787439+00:00",
-    "commit": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
+    "date": "2026-10-11T08:47:07.767623+00:00",
+    "commit": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P5 C11 planner core exact tests PASS 14/14, pb-host PASS 180/180, native check-fast PASS, Rust check-full PASS including nextest 374/374 plus mandatory workspace cargo test, and exact-head GitHub Actions run 38124078271 PASS 7/7 at 7d3b34f733d4ede3ce9498633fabdfcf20199940.",
-  "physical_proof": "P5 C11 planner core physical test NOT RUN because this bounded increment does not wire the planner into runtime behavior and changes no Android, transport, compute or device lifecycle path. Historical evidence is retained without promotion.",
+  "software_proof": "P6 targeted software PASS: compile across secure runtime, worker, host and JNI; planner 14/14; pb-host 181/181; authenticated heartbeat binding 1/1; native check-fast PASS. Full pipeline and exact-head CI pending.",
+  "physical_proof": "P6 physical test NOT YET RUN. This increment changes Android-to-host authenticated heartbeat behavior, so historical device evidence is retained without promotion until the new path is exercised physically.",
   "canonical_documents": {
     "order": [
       {
@@ -327,6 +333,18 @@
     "check_fast": "PASS",
     "rust_check_full": "PASS: clippy, nextest 374/374, mandatory workspace cargo test",
     "physical_test": "NOT RUN; no runtime or Android behavior changed",
-    "status": "SOFTWARE_PASS_PENDING_CI"
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p6_c11_runtime_capacity": {
+    "baseline": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+    "coverage_evidence": "docs/evidence/p6-c11-runtime-capacity.md",
+    "scope": "Existing C12 BLAKE3 auto-use path only, using C11 CAPACITY; no C12 schema change and no C13 persistence or fabricated performance evidence.",
+    "runtime_binding": "Authenticated responder identity plus active C07 lease, worker incarnation and C08 health freshness; host TTL is six seconds.",
+    "targeted_result": "PASS: planner 14/14, pb-host 181/181, secure heartbeat binding 1/1, worker baseline 53/53",
+    "check_fast": "PASS",
+    "check_full": "PENDING",
+    "physical_test": "PENDING",
+    "ci_result": "PENDING",
+    "status": "SOFTWARE_TARGETED_PASS"
   }
 }

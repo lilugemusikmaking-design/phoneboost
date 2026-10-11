@@ -7,10 +7,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use pb_runtime_secure::{
     AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, BufferResult,
-    CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, PairingActionResult,
-    RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind,
-    ResourceResult, RuntimeState, SecureRuntime, StateStore, VerifiedPeerSession,
-    run_responder_session_with_handler,
+    CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, HeartbeatPayload,
+    PairingActionResult, RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest,
+    ResourceResponseKind, ResourceResult, RuntimeState, SecureRuntime, StateStore,
+    VerifiedPeerSession, run_responder_session_with_handler,
 };
 use pb_worker_core::{
     ControllerCommand, ControllerCommandError, ControllerCommandResult, ControllerFailureReason,
@@ -167,6 +167,13 @@ impl AuthenticatedCommandHandler for AndroidAuthenticatedCommandHandler {
         with_worker(|worker| {
             Ok(worker.apply_compute_request(verified_session, request_id, request))
         })
+    }
+
+    fn authenticated_heartbeat(
+        &self,
+        verified_session: &VerifiedPeerSession<'_>,
+    ) -> Result<Option<HeartbeatPayload>, AuthenticatedCommandHandlerError> {
+        with_worker(|worker| Ok(worker.heartbeat_payload(verified_session)))
     }
 
     fn authenticated_session_ended(

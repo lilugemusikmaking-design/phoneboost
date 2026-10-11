@@ -9,16 +9,17 @@ use std::time::{Duration, Instant};
 
 use pb_pbmux::{
     AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, DispatchMode, Frame,
-    Header, PbmuxErrorKind, Reassembler, RemoteBufferRequest, RemoteBufferResponseKind,
-    ResourceRequest, ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
-    build_command_ack_frame, build_command_frame, build_compute_request_frame,
-    build_compute_response_frame, build_remote_buffer_request_frames,
-    build_remote_buffer_result_frames, build_resource_request_frame, build_resource_result_frame,
-    decode, encode, pair_confirm_frame, parse_command_ack_frame, parse_command_frame,
-    parse_compute_request_frame, parse_compute_response_frame, parse_heartbeat_frame,
-    parse_remote_buffer_request_payload, parse_remote_buffer_result_payload,
-    parse_resource_request_frame, parse_resource_result_frame, validate_pair_confirm,
-    validate_remote_buffer_request_fragment, validate_remote_buffer_result_fragment,
+    Header, HeartbeatPayload, PbmuxErrorKind, Reassembler, RemoteBufferRequest,
+    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult,
+    SequenceTracker, authorize_dispatch, build_command_ack_frame, build_command_frame,
+    build_compute_request_frame, build_compute_response_frame, build_heartbeat_frame,
+    build_remote_buffer_request_frames, build_remote_buffer_result_frames,
+    build_resource_request_frame, build_resource_result_frame, decode, encode, pair_confirm_frame,
+    parse_command_ack_frame, parse_command_frame, parse_compute_request_frame,
+    parse_compute_response_frame, parse_heartbeat_frame, parse_remote_buffer_request_payload,
+    parse_remote_buffer_result_payload, parse_resource_request_frame, parse_resource_result_frame,
+    validate_pair_confirm, validate_remote_buffer_request_fragment,
+    validate_remote_buffer_result_fragment,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -144,6 +145,16 @@ pub trait AuthenticatedCommandHandler: Send + Sync {
         _request: ComputeRequest,
     ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
         Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+
+    /// Returns a redacted worker-health heartbeat bound to this authenticated
+    /// session. Responders may decline to emit one until local health and a
+    /// controller lease are both available.
+    fn authenticated_heartbeat(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+    ) -> Result<Option<HeartbeatPayload>, AuthenticatedCommandHandlerError> {
+        Ok(None)
     }
 
     fn authenticated_session_ended(
@@ -1344,6 +1355,24 @@ fn run_authenticated_loop(
             verified_peer.revoke();
             return Err(RuntimeError::SessionLost);
         }
+        if !initiator && Instant::now() >= next_heartbeat {
+            if let Some(mut payload) = command_handler
+                .authenticated_heartbeat(verified_peer)
+                .map_err(handler_runtime_error)?
+            {
+                // The secure runtime, not the downstream worker handler, owns
+                // the authenticated local identity carried by this frame.
+                payload.peer_id =
+                    PeerId::from_static_public_key(runtime.identity.public()).into_bytes();
+                let heartbeat = build_heartbeat_frame(&payload, send_sequence)
+                    .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                send_frame(stream, &mut transport, &heartbeat)?;
+                next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
+            } else {
+                next_heartbeat = Instant::now() + SESSION_POLL;
+            }
+        }
         if initiator
             && Instant::now() >= next_heartbeat
             && heartbeat_outstanding.is_none()
@@ -1597,10 +1626,10 @@ fn run_authenticated_loop(
                 }
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
-                    parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    let payload = parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
                     runtime.heartbeat();
                     if let Some(driver) = initiator_driver.as_deref() {
-                        driver.mark_liveness();
+                        driver.mark_heartbeat(payload);
                     }
                 } else {
                     return Err(RuntimeError::Pbmux);

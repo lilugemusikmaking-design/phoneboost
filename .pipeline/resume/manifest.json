@@ -1,9 +1,9 @@
 {
-  "next_action": "Scope a separate C11 runtime-wiring increment against the existing C12 request and C13 persistence boundaries before changing live placement.",
+  "next_action": "Run the full repository pipeline, record exact-head CI, then exercise the new heartbeat path on Galaxy A15 if available",
   "writer": "Codex",
-  "parent_head": "7d3b34f733d4ede3ce9498633fabdfcf20199940",
-  "date": "2026-10-11T08:29:41.791321+00:00",
-  "branch": "feat/p5-planner-c11",
+  "parent_head": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+  "date": "2026-10-11T08:47:07.770179+00:00",
+  "branch": "feat/p6-c11-runtime-capacity",
   "push": "verify remote on resume",
-  "physical_proof": "P5 C11 planner core physical test NOT RUN because this bounded increment does not wire the planner into runtime behavior and changes no Android, transport, compute or device lifecycle path. Historical evidence is retained without promotion."
+  "physical_proof": "P6 physical test NOT YET RUN. This increment changes Android-to-host authenticated heartbeat behavior, so historical device evidence is retained without promotion until the new path is exercised physically."
 }
