@@ -6,8 +6,8 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-10-11T08:56:53.783865+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    "date": "2026-10-11T15:44:02.165021+00:00",
+    "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
   },
   {
     "command": [
@@ -20,16 +20,16 @@
       "-v"
     ],
     "returncode": 0,
-    "date": "2026-10-11T08:56:53.791961+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    "date": "2026-10-11T15:44:02.214936+00:00",
+    "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
   },
   {
     "command": [
       "actionlint"
     ],
     "returncode": 0,
-    "date": "2026-10-11T08:56:54.312192+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    "date": "2026-10-11T15:44:05.050089+00:00",
+    "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
   },
   {
     "command": [
@@ -40,119 +40,7 @@
       "--check"
     ],
     "returncode": 0,
-    "date": "2026-10-11T08:56:54.325340+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "clippy",
-      "--locked",
-      "--workspace",
-      "--all-targets"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T08:56:54.895624+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "nextest",
-      "run",
-      "--locked",
-      "--workspace",
-      "--profile",
-      "ci"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T08:56:56.118838+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-with-sccache",
-      "cargo",
-      "test",
-      "--locked",
-      "--workspace"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T08:58:25.809846+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "install",
-      "--frozen-lockfile",
-      "--non-interactive"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:03:23.051951+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "test",
-      "--watchAll=false",
-      "--runInBand"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:03:23.926757+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "yarn",
-      "--cwd",
-      "frontend",
-      "build"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:03:26.152716+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-playwright",
-      "test"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:03:34.564767+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "bash",
-      "scripts/pipeline-android"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:03:56.680019+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-security"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:05:41.088244+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-  },
-  {
-    "command": [
-      "scripts/pipeline-maestro",
-      "--syntax-only"
-    ],
-    "returncode": 0,
-    "date": "2026-10-11T09:05:47.592934+00:00",
-    "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+    "date": "2026-10-11T15:44:05.126199+00:00",
+    "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
   }
 ]

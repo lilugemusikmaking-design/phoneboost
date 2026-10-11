@@ -103,6 +103,53 @@ no dependency version or product source was changed for that environment fix.
   `67c00547626ff57d258f0dceeadf122878dea04d`: PASS 7/7 in GitHub Actions,
   run `38126598519`.
 
+## Closure-checkpoint transport correction
+
+The documentation-only closure checkpoint
+`c0246adbf0723bb5513ae9fd72e01cf34a017a53` exposed a real load-sensitive
+transport defect in exact-head GitHub Actions run `38127226539`. The first
+attempt and its single bounded rerun both failed only the 64 MiB host proof:
+the remote delivery became ambiguously lost instead of completing. No further
+blind rerun was performed.
+
+Two coupled causes were reproduced locally:
+
+1. the authenticated loop left its TCP socket nonblocking while
+   `write_all` emitted encrypted records, so normal send-buffer backpressure
+   could be misclassified as session loss;
+2. after a long fragmented request send, the initiator evaluated the
+   ten-second idle-session bound before consuming already queued authenticated
+   traffic. A valid response could therefore lose to the idle check.
+
+Encrypted record writes now use bounded blocking I/O and restore nonblocking
+polling afterwards. Queued authenticated traffic is consumed before the idle
+check. Idle sessions still fail closed after ten seconds; an outstanding
+application request uses the already established 35-second request deadline.
+A deterministic unit test locks this distinction.
+
+The resilience JNI client also retained a five-second socket read timeout
+after authentication. Under measured load, a fragmented 4 MiB PUT could
+legitimately exceed that test-only bound. Authentication and PING remain
+bounded to five seconds; after the authenticated PONG, application reads use
+the same 35-second bound as the production initiator.
+
+Final correction evidence before the new checkpoint:
+
+- targeted 64 MiB host proof: PASS, 1/1;
+- secure-runtime suite: PASS, 24/24;
+- complete host library suite: PASS, 181/181;
+- deterministic randomized JNI disconnect scenario: PASS, 1/1 across all
+  nine scheduled failures;
+- complete JNI suite: PASS, 16/16;
+- native `check-fast`: PASS;
+- final repository `check-full`: PASS, all 14 commands, including nextest
+  377/377, mandatory workspace Rust tests, frontend 331/331, Playwright 10/10,
+  Android build/tests/lint, clean dependency security gates, and Maestro
+  syntax.
+
+Exact-head GitHub Actions for this correction is recorded only after the new
+checkpoint is pushed and completes.
+
 No authorized Android device was attached when the physical check was probed.
 The new Android-to-host heartbeat path therefore remains explicitly
 `PHYSICAL_NOT_RUN`; prior Galaxy A15 evidence is retained without promotion.

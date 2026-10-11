@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p6-c11-runtime-capacity",
-  "head": "67c00547626ff57d258f0dceeadf122878dea04d",
+  "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53",
   "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -59,7 +59,11 @@
     "P6: corrected exact-head GitHub Actions passed 7/7",
     "feat(host): wire authenticated C11 capacity placement",
     "test(android): handle unsolicited capacity metrics",
-    "docs(p6): record capacity runtime software closure"
+    "docs(p6): record capacity runtime software closure",
+    "P6 closure follow-up: authenticated transport backpressure and active-request liveness corrected without changing product deadlines",
+    "P6 closure follow-up: JNI resilience harness aligned with the existing 35-second application request bound",
+    "P6 closure follow-up: final local check-full passed all 14 commands",
+    "fix(runtime): preserve authenticated transfers under backpressure"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -133,7 +137,11 @@
     "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt",
     "P6 first full-run diagnostic: nextest 376/376 PASS; JNI async-frame assumption identified and corrected; phoneboost-core-jni 16/16 PASS",
     "P6 final check-full PASS 14/14: nextest 376/376, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
-    "P6 GitHub CI run 38126598519 PASS 7/7 for 67c00547626ff57d258f0dceeadf122878dea04d"
+    "P6 GitHub CI run 38126598519 PASS 7/7 for 67c00547626ff57d258f0dceeadf122878dea04d",
+    "P6 closure CI run 38127226539 failed twice only on the 64 MiB host proof; bounded rerun stopped and load-sensitive transport loss reproduced locally",
+    "P6 transport correction: bounded encrypted-record writes, queued authenticated traffic before idle expiry, idle 10-second bound preserved, active request bounded by the existing 35-second deadline",
+    "P6 corrected secure runtime PASS 24/24, host PASS 181/181, deterministic JNI disconnect scenario PASS 1/1, full JNI PASS 16/16",
+    "P6 corrected final check-full PASS 14/14: nextest 377/377, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -145,7 +153,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Connect and authorize Galaxy A15, prove authenticated heartbeat remote success and stale-metrics local fallback, then scope C13 persistence",
+  "next_action": "Connect and authorize Galaxy A15, prove authenticated heartbeat remote success and stale-metrics local fallback, then request an explicit decision before any C12, C13, or agentic-integration change",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -159,8 +167,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:53.783865+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+      "date": "2026-10-11T15:44:02.165021+00:00",
+      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
     },
     {
       "command": [
@@ -173,16 +181,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:53.791961+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+      "date": "2026-10-11T15:44:02.214936+00:00",
+      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:54.312192+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+      "date": "2026-10-11T15:44:05.050089+00:00",
+      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
     },
     {
       "command": [
@@ -193,125 +201,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T08:56:54.325340+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "clippy",
-        "--locked",
-        "--workspace",
-        "--all-targets"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T08:56:54.895624+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "nextest",
-        "run",
-        "--locked",
-        "--workspace",
-        "--profile",
-        "ci"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T08:56:56.118838+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "test",
-        "--locked",
-        "--workspace"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T08:58:25.809846+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "install",
-        "--frozen-lockfile",
-        "--non-interactive"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:03:23.051951+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "test",
-        "--watchAll=false",
-        "--runInBand"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:03:23.926757+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "build"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:03:26.152716+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-playwright",
-        "test"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:03:34.564767+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "bash",
-        "scripts/pipeline-android"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:03:56.680019+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-security"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:05:41.088244+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
-    },
-    {
-      "command": [
-        "scripts/pipeline-maestro",
-        "--syntax-only"
-      ],
-      "returncode": 0,
-      "date": "2026-10-11T09:05:47.592934+00:00",
-      "head": "67c00547626ff57d258f0dceeadf122878dea04d"
+      "date": "2026-10-11T15:44:05.126199+00:00",
+      "head": "c0246adbf0723bb5513ae9fd72e01cf34a017a53"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T09:06:59.920426+00:00",
-    "commit": "67c00547626ff57d258f0dceeadf122878dea04d",
+    "date": "2026-10-11T15:45:54.090269+00:00",
+    "commit": "c0246adbf0723bb5513ae9fd72e01cf34a017a53",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: targeted planner/runtime/worker/JNI/host tests; final check-full PASS 14/14 including nextest 376/376 and mandatory workspace tests; exact-head GitHub Actions run 38126598519 PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d.",

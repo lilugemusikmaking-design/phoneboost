@@ -1381,6 +1381,13 @@ mod tests {
         let pong = receive_encrypted(&mut stream, &mut transport);
         assert_eq!(pong.header.message_type, ControlType::Pong as u16);
         assert_eq!(pong.header.request_id, 9);
+        // Authentication and the liveness proof retain their five-second
+        // bound. The resilience client can then exercise fragmented 4 MiB
+        // application requests under the same 35-second bound as the real
+        // initiator instead of mistaking temporary load for transport loss.
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(35)))
+            .unwrap();
         (
             ProductionClient {
                 stream,

@@ -9,7 +9,7 @@ use pb_pbmux::{
 use pb_types::PeerId;
 
 const INITIATOR_QUEUE_CAPACITY: usize = 16;
-const INITIATOR_REQUEST_TIMEOUT: Duration = Duration::from_secs(35);
+pub(crate) const INITIATOR_REQUEST_TIMEOUT: Duration = Duration::from_secs(35);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InitiatorClientError {

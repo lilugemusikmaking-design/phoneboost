@@ -33,8 +33,8 @@ use snow::{Builder, HandshakeState, TransportState, params::NoiseParams};
 use crate::storage::{Identity, PeerRecord, StateStore, StorageError, wall_clock_ms};
 use crate::wire::{SecureWireError, read_encrypted, read_record, write_encrypted, write_record};
 use crate::{
-    InitiatorClientError, InitiatorSessionDriver, initiator::InitiatorRequest,
-    initiator::InitiatorResponse, initiator::PendingInitiatorRequest,
+    InitiatorClientError, InitiatorSessionDriver, initiator::INITIATOR_REQUEST_TIMEOUT,
+    initiator::InitiatorRequest, initiator::InitiatorResponse, initiator::PendingInitiatorRequest,
 };
 
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
@@ -1351,10 +1351,6 @@ fn run_authenticated_loop(
         {
             return Ok(SessionOutcome::Cancelled);
         }
-        if last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT {
-            verified_peer.revoke();
-            return Err(RuntimeError::SessionLost);
-        }
         if !initiator && Instant::now() >= next_heartbeat {
             if let Some(mut payload) = command_handler
                 .authenticated_heartbeat(verified_peer)
@@ -1637,9 +1633,30 @@ fn run_authenticated_loop(
             } else {
                 return Err(RuntimeError::Pbmux);
             }
+        } else if initiator_transport_expired(
+            last_authenticated_traffic.elapsed(),
+            application_outstanding
+                .as_ref()
+                .map(|request| request.sent_at.elapsed()),
+        ) {
+            // A large fragmented send can occupy this thread long enough for
+            // authenticated heartbeats or the application response to queue in
+            // the socket. Process queued traffic before declaring the peer
+            // offline. An active request retains its separate bounded deadline;
+            // all idle sessions still fail closed at the ten-second bound.
+            verified_peer.revoke();
+            return Err(RuntimeError::SessionLost);
         }
         std::thread::sleep(SESSION_POLL);
     }
+}
+
+fn initiator_transport_expired(
+    last_authenticated_traffic_age: Duration,
+    outstanding_request_age: Option<Duration>,
+) -> bool {
+    last_authenticated_traffic_age >= DEVICE_OFFLINE_TIMEOUT
+        && outstanding_request_age.is_none_or(|age| age >= INITIATOR_REQUEST_TIMEOUT)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1673,6 +1690,7 @@ impl ExpectedInitiatorResponse {
 struct InitiatorOutstanding {
     request_id: u64,
     expected: ExpectedInitiatorResponse,
+    sent_at: Instant,
     response: Option<std::sync::mpsc::SyncSender<Result<InitiatorResponse, InitiatorClientError>>>,
 }
 
@@ -1776,6 +1794,7 @@ fn start_initiator_request(
     Ok(Some(InitiatorOutstanding {
         request_id,
         expected,
+        sent_at: Instant::now(),
         response: Some(response),
     }))
 }
@@ -1973,8 +1992,21 @@ fn send_frame(
     frame: &Frame,
 ) -> Result<(), RuntimeError> {
     let plaintext = encode(frame).map_err(|_| RuntimeError::Pbmux)?;
-    write_encrypted(stream, transport, &plaintext)?;
-    Ok(())
+    // The authenticated loop polls reads in nonblocking mode. A PBMUX logical
+    // message can, however, contain many near-maximum encrypted records. Using
+    // `write_all` while the socket is still nonblocking turns ordinary TCP
+    // backpressure into a false session loss as soon as the send buffer fills.
+    // Bound each record write instead, then restore the polling mode.
+    stream
+        .set_nonblocking(false)
+        .and_then(|()| stream.set_write_timeout(Some(HANDSHAKE_TIMEOUT)))
+        .map_err(|_| RuntimeError::SessionLost)?;
+    let write_result = write_encrypted(stream, transport, &plaintext);
+    let restore_result = stream
+        .set_write_timeout(None)
+        .and_then(|()| stream.set_nonblocking(true));
+    write_result?;
+    restore_result.map_err(|_| RuntimeError::SessionLost)
 }
 
 fn control_frame(message_type: ControlType, request_id: u64, sequence: u64) -> Frame {
@@ -2314,6 +2346,23 @@ mod tests {
     fn authenticated_liveness_profile_is_two_second_heartbeat_and_ten_second_offline() {
         assert_eq!(HEARTBEAT_INTERVAL, Duration::from_secs(2));
         assert_eq!(DEVICE_OFFLINE_TIMEOUT, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn initiator_liveness_keeps_active_requests_on_their_bounded_deadline() {
+        assert!(initiator_transport_expired(DEVICE_OFFLINE_TIMEOUT, None));
+        assert!(!initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT,
+            Some(INITIATOR_REQUEST_TIMEOUT - Duration::from_millis(1))
+        ));
+        assert!(initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT,
+            Some(INITIATOR_REQUEST_TIMEOUT)
+        ));
+        assert!(!initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT - Duration::from_millis(1),
+            Some(INITIATOR_REQUEST_TIMEOUT)
+        ));
     }
 
     #[test]
