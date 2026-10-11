@@ -66,3 +66,27 @@ raw C04 transport counters cannot construct a live snapshot automatically.
 
 The checkpoint, push, and exact-head GitHub CI results are recorded only after
 they execute.
+
+## First exact-head CI and security correction
+
+GitHub Project pipeline run `38165468466` passed all 7/7 jobs at checkpoint
+`044a1a1209dc96dac6f3b8b11c161dc183054cd9`. All four CodeQL language analysis
+jobs also completed successfully, but the aggregate pull-request security gate
+correctly reported one new high-severity alert: the direct traversal of the C
+`getifaddrs` linked list could dereference an invalid pointer.
+
+The raw `libc` traversal was removed rather than suppressed. Interface address
+enumeration now uses the safe API from pinned `nix` `0.31.3`; interface-index
+lookup remains in safe `rustix`. The route-selection and fail-closed behavior
+are unchanged, and no `unsafe` block remains in the PhoneBoost D1 path.
+
+Correction evidence before the follow-up checkpoint:
+
+- D1/D2 transport tests: PASS, 11/11.
+- Discovery regression tests: PASS, 3/3.
+- Targeted Clippy: PASS with no warning in changed `pb-host` code.
+- Cargo-deny advisories, bans, licenses and sources: PASS for the pinned
+  dependency graph.
+- `git diff --check`: PASS.
+
+The corrected exact-head CI result is recorded only after it executes.

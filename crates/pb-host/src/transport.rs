@@ -1,7 +1,5 @@
 //! C04 local-IP byte transport. This module owns bytes and metrics only.
 
-#[cfg(target_os = "linux")]
-use std::ffi::CStr;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
@@ -13,6 +11,9 @@ use std::time::{Duration, Instant};
 use std::path::Path;
 
 use pb_types::PeerId;
+
+#[cfg(target_os = "linux")]
+use nix::ifaddrs::getifaddrs;
 
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const RETRY_BASE_MS: [u64; 5] = [1_000, 2_000, 4_000, 8_000, 15_000];
@@ -121,42 +122,30 @@ fn classify_linux_interface(interface_index: Option<u32>) -> NormalizedLinkClass
 }
 
 #[cfg(target_os = "linux")]
-struct InterfaceAddresses(*mut libc::ifaddrs);
-
-#[cfg(target_os = "linux")]
-impl Drop for InterfaceAddresses {
-    fn drop(&mut self) {
-        // SAFETY: the pointer is a successful getifaddrs allocation owned by this guard.
-        unsafe { libc::freeifaddrs(self.0) };
-    }
-}
-
-#[cfg(target_os = "linux")]
 fn connected_route_interface_index(stream: &TcpStream) -> Option<u32> {
     let local_ip = stream.local_addr().ok()?.ip();
-    let mut head = std::ptr::null_mut();
-    // SAFETY: getifaddrs initializes `head`; the guard below frees a successful result.
-    if unsafe { libc::getifaddrs(&mut head) } != 0 || head.is_null() {
-        return None;
-    }
-    let _addresses = InterfaceAddresses(head);
-    let mut current = head;
+    let interfaces = getifaddrs().ok()?;
     let mut matched_index = None;
-    while !current.is_null() {
-        // SAFETY: every node is owned by the live getifaddrs list.
-        let interface = unsafe { &*current };
-        if socket_address_ip(interface.ifa_addr) == Some(local_ip) && !interface.ifa_name.is_null()
-        {
-            // SAFETY: getifaddrs guarantees a NUL-terminated interface name for a live node.
-            let name = unsafe { CStr::from_ptr(interface.ifa_name) };
-            // SAFETY: `name` points to a valid NUL-terminated name for the duration of this call.
-            let index = unsafe { libc::if_nametoindex(name.as_ptr()) };
-            if index == 0 || matched_index.is_some_and(|matched| matched != index) {
-                return None;
-            }
-            matched_index = Some(index);
+    for interface in interfaces {
+        let Some(address) = interface.address else {
+            continue;
+        };
+        let interface_ip = if let Some(address) = address.as_sockaddr_in() {
+            std::net::IpAddr::V4(address.ip())
+        } else if let Some(address) = address.as_sockaddr_in6() {
+            std::net::IpAddr::V6(address.ip())
+        } else {
+            continue;
+        };
+        if interface_ip != local_ip {
+            continue;
         }
-        current = interface.ifa_next;
+        let index =
+            rustix::net::netdevice::name_to_index(stream, &interface.interface_name).ok()?;
+        if matched_index.is_some_and(|matched| matched != index) {
+            return None;
+        }
+        matched_index = Some(index);
     }
     matched_index
 }
@@ -164,33 +153,6 @@ fn connected_route_interface_index(stream: &TcpStream) -> Option<u32> {
 #[cfg(not(target_os = "linux"))]
 fn connected_route_interface_index(_stream: &TcpStream) -> Option<u32> {
     None
-}
-
-#[cfg(target_os = "linux")]
-fn socket_address_ip(address: *const libc::sockaddr) -> Option<std::net::IpAddr> {
-    if address.is_null() {
-        return None;
-    }
-    // SAFETY: callers pass an address from a live getifaddrs node. The family
-    // determines which sockaddr representation is valid.
-    let family = unsafe { (*address).sa_family as i32 };
-    match family {
-        libc::AF_INET => {
-            // SAFETY: AF_INET guarantees sockaddr_in layout.
-            let address = unsafe { &*(address.cast::<libc::sockaddr_in>()) };
-            Some(std::net::IpAddr::V4(std::net::Ipv4Addr::from(
-                address.sin_addr.s_addr.to_ne_bytes(),
-            )))
-        }
-        libc::AF_INET6 => {
-            // SAFETY: AF_INET6 guarantees sockaddr_in6 layout.
-            let address = unsafe { &*(address.cast::<libc::sockaddr_in6>()) };
-            Some(std::net::IpAddr::V6(std::net::Ipv6Addr::from(
-                address.sin6_addr.s6_addr,
-            )))
-        }
-        _ => None,
-    }
 }
 
 #[cfg(target_os = "linux")]
@@ -819,10 +781,9 @@ mod tests {
             name: &str,
             index: u32,
             link_type: u16,
-            device_target: Option<&Path>,
+            device: Option<(&Path, Option<&str>)>,
             wireless: bool,
             bridge: bool,
-            pci_class: Option<&str>,
         ) {
             let interface = self.net_root().join(name);
             std::fs::create_dir_all(&interface).expect("interface fixture");
@@ -836,7 +797,7 @@ mod tests {
             if bridge {
                 std::fs::create_dir(interface.join("bridge")).expect("bridge marker");
             }
-            if let Some(target) = device_target {
+            if let Some((target, pci_class)) = device {
                 std::fs::create_dir_all(target).expect("device target fixture");
                 if let Some(pci_class) = pci_class {
                     std::fs::write(target.join("class"), format!("{pci_class}\n"))
@@ -1002,27 +963,25 @@ mod tests {
         let bridge_device = fixture.root.join("devices/pci0000/0000:00:02.0");
         let other_network = fixture.root.join("devices/pci0000/0000:00:03.0");
 
-        fixture.add_interface("radio", 7, 1, None, true, false, None);
-        fixture.add_interface("rndis", 8, 1, Some(&usb), false, false, None);
-        fixture.add_interface("wired", 9, 1, Some(&pci), false, false, Some("0x020000"));
-        fixture.add_interface("usb_name_is_not_evidence", 10, 1, None, false, false, None);
+        fixture.add_interface("radio", 7, 1, None, true, false);
+        fixture.add_interface("rndis", 8, 1, Some((&usb, None)), false, false);
+        fixture.add_interface("wired", 9, 1, Some((&pci, Some("0x020000"))), false, false);
+        fixture.add_interface("usb_name_is_not_evidence", 10, 1, None, false, false);
         fixture.add_interface(
             "bridge",
             11,
             1,
-            Some(&bridge_device),
+            Some((&bridge_device, Some("0x020000"))),
             false,
             true,
-            Some("0x020000"),
         );
         fixture.add_interface(
             "other_network",
             12,
             1,
-            Some(&other_network),
+            Some((&other_network, Some("0x028000"))),
             false,
             false,
-            Some("0x028000"),
         );
 
         let root = fixture.net_root();

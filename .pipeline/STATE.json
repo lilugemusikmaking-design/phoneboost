@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p7-d1-d2-link-metrics",
-  "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51",
+  "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9",
   "task": "P7 D1/D2 normalized link identity and authenticated live-metric foundations",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -69,7 +69,8 @@
     "docs: approve and test agentic boundary contract",
     "P7 D1: connected-route link classification and exact pb-link-v1 signatures implemented",
     "P7 D2: authenticated-session-bound live metric validation foundations implemented",
-    "feat(host): add normalized link metric foundations"
+    "feat(host): add normalized link metric foundations",
+    "fix(host): use safe route interface enumeration"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -151,7 +152,9 @@
     "P6 corrected exact-head GitHub Actions run 38152665185 PASS 7/7 for 5b31b89f26694ff04402591aa22dd045d44cf117",
     "P6 Galaxy A15 physical PASS: fresh authenticated capacity metrics produced REMOTE_SUCCESS; metrics older than six seconds with an active lease produced truthful WORKER_UNHEALTHY local fallback; resumed fresh metrics restored REMOTE_SUCCESS",
     "Agentic boundary preparation PR 13 exact-head c7b267a PASS: Project pipeline, CodeQL and CodeRabbit all green; merge state CLEAN",
-    "P7 D1/D2 targeted PASS: transport 11/11, discovery 3/3, pb-host full library 187/187 including 64 MiB authenticated proof, targeted check and clippy PASS"
+    "P7 D1/D2 targeted PASS: transport 11/11, discovery 3/3, pb-host full library 187/187 including 64 MiB authenticated proof, targeted check and clippy PASS",
+    "P7 first exact-head Project pipeline run 38165468466 PASS 7/7; aggregate CodeQL found one high-severity raw getifaddrs pointer alert despite all language analysis jobs completing",
+    "P7 security correction: direct libc pointer traversal removed; pinned nix 0.31.3 safe interface API, targeted tests and Clippy PASS, cargo-deny advisories/bans/licenses/sources PASS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -163,7 +166,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Monitor exact-head CI; then implement C13 in a separate stacked increment while C12 ingress and MCP remain blocked",
+  "next_action": "Require corrected PR 14 exact-head Project pipeline and CodeQL green; then create the separate C13 persistence increment",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -177,8 +180,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:48:41.661183+00:00",
-      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
+      "date": "2026-10-11T19:04:21.585583+00:00",
+      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
     },
     {
       "command": [
@@ -191,16 +194,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:48:42.049710+00:00",
-      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
+      "date": "2026-10-11T19:04:21.671238+00:00",
+      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:48:44.159498+00:00",
-      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
+      "date": "2026-10-11T19:04:26.029790+00:00",
+      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
     },
     {
       "command": [
@@ -211,13 +214,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T18:48:44.255478+00:00",
-      "head": "c7b267a889ef3545a90ed580f6191d4c54ee1f51"
+      "date": "2026-10-11T19:04:26.188335+00:00",
+      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T18:49:38.761231+00:00",
-    "commit": "c7b267a889ef3545a90ed580f6191d4c54ee1f51",
+    "date": "2026-10-11T19:04:43.678811+00:00",
+    "commit": "044a1a1209dc96dac6f3b8b11c161dc183054cd9",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -399,6 +402,8 @@
     "check_fast": "PASS",
     "contract_check": "PASS",
     "physical_test": "NOT RUN; no speed placement or Android behavior enabled",
-    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_CI_PENDING"
+    "first_ci": "Project pipeline PASS 7/7 in run 38165468466 at 044a1a1209dc96dac6f3b8b11c161dc183054cd9; aggregate CodeQL FAIL on direct getifaddrs pointer traversal",
+    "security_correction": "Removed direct libc traversal and used pinned nix 0.31.3 safe interface enumeration; targeted tests, Clippy and cargo-deny PASS",
+    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_SECURITY_CORRECTION_CI_PENDING"
   }
 }
