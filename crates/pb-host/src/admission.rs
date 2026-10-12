@@ -1,7 +1,7 @@
 use std::fmt;
 use std::os::fd::{BorrowedFd, OwnedFd};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rustix::net::sockopt::socket_peercred;
@@ -11,11 +11,16 @@ use rustix::process::getuid;
 mod framing;
 pub(crate) mod validation;
 
-pub use framing::{FramedLocalClient, LocalFrameOutcome, LocalFramingError, LocalFramingErrorKind};
+pub use framing::{
+    FramedLocalClient, LocalFrameOutcome, LocalFramingError, LocalFramingErrorKind,
+    LocalRequestFrame,
+};
 pub use validation::{
     LocalMethod, LocalMethodClass, LocalValidationCause, LocalValidationError,
     LocalValidationErrorKind, LocalValidationScope, ValidatedLocalRequest,
 };
+
+static NEXT_LOCAL_CONNECTION_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Canonical local-client policy carried by every authenticated connection.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -144,6 +149,7 @@ impl std::error::Error for LocalAdmissionError {}
 pub struct AuthenticatedLocalClient {
     _connection: OwnedFd,
     peer_uid: u32,
+    connection_id: u64,
     limits: LocalClientLimits,
     _slot: ClientSlotPermit,
 }
@@ -165,6 +171,10 @@ impl AuthenticatedLocalClient {
 
     pub const fn limits(&self) -> LocalClientLimits {
         self.limits
+    }
+
+    pub const fn connection_id(&self) -> u64 {
+        self.connection_id
     }
 
     pub const fn state(&self) -> LocalConnectionState {
@@ -213,6 +223,7 @@ impl AcceptedRawClient {
         hooks.trace.push(AdmissionTrace::SlotAttempted);
 
         let slot = gate.try_acquire().ok_or_else(local_busy)?;
+        let connection_id = next_connection_id().ok_or_else(local_busy)?;
 
         #[cfg(test)]
         hooks.trace.push(AdmissionTrace::Authenticated);
@@ -220,6 +231,7 @@ impl AcceptedRawClient {
         Ok(AuthenticatedLocalClient {
             _connection: self.connection,
             peer_uid: observed_uid,
+            connection_id,
             limits: LocalClientLimits::CANONICAL,
             _slot: slot,
         })
@@ -303,9 +315,18 @@ pub(crate) fn authenticated_test_client(connection: OwnedFd) -> AuthenticatedLoc
     AuthenticatedLocalClient {
         _connection: connection,
         peer_uid: getuid().as_raw(),
+        connection_id: next_connection_id().expect("test connection identifier available"),
         limits: LocalClientLimits::CANONICAL,
         _slot: ClientSlotPermit { active },
     }
+}
+
+fn next_connection_id() -> Option<u64> {
+    NEXT_LOCAL_CONNECTION_ID
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |current| {
+            current.checked_add(1)
+        })
+        .ok()
 }
 
 fn accept_raw_client(listener: BorrowedFd<'_>) -> Result<AcceptedRawClient, LocalAdmissionError> {

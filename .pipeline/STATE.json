@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "docs/c12-import-resource-contract-v0-1",
-  "head": "67e92524d684456e9eda2f6e67c26a55749c11d9",
-  "task": "P9 proposed exact C12 import resource and lifecycle contract",
+  "branch": "feat/p9-c12-import-ingress-v1",
+  "head": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af",
+  "task": "P10 locked C12 descriptor ingress and private import lifecycle",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -82,7 +82,9 @@
     "P9 C12 import: exact resource/lifecycle proposal drafted without product implementation",
     "P9 C12 import: deterministic consistency and 11 negative contract oracles PASS",
     "docs: propose exact C12 import resource contract",
-    "docs: lock approved C12 import contract"
+    "docs: lock approved C12 import contract",
+    "P10 C12 import: authenticated SCM_RIGHTS framing and bounded private lifecycle core implemented without public schema activation",
+    "feat(host): add bounded C12 import foundations"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -174,7 +176,9 @@
     "P8 C13 native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
     "P8 C13 exact-head PASS at cd02dbe813e4fd3b0dd577e28635a0c9bee81d67: Project pipeline runs 38169755643 and 38169752853 7/7, CodeQL 38169755646 and CodeRabbit PASS, PR 15 CLEAN",
     "P9 C12 import proposal checker PASS: repository ceiling alignment, resource, authority, privacy and 11/11 negative oracles",
-    "P9 C12 import proposal native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt"
+    "P9 C12 import proposal native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
+    "P10 targeted: SCM_RIGHTS framing 32/32, import lifecycle 12/12, admission 87/87, full pb-host 211/211 including 64 MiB proof",
+    "P10 static: locked C12 contract checker PASS and changed-crate Clippy -D warnings PASS; workspace Clippy remains blocked only by unchanged pb-pbmux manual-range-pattern warning"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -186,9 +190,9 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [
-    "Explicit product-owner approval or revision of the proposed C12 import byte, count, aggregate, TTL, requester-binding and cancellation limits"
+    "Explicit product-owner choice of the public asynchronous C12 import method and response schema needed to make RECEIVING cancellation reachable without weakening the locked lifecycle"
   ],
-  "next_action": "Create separate C12 ingress implementation branch; implement locked contract and required negative tests; do not add MCP",
+  "next_action": "Approve or revise the proposed asynchronous imports.create/imports.get/imports.cancel C12 schema; do not activate public ingress or start MCP before that decision",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -202,8 +206,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:15:16.815718+00:00",
-      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
+      "date": "2026-10-12T19:30:20.600859+00:00",
+      "head": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af"
     },
     {
       "command": [
@@ -216,16 +220,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:15:16.828370+00:00",
-      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
+      "date": "2026-10-12T19:30:20.825668+00:00",
+      "head": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:15:18.159686+00:00",
-      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
+      "date": "2026-10-12T19:30:21.651859+00:00",
+      "head": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af"
     },
     {
       "command": [
@@ -236,13 +240,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:15:18.186727+00:00",
-      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
+      "date": "2026-10-12T19:30:21.664787+00:00",
+      "head": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-12T19:15:42.013708+00:00",
-    "commit": "67e92524d684456e9eda2f6e67c26a55749c11d9",
+    "date": "2026-10-12T19:30:27.932534+00:00",
+    "commit": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -443,16 +447,27 @@
     "ci_result": "PASS 7/7 in runs 38169755643 and 38169752853 at cd02dbe813e4fd3b0dd577e28635a0c9bee81d67; CodeQL and CodeRabbit PASS; PR 15 CLEAN",
     "status": "COMPLETE_CI_PASS"
   },
-  "p9_c12_import_contract_proposal": {
+  "p9_c12_import_contract": {
     "baseline": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
     "decision": "docs/agentic-integration/PHONEBOOST_C12_IMPORT_RESOURCE_DECISION_V0_1.md",
-    "machine_contract": "docs/agentic-integration/contracts/phoneboost-c12-import-v1.proposed.json",
+    "machine_contract": "docs/agentic-integration/contracts/phoneboost-c12-import-v1.json",
     "checker": "scripts/check_c12_import_contract_v0_1.py",
-    "scope": "Exact resource and lifecycle proposal only; no C12 schema, IPC path, product implementation or MCP",
+    "scope": "Exact locked resource and lifecycle contract; implementation is a separate increment and MCP remains excluded",
     "proposal": "128 MiB object, 4 per requester, 8 per UID, 256 MiB aggregate, one/two concurrent receivers, 60 s receive deadline, 5 min ready TTL, 5 s cancellation acknowledgement, connection-bound 256-bit handles",
     "contract_check": "PASS: repository ceiling alignment and 11/11 negative mutations rejected",
     "check_fast": "PASS",
-    "approval": "REQUIRED",
-    "status": "PROPOSED_BLOCKED_ON_PRODUCT_OWNER_DECISION"
+    "approval": "PRODUCT_OWNER_APPROVED_2026_10_12",
+    "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
+  },
+  "p10_c12_import_ingress": {
+    "baseline": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af",
+    "scope": "SCM_RIGHTS-safe authenticated framing, connection identity, private disk-backed copy/lifecycle core and negative tests; no public C12 method enabled and no MCP",
+    "framing": "PASS 32/32 including one/two descriptor preservation, request-line binding and ancillary truncation fail-closed",
+    "storage": "PASS 12/12 including regular files, sealed memfd, owner/type rejection, quotas, TTL, restart, cancellation, privacy and no retained partial",
+    "host": "PASS 211/211 including authenticated 64 MiB proof",
+    "clippy": "PASS for pb-host all targets with -D warnings and --no-deps; workspace dependency warning unchanged in pb-pbmux",
+    "public_schema": "NOT ACTIVATED \u2014 asynchronous method contract requires explicit owner decision",
+    "mcp": "NOT STARTED",
+    "status": "FOUNDATION_COMPLETE_BLOCKED_ON_PUBLIC_WIRE_DECISION"
   }
 }

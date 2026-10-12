@@ -6,6 +6,7 @@
 mod admission;
 mod auto_use;
 mod discovery;
+mod import_store;
 mod local_api;
 mod planner;
 mod profile_store;
@@ -17,8 +18,8 @@ pub use admission::{
     AuthenticatedLocalClient, FramedLocalClient, LocalAdmissionError, LocalAdmissionErrorKind,
     LocalAdmissionEvent, LocalAdmissionEventKind, LocalAdmissionScope, LocalClientLimits,
     LocalConnectionState, LocalFrameOutcome, LocalFramingError, LocalFramingErrorKind, LocalMethod,
-    LocalMethodClass, LocalValidationCause, LocalValidationError, LocalValidationErrorKind,
-    LocalValidationScope, ValidatedLocalRequest,
+    LocalMethodClass, LocalRequestFrame, LocalValidationCause, LocalValidationError,
+    LocalValidationErrorKind, LocalValidationScope, ValidatedLocalRequest,
 };
 pub use auto_use::{
     AutoUseController, AutoUseError, AutoUseReason, AutoUseState, Blake3Execution,
@@ -26,6 +27,14 @@ pub use auto_use::{
     FixedDeviceDiscovery, GateObservation, GateObservations, NodeStatus,
 };
 pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE_TYPE};
+pub use import_store::{
+    ConsumedImport, IMPORT_CANCELLATION_DEADLINE, IMPORT_COPY_CHUNK_BYTES, IMPORT_READY_TTL,
+    IMPORT_RECEIVING_TIMEOUT, IMPORT_TOMBSTONE_TTL, ImportCancellation, ImportHandle,
+    ImportRequester, ImportStore, ImportStoreError, ImportTerminalState,
+    MAXIMUM_AGGREGATE_BYTES_PER_UID, MAXIMUM_IMPORT_BYTES, MAXIMUM_IMPORTS_PER_REQUESTER,
+    MAXIMUM_IMPORTS_PER_UID, MAXIMUM_RECEIVING_PER_REQUESTER, MAXIMUM_RECEIVING_PER_UID,
+    MAXIMUM_TOMBSTONES_PER_UID, ReadyImport,
+};
 pub use local_api::{
     A4_DEFERRED_HANDLER, LocalApiContext, LocalApiRequestEvent, LocalHandlerDomain,
     serve_local_client,

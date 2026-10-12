@@ -182,16 +182,24 @@ fn serve_local_client_observed(
     };
 
     loop {
-        let line = match framed.next_line_bytes() {
-            Ok(LocalFrameOutcome::Line(line)) => line,
+        let (line, descriptors) = match framed.next_line_bytes() {
+            Ok(LocalFrameOutcome::Line(frame)) => frame.into_parts(),
             Ok(LocalFrameOutcome::CleanEof | LocalFrameOutcome::IdleTimeout) | Err(_) => return,
         };
 
         let started = Instant::now();
         let (method, response) = match framed.validate_request_line(line) {
-            Ok(request) => (
+            Ok(request) if descriptors.is_empty() => (
                 Some(request.method()),
                 dispatch(&request, &framed, &context),
+            ),
+            Ok(request) => (
+                Some(request.method()),
+                C12Response::error(
+                    request.id().clone(),
+                    LOCAL_BAD_REQUEST,
+                    MESSAGE_MALFORMED_REQUEST,
+                ),
             ),
             Err(error) => (None, response_for_validation_error(error)),
         };
