@@ -1,27 +1,30 @@
 # PHONEBOOST — C12 IMPORT RESOURCE DECISION V0.1
 
-**Status:** PROPOSED — EXPLICIT PRODUCT-OWNER APPROVAL REQUIRED
+**Status:** LOCKED — PRODUCT OWNER APPROVED
 
-**Date:** 2026-10-11
+**Date:** 2026-10-12
 
 **Branch:** `docs/c12-import-resource-contract-v0-1`
 
-## 0. Decision requested and stop line
+## 0. Decision and implementation boundary
 
-This document fixes the remaining resource and lifecycle choices needed before
-the approved D4 direction can become a locked C12 ingress contract.
+This document fixes the approved resource and lifecycle choices for the locked
+C12 ingress contract.
 
 It does not change the C12 public request schema, add descriptor transfer or a
 bulk-data path, add an MCP process, enable C11 SPEED/BALANCED, or create a new
-provider. Product implementation remains stopped until this decision is
-explicitly approved and converted into a locked contract with negative tests.
+provider. Product implementation is authorized only as a separate bounded
+increment with the required negative tests. MCP remains outside that increment.
 
-The exact machine-readable proposal is
-`contracts/phoneboost-c12-import-v1.proposed.json`.
+The exact locked machine-readable contract is
+`contracts/phoneboost-c12-import-v1.json`.
+
+The product owner explicitly approved the exact proposal on 2026-10-12 with
+the statement `C12 approuvé`. No value changed between proposal and lock.
 
 ## 1. Recommended exact limits
 
-| Limit | Proposed value | Reason |
+| Limit | Locked value | Reason |
 |---|---:|---|
 | Maximum bytes per import | 134,217,728 (128 MiB) | Equal to the existing C09/compute input ceiling; no larger object can become a current RemoteBuffer input. |
 | Maximum live imports per requester connection | 4 | Bounds one client while allowing a small pipeline. |
@@ -194,9 +197,9 @@ success or undo a possibly completed remote computation.
 
 ## 10. Approval effect
 
-Approval of these exact values authorizes a separate locked C12 import contract
-and deterministic contract/negative-test fixtures. Product implementation must
-then occur in another bounded increment and must not add MCP at the same time.
+Approval of these exact values is recorded above. It authorizes deterministic
+contract/negative-test fixtures and product implementation in another bounded
+increment. That increment must not add MCP at the same time.
 
 Changing any byte limit, count, TTL, requester binding, accepted source type,
 or cancellation truth after approval requires a versioned contract revision.

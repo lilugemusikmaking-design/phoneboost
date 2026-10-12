@@ -1,6 +1,6 @@
 {
   "contract": "phoneboost-c12-import-v1",
-  "status": "proposed_explicit_approval_required",
+  "status": "locked_product_owner_approved",
   "transport": {
     "control": "private_same_uid_af_unix",
     "descriptor_transfer": "scm_rights",

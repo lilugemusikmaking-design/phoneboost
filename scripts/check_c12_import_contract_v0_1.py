@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic consistency checks for the proposed C12 import contract."""
+"""Deterministic consistency checks for the locked C12 import contract."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "docs/agentic-integration/contracts/phoneboost-c12-import-v1.proposed.json"
+CONTRACT = ROOT / "docs/agentic-integration/contracts/phoneboost-c12-import-v1.json"
 MIB = 1024 * 1024
 
 
@@ -28,8 +28,8 @@ def validate(candidate: dict[str, Any]) -> None:
     )
     if candidate["contract"] != "phoneboost-c12-import-v1":
         raise ValueError("contract identifier")
-    if candidate["status"] != "proposed_explicit_approval_required":
-        raise ValueError("proposal must remain explicitly unapproved")
+    if candidate["status"] != "locked_product_owner_approved":
+        raise ValueError("contract must remain explicitly locked")
 
     transport = candidate["transport"]
     if transport != {
@@ -178,11 +178,11 @@ def main() -> None:
     if candidate["limits"]["maximum_object_bytes"] != repository_ceiling():
         raise ValueError("proposed object maximum differs from canonical compute ceiling")
     negative_oracles(candidate)
-    print("C12-IMPORT proposed contract PASS")
+    print("C12-IMPORT locked contract PASS")
     print("RESOURCE limits and repository ceiling PASS")
     print("AUTHORITY/privacy invariants PASS")
     print("NEGATIVE oracles 11/11 PASS")
-    print("STATUS explicit approval still required PASS")
+    print("STATUS product-owner approval locked PASS")
 
 
 if __name__ == "__main__":

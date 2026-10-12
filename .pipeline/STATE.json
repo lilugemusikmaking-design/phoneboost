@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "docs/c12-import-resource-contract-v0-1",
-  "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
+  "head": "67e92524d684456e9eda2f6e67c26a55749c11d9",
   "task": "P9 proposed exact C12 import resource and lifecycle contract",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -81,7 +81,8 @@
     "P8 C13 exact-head Project pipeline and CodeQL PASS; PR 15 CLEAN",
     "P9 C12 import: exact resource/lifecycle proposal drafted without product implementation",
     "P9 C12 import: deterministic consistency and 11 negative contract oracles PASS",
-    "docs: propose exact C12 import resource contract"
+    "docs: propose exact C12 import resource contract",
+    "docs: lock approved C12 import contract"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -187,7 +188,7 @@
   "blockers": [
     "Explicit product-owner approval or revision of the proposed C12 import byte, count, aggregate, TTL, requester-binding and cancellation limits"
   ],
-  "next_action": "Request explicit product-owner approval or revision; do not change C12 schema, implement ingress, or start MCP",
+  "next_action": "Create separate C12 ingress implementation branch; implement locked contract and required negative tests; do not add MCP",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -201,8 +202,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T20:03:27.167509+00:00",
-      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
+      "date": "2026-10-12T19:15:16.815718+00:00",
+      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
     },
     {
       "command": [
@@ -215,16 +216,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T20:03:27.563915+00:00",
-      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
+      "date": "2026-10-12T19:15:16.828370+00:00",
+      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T20:03:30.043560+00:00",
-      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
+      "date": "2026-10-12T19:15:18.159686+00:00",
+      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
     },
     {
       "command": [
@@ -235,13 +236,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T20:03:30.130383+00:00",
-      "head": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67"
+      "date": "2026-10-12T19:15:18.186727+00:00",
+      "head": "67e92524d684456e9eda2f6e67c26a55749c11d9"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T20:04:11.550635+00:00",
-    "commit": "cd02dbe813e4fd3b0dd577e28635a0c9bee81d67",
+    "date": "2026-10-12T19:15:42.013708+00:00",
+    "commit": "67e92524d684456e9eda2f6e67c26a55749c11d9",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
