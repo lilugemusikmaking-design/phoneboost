@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "docs/c12-imported-blake3-consumer-v0-1",
-  "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
-  "task": "P11 exact typed C12 imported BLAKE3 consumer proposal",
+  "branch": "feat/p11-c12-imported-blake3-consumer-v1",
+  "head": "25772796dc2a8dfd0a49087d63c958b7993e6370",
+  "task": "P11 locked typed C12 imported BLAKE3 consumer implementation",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -93,7 +93,9 @@
     "docs(p10): record async import runtime closure",
     "P11 C12 imported BLAKE3 consumer exact proposal and deterministic negative contract prepared without implementation",
     "docs: propose typed C12 imported BLAKE3 consumer",
-    "docs: lock typed C12 imported BLAKE3 consumer"
+    "docs: lock typed C12 imported BLAKE3 consumer",
+    "P11 C12 imported BLAKE3 consumer: exact single-use streaming implementation and targeted evidence complete",
+    "feat(host): consume private imports for BLAKE3"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -192,7 +194,9 @@
     "P10 async targeted PASS: admission 37/37, import lifecycle 18/18, local API 18/18, complete pb-host 219/219 including authenticated 64 MiB proof",
     "P10 async corrected full software aggregate PASS 14/14: nextest 415/415, workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
     "P10 async exact-head de53224 PASS: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN",
-    "P11 imported BLAKE3 consumer proposal PASS: exact 1/1 typed candidate, lifecycle/streaming/authority boundary and 16/16 negative oracles; implementation unauthorized and MCP absent"
+    "P11 imported BLAKE3 consumer locked contract PASS: exact 1/1 typed method, lifecycle/streaming/authority boundary and 16/16 negative oracles; implementation authorized and MCP absent",
+    "P11 host core PASS 224/224 including authenticated 64 MiB; exact wire, FD rejection, concurrent consume, 1-byte/128 MiB local streaming and authenticated remote reader tests PASS",
+    "P11 pb-host all-target Clippy -D warnings and native check-fast PASS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -204,7 +208,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Implement the locked compute.submit_import consumer without MCP",
+  "next_action": "Require exact-head Project pipeline, CodeQL and review for P11",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -218,8 +222,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:44.681192+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:47:04.771962+00:00",
+      "head": "25772796dc2a8dfd0a49087d63c958b7993e6370"
     },
     {
       "command": [
@@ -232,16 +236,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:44.698449+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:47:04.854320+00:00",
+      "head": "25772796dc2a8dfd0a49087d63c958b7993e6370"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:45.728195+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:47:07.517321+00:00",
+      "head": "25772796dc2a8dfd0a49087d63c958b7993e6370"
     },
     {
       "command": [
@@ -252,13 +256,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:45.802737+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:47:07.548478+00:00",
+      "head": "25772796dc2a8dfd0a49087d63c958b7993e6370"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T15:34:55.444219+00:00",
-    "commit": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
+    "date": "2026-10-13T15:47:29.700311+00:00",
+    "commit": "25772796dc2a8dfd0a49087d63c958b7993e6370",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -502,5 +506,22 @@
     "existing_async_contract": "PASS unchanged: exact imports.create/get/cancel 3/3 and 12/12 negative mutations",
     "approval": "PRODUCT_OWNER_APPROVED_2026_10_13",
     "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
+  },
+  "p11_c12_imported_blake3_consumer": {
+    "baseline": "25772796dc2a8dfd0a49087d63c958b7993e6370",
+    "scope": "Exact locked compute.submit_import over one READY private import; no generic execution, public payload access, C12 job or MCP",
+    "evidence": "docs/evidence/p11-c12-imported-blake3-consumer.md",
+    "allowlist": "PASS: exact 19 methods, 12 mutating and 7 read-only",
+    "lifecycle": "PASS: same-authority READY preflight, atomic single-use consume, concurrent at-most-once and retained CONSUMED tombstone",
+    "streaming": "PASS: fixed 65536-byte local chunks at 1 and 134217728 bytes; existing MAX_PUT_BODY remote chunks and authenticated C09/C10 success",
+    "wire": "PASS: exact params, zero descriptors, seven-field terminal result, no handle echo, real create/get/submit/get flow",
+    "targeted_result": "PASS: all added import consumer tests plus modified authenticated remote reader path",
+    "host": "PASS 224/224 after core implementation including authenticated 64 MiB; subsequently added wire/FD tests and remote-reader assertion passed targeted",
+    "clippy": "PASS for pb-host all targets with -D warnings and --no-deps",
+    "check_fast": "PASS",
+    "physical_test": "NOT RUN; Linux local C12 ingress with existing authenticated remote harness coverage",
+    "ci_result": "PENDING exact implementation checkpoint",
+    "mcp": "NOT STARTED",
+    "status": "IMPLEMENTED_LOCAL_TARGETED_PASS_AWAITING_CHECKPOINT"
   }
 }

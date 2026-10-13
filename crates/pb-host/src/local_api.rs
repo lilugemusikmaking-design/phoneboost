@@ -1,4 +1,5 @@
 use serde_json::{Value, json};
+use std::fs::File;
 use std::os::fd::OwnedFd;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -11,6 +12,7 @@ use crate::{
     LocalValidationErrorKind, ValidatedLocalRequest, remote_pairing_begin, remote_pairing_cancel,
     remote_pairing_confirm, remote_status,
 };
+use pb_pbmux::MAX_COMPUTE_INPUT_BYTES;
 use pb_runtime_secure::PairingActionResult;
 
 const C12_API: u64 = 1;
@@ -23,6 +25,7 @@ const MESSAGE_UNSUPPORTED_METHOD: &str = "unsupported local method";
 const MESSAGE_INVALID_STATUS_PARAMS: &str = "system.status requires empty object params";
 const MESSAGE_DEFERRED_HANDLER: &str = "method unavailable in current build";
 const MESSAGE_INVALID_COMPUTE_SUBMIT_PARAMS: &str = "invalid compute.submit params";
+const MESSAGE_INVALID_COMPUTE_SUBMIT_IMPORT_PARAMS: &str = "invalid compute.submit_import params";
 const MESSAGE_INVALID_IMPORT_REQUEST: &str = "invalid import request";
 const MESSAGE_IMPORT_NOT_FOUND: &str = "import not found";
 const MESSAGE_IMPORT_LIMIT_REACHED: &str = "import limit reached";
@@ -30,6 +33,8 @@ const MESSAGE_IMPORT_SOURCE_REJECTED: &str = "import source rejected";
 const MESSAGE_IMPORT_RECEIVING_TIMEOUT: &str = "import receiving timeout";
 const MESSAGE_IMPORT_CLEANUP_UNCONFIRMED: &str = "import cleanup unconfirmed";
 const MESSAGE_IMPORT_UNAVAILABLE: &str = "import unavailable";
+const MESSAGE_IMPORT_NOT_READY: &str = "import not ready";
+const MESSAGE_IMPORT_INPUT_REJECTED: &str = "import input rejected";
 
 const IMPORT_NOT_FOUND: &str = "IMPORT_NOT_FOUND";
 const IMPORT_LIMIT_REACHED: &str = "IMPORT_LIMIT_REACHED";
@@ -37,6 +42,8 @@ const IMPORT_SOURCE_REJECTED: &str = "IMPORT_SOURCE_REJECTED";
 const IMPORT_RECEIVING_TIMEOUT: &str = "IMPORT_RECEIVING_TIMEOUT";
 const IMPORT_CLEANUP_UNCONFIRMED: &str = "IMPORT_CLEANUP_UNCONFIRMED";
 const IMPORT_UNAVAILABLE: &str = "IMPORT_UNAVAILABLE";
+const IMPORT_NOT_READY: &str = "IMPORT_NOT_READY";
+const IMPORT_INPUT_REJECTED: &str = "IMPORT_INPUT_REJECTED";
 
 const C12_BLAKE3_OP_ID: &str = "pb.native.blake3/1";
 const C12_BLAKE3_FIXTURE: &str = "c10-abc-v1";
@@ -148,7 +155,9 @@ impl LocalMethod {
             }
             Self::PeerUnpair => LocalHandlerDomain::PeerTrust,
             Self::ControllerAcquire | Self::ControllerRelease => LocalHandlerDomain::Controller,
-            Self::ComputeSubmit | Self::ComputeCancel => LocalHandlerDomain::Compute,
+            Self::ComputeSubmit | Self::ComputeSubmitImport | Self::ComputeCancel => {
+                LocalHandlerDomain::Compute
+            }
             Self::BenchmarkRun => LocalHandlerDomain::Benchmark,
             Self::ImportsCreate | Self::ImportsGet | Self::ImportsCancel => {
                 LocalHandlerDomain::Imports
@@ -277,6 +286,7 @@ fn dispatch(
         | LocalMethod::ComputeCancel
         | LocalMethod::BenchmarkRun => a4_deferred_handler(request),
         LocalMethod::ComputeSubmit => compute_submit(request, context),
+        LocalMethod::ComputeSubmitImport => compute_submit_import(request, context, requester),
         LocalMethod::PairingBegin => pairing_begin(request),
         LocalMethod::PairingConfirm => pairing_confirm(request),
         LocalMethod::PairingCancel => pairing_cancel(request),
@@ -383,6 +393,126 @@ fn compute_submit_params_are_valid(params: &Value) -> bool {
     params.len() == 2
         && params.get("op_id").and_then(Value::as_str) == Some(C12_BLAKE3_OP_ID)
         && params.get("fixture").and_then(Value::as_str) == Some(C12_BLAKE3_FIXTURE)
+}
+
+fn compute_submit_import(
+    request: &ValidatedLocalRequest,
+    context: &LocalApiContext,
+    requester: ImportRequester,
+) -> C12Response {
+    let Some(handle) = compute_submit_import_handle(request.params()) else {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_BAD_REQUEST,
+            MESSAGE_INVALID_COMPUTE_SUBMIT_IMPORT_PARAMS,
+        );
+    };
+    let Some(controller) = context.auto_use.as_deref() else {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_UNSUPPORTED_METHOD,
+            MESSAGE_DEFERRED_HANDLER,
+        );
+    };
+    let Some(store) = context.import_store.as_deref() else {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    };
+    let input_bytes = match store.status(requester, &handle) {
+        Ok(ImportStatus::Receiving) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_NOT_READY,
+                MESSAGE_IMPORT_NOT_READY,
+            );
+        }
+        Ok(ImportStatus::Ready { bytes }) if bytes == 0 || bytes > MAX_COMPUTE_INPUT_BYTES => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_INPUT_REJECTED,
+                MESSAGE_IMPORT_INPUT_REJECTED,
+            );
+        }
+        Ok(ImportStatus::Ready { bytes }) => bytes,
+        Ok(ImportStatus::Terminal(_)) | Err(ImportStoreError::NotFound) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_NOT_FOUND,
+                MESSAGE_IMPORT_NOT_FOUND,
+            );
+        }
+        Err(_) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_UNAVAILABLE,
+                MESSAGE_IMPORT_UNAVAILABLE,
+            );
+        }
+    };
+    let consumed = match store.consume(requester, &handle) {
+        Ok(consumed) => consumed,
+        Err(ImportStoreError::NotFound) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_NOT_FOUND,
+                MESSAGE_IMPORT_NOT_FOUND,
+            );
+        }
+        Err(ImportStoreError::NotReady) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_NOT_READY,
+                MESSAGE_IMPORT_NOT_READY,
+            );
+        }
+        Err(_) => {
+            return C12Response::error(
+                request.id().clone(),
+                IMPORT_UNAVAILABLE,
+                MESSAGE_IMPORT_UNAVAILABLE,
+            );
+        }
+    };
+    if consumed.bytes() != input_bytes {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    }
+    let mut input = File::from(consumed.into_descriptor());
+    let Ok(execution) = controller.execute_blake3_reader(&mut input, input_bytes) else {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    };
+    C12Response::success(
+        request.id().clone(),
+        json!({
+            "state": "COMPLETED",
+            "op_id": C12_BLAKE3_OP_ID,
+            "input_kind": "PRIVATE_IMPORT_V1",
+            "input_bytes": input_bytes,
+            "digest_blake3_hex": encode_lower_hex(&execution.digest()),
+            "execution_source": execution.source().as_str(),
+            "auto_use_reason": execution.reason().as_str()
+        }),
+    )
+}
+
+fn compute_submit_import_handle(params: &Value) -> Option<ImportHandle> {
+    let Value::Object(params) = params else {
+        return None;
+    };
+    if params.len() != 2 || params.get("op_id").and_then(Value::as_str) != Some(C12_BLAKE3_OP_ID) {
+        return None;
+    }
+    ImportHandle::parse_exact(params.get("import_handle")?.as_str()?)
 }
 
 fn encode_lower_hex(bytes: &[u8]) -> String {
@@ -720,7 +850,17 @@ mod tests {
             AutoUseController::new(runtime, Arc::new(NoDeviceDiscovery))
                 .expect("local API test controller"),
         );
-        (Arc::new(LocalApiContext::new(Some(controller))), path)
+        let import_store = Arc::new(
+            ImportStore::from_cache_home(&path.join("imports"))
+                .expect("local API test import store"),
+        );
+        (
+            Arc::new(LocalApiContext::with_import_store(
+                Some(controller),
+                import_store,
+            )),
+            path,
+        )
     }
 
     fn context_with_import_store() -> (Arc<LocalApiContext>, std::path::PathBuf) {
@@ -761,7 +901,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_domain_map_classifies_all_eighteen_methods() {
+    fn closed_domain_map_classifies_all_nineteen_methods() {
         let expected = [
             LocalHandlerDomain::System,
             LocalHandlerDomain::Devices,
@@ -776,6 +916,7 @@ mod tests {
             LocalHandlerDomain::PeerTrust,
             LocalHandlerDomain::Controller,
             LocalHandlerDomain::Controller,
+            LocalHandlerDomain::Compute,
             LocalHandlerDomain::Compute,
             LocalHandlerDomain::Compute,
             LocalHandlerDomain::Benchmark,
@@ -853,6 +994,7 @@ mod tests {
                     | LocalMethod::PairingConfirm
                     | LocalMethod::PairingCancel
                     | LocalMethod::ComputeSubmit
+                    | LocalMethod::ComputeSubmitImport
                     | LocalMethod::ImportsCreate
                     | LocalMethod::ImportsGet
                     | LocalMethod::ImportsCancel
@@ -924,6 +1066,173 @@ mod tests {
                 MESSAGE_INVALID_COMPUTE_SUBMIT_PARAMS
             );
         }
+    }
+
+    #[test]
+    fn compute_submit_import_validation_is_exact_and_precedes_context_lookup() {
+        let valid_handle = "0123456789abcdef".repeat(4);
+        assert_eq!(
+            compute_submit_import_handle(&json!({
+                "op_id": C12_BLAKE3_OP_ID,
+                "import_handle": valid_handle
+            }))
+            .expect("exact imported compute params")
+            .as_str(),
+            valid_handle
+        );
+        for invalid in [
+            json!(null),
+            json!([]),
+            json!({}),
+            json!({"op_id": C12_BLAKE3_OP_ID}),
+            json!({"import_handle": valid_handle}),
+            json!({"op_id": 1, "import_handle": valid_handle}),
+            json!({"op_id": C12_BLAKE3_OP_ID, "import_handle": 1}),
+            json!({"op_id": "pb.native.blake3/2", "import_handle": valid_handle}),
+            json!({"op_id": C12_BLAKE3_OP_ID, "import_handle": "A".repeat(64)}),
+            json!({
+                "op_id": C12_BLAKE3_OP_ID,
+                "import_handle": valid_handle,
+                "extra": true
+            }),
+        ] {
+            assert!(
+                compute_submit_import_handle(&invalid).is_none(),
+                "{invalid}"
+            );
+            let value = response_value(compute_submit_import(
+                &request(LocalMethod::ComputeSubmitImport, invalid),
+                &LocalApiContext::default(),
+                ImportRequester::new(1, 1),
+            ));
+            assert_eq!(value["error"]["code"], LOCAL_BAD_REQUEST);
+        }
+
+        let value = response_value(compute_submit_import(
+            &request(
+                LocalMethod::ComputeSubmitImport,
+                json!({"op_id": C12_BLAKE3_OP_ID, "import_handle": valid_handle}),
+            ),
+            &LocalApiContext::default(),
+            ImportRequester::new(1, 1),
+        ));
+        assert_eq!(value["error"]["code"], LOCAL_UNSUPPORTED_METHOD);
+    }
+
+    #[test]
+    fn compute_submit_import_is_authority_bound_single_use_and_handle_free() {
+        let (context, directory) = context_with_off_controller();
+        let requester = ImportRequester::new(rustix::process::getuid().as_raw(), 71);
+        let other_requester = ImportRequester::new(requester.peer_uid(), 72);
+        let source_path = directory.join("typed-import.bin");
+        let payload = b"private imported payload";
+        fs::write(&source_path, payload).expect("write import source");
+        let ready = context
+            .import_store
+            .as_deref()
+            .expect("import store")
+            .import_descriptor(
+                requester,
+                File::open(&source_path).expect("open import source").into(),
+            )
+            .expect("ready private import");
+        let params = json!({
+            "op_id": C12_BLAKE3_OP_ID,
+            "import_handle": ready.handle().as_str()
+        });
+
+        let cross_authority = response_value(compute_submit_import(
+            &request(LocalMethod::ComputeSubmitImport, params.clone()),
+            &context,
+            other_requester,
+        ));
+        assert_eq!(cross_authority["error"]["code"], IMPORT_NOT_FOUND);
+
+        let completed = response_value(compute_submit_import(
+            &request(LocalMethod::ComputeSubmitImport, params.clone()),
+            &context,
+            requester,
+        ));
+        assert_eq!(completed["ok"], true);
+        assert_eq!(completed["result"]["state"], "COMPLETED");
+        assert_eq!(completed["result"]["op_id"], C12_BLAKE3_OP_ID);
+        assert_eq!(completed["result"]["input_kind"], "PRIVATE_IMPORT_V1");
+        assert_eq!(completed["result"]["input_bytes"], payload.len());
+        assert_eq!(
+            completed["result"]["digest_blake3_hex"],
+            encode_lower_hex(blake3::hash(payload).as_bytes())
+        );
+        assert_eq!(
+            completed["result"]["execution_source"],
+            "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE"
+        );
+        assert_eq!(completed["result"]["auto_use_reason"], "OFF");
+        assert_eq!(
+            completed["result"]
+                .as_object()
+                .expect("exact result object")
+                .len(),
+            7
+        );
+        assert!(
+            !serde_json::to_string(&completed)
+                .expect("serialize result")
+                .contains(ready.handle().as_str())
+        );
+        assert_eq!(
+            context
+                .import_store
+                .as_deref()
+                .expect("import store")
+                .status(requester, ready.handle())
+                .expect("consumed tombstone"),
+            ImportStatus::Terminal(ImportTerminalState::Consumed)
+        );
+
+        let replay = response_value(compute_submit_import(
+            &request(LocalMethod::ComputeSubmitImport, params),
+            &context,
+            requester,
+        ));
+        assert_eq!(replay["error"]["code"], IMPORT_NOT_FOUND);
+        drop(context);
+        fs::remove_dir_all(directory).expect("remove imported compute test directory");
+    }
+
+    #[test]
+    fn compute_submit_import_rejects_empty_ready_without_consuming_it() {
+        let (context, directory) = context_with_off_controller();
+        let requester = ImportRequester::new(rustix::process::getuid().as_raw(), 73);
+        let source_path = directory.join("empty-import.bin");
+        fs::write(&source_path, []).expect("write empty source");
+        let store = context.import_store.as_deref().expect("import store");
+        let ready = store
+            .import_descriptor(
+                requester,
+                File::open(&source_path).expect("open empty source").into(),
+            )
+            .expect("ready empty import");
+        let response = response_value(compute_submit_import(
+            &request(
+                LocalMethod::ComputeSubmitImport,
+                json!({
+                    "op_id": C12_BLAKE3_OP_ID,
+                    "import_handle": ready.handle().as_str()
+                }),
+            ),
+            &context,
+            requester,
+        ));
+        assert_eq!(response["error"]["code"], IMPORT_INPUT_REJECTED);
+        assert_eq!(
+            store
+                .status(requester, ready.handle())
+                .expect("still ready"),
+            ImportStatus::Ready { bytes: 0 }
+        );
+        assert!(store.cancel(requester, ready.handle()).is_ok());
+        drop(context);
+        fs::remove_dir_all(directory).expect("remove empty import test directory");
     }
 
     #[test]
@@ -1178,6 +1487,94 @@ mod tests {
             assert!(response.len() < MAX_RESPONSE_WITH_LF_BYTES);
         }
         serde_json::from_slice(&response).expect("parse local response")
+    }
+
+    #[test]
+    fn compute_submit_import_rejects_every_ancillary_descriptor_before_lookup() {
+        let (mut peer, server) = UnixStream::pair().expect("create local socket pair");
+        let authenticated = authenticated_test_client(OwnedFd::from(server));
+        let worker = thread::spawn(move || {
+            serve_local_client(authenticated, Arc::new(LocalApiContext::default()))
+        });
+        let descriptor = File::open("/dev/null").expect("open harmless descriptor");
+        let response = exchange_with_descriptor(
+            &mut peer,
+            br#"{"api":1,"id":"fd","method":"compute.submit_import","params":{"op_id":"pb.native.blake3/1","import_handle":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}}"#,
+            &[descriptor],
+        );
+        assert_eq!(response["error"]["code"], LOCAL_BAD_REQUEST);
+        assert_eq!(response["error"]["message_safe"], MESSAGE_MALFORMED_REQUEST);
+        drop(peer);
+        worker.join().expect("local server exits after EOF");
+    }
+
+    #[test]
+    fn real_client_loop_creates_then_executes_one_private_import() {
+        let (context, directory) = context_with_off_controller();
+        let (mut peer, server) = UnixStream::pair().expect("create local socket pair");
+        let authenticated = authenticated_test_client(OwnedFd::from(server));
+        let server_context = Arc::clone(&context);
+        let worker = thread::spawn(move || serve_local_client(authenticated, server_context));
+        let source_path = directory.join("wire-import.bin");
+        let payload = b"wire private payload";
+        fs::write(&source_path, payload).expect("write wire source");
+        let descriptor = File::open(&source_path).expect("open wire source");
+        let created = exchange_with_descriptor(
+            &mut peer,
+            br#"{"api":1,"id":"create","method":"imports.create","params":{}}"#,
+            &[descriptor],
+        );
+        let handle = created["result"]["import_handle"]
+            .as_str()
+            .expect("private handle")
+            .to_owned();
+        let get_request = serde_json::to_vec(&json!({
+            "api": 1,
+            "id": "get",
+            "method": "imports.get",
+            "params": {"import_handle": handle}
+        }))
+        .expect("serialize get");
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            let status = exchange(&mut peer, &get_request);
+            if status["result"]["state"] == "READY" {
+                assert_eq!(status["result"]["input_bytes"], payload.len());
+                break;
+            }
+            assert_eq!(status["result"]["state"], "RECEIVING");
+            assert!(Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(5));
+        }
+
+        let submit_request = serde_json::to_vec(&json!({
+            "api": 1,
+            "id": "submit-import",
+            "method": "compute.submit_import",
+            "params": {
+                "op_id": C12_BLAKE3_OP_ID,
+                "import_handle": handle
+            }
+        }))
+        .expect("serialize imported submit");
+        let completed = exchange(&mut peer, &submit_request);
+        assert_eq!(completed["ok"], true);
+        assert_eq!(completed["result"]["input_kind"], "PRIVATE_IMPORT_V1");
+        assert_eq!(completed["result"]["input_bytes"], payload.len());
+        assert_eq!(
+            completed["result"]["digest_blake3_hex"],
+            encode_lower_hex(blake3::hash(payload).as_bytes())
+        );
+        assert_eq!(
+            completed["result"]["execution_source"],
+            "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE"
+        );
+        let consumed = exchange(&mut peer, &get_request);
+        assert_eq!(consumed["result"], json!({"state": "CONSUMED"}));
+        drop(peer);
+        worker.join().expect("local server exits after EOF");
+        drop(context);
+        fs::remove_dir_all(directory).expect("remove wire import test directory");
     }
 
     #[test]

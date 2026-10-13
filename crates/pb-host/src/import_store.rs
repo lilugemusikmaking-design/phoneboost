@@ -1288,6 +1288,7 @@ mod tests {
     use rustix::fs::{MemfdFlags, fcntl_add_seals, memfd_create};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::{Arc, Barrier};
 
     static NEXT_SANDBOX: AtomicU64 = AtomicU64::new(0);
 
@@ -1380,6 +1381,53 @@ mod tests {
         assert_eq!(
             store.consume(requester(1), ready.handle()).unwrap_err(),
             ImportStoreError::NotFound
+        );
+    }
+
+    #[test]
+    fn concurrent_consumers_open_unlink_and_tombstone_exactly_once() {
+        let sandbox = Sandbox::new();
+        let store = Arc::new(ImportStore::from_cache_home(&sandbox.root).expect("import store"));
+        let owner = requester(2);
+        let ready = store
+            .import_descriptor(owner, source(&sandbox, "concurrent.bin", b"single-use"))
+            .expect("ready import");
+        let handle = ready.handle().clone();
+        let stored = sandbox.version().join(ready_name(handle.as_str()));
+        let barrier = Arc::new(Barrier::new(3));
+        let mut workers = Vec::new();
+        for _ in 0..2 {
+            let store = Arc::clone(&store);
+            let handle = handle.clone();
+            let barrier = Arc::clone(&barrier);
+            workers.push(thread::spawn(move || {
+                barrier.wait();
+                store.consume(owner, &handle)
+            }));
+        }
+        barrier.wait();
+        let results = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("consumer thread"))
+            .collect::<Vec<_>>();
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(result, Err(ImportStoreError::NotFound)))
+                .count(),
+            1
+        );
+        let consumed = results
+            .into_iter()
+            .find_map(Result::ok)
+            .expect("one consumed descriptor");
+        assert_eq!(consumed_bytes(consumed), b"single-use");
+        assert!(!stored.exists());
+        assert_eq!(store.live_count(), 0);
+        assert_eq!(
+            store.status(owner, &handle).expect("consumed tombstone"),
+            ImportStatus::Terminal(ImportTerminalState::Consumed)
         );
     }
 
