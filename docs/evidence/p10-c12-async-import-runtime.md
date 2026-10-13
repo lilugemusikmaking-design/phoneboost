@@ -81,6 +81,10 @@ Tests prove:
   Clippy, nextest 415/415, mandatory workspace tests, frontend 331/331,
   production build, Playwright 10/10, Android release JNI plus assemble/tests/
   lint, cargo-deny, Trivy fixed-CRITICAL gate and Maestro syntax 2/2.
+- exact-head checkpoint `de53224b11d9548e053fee6ed057aea1f69820f0`:
+  Project pipeline runs `38351651368` and `38351647529` PASS 7/7, CodeQL run
+  `38351651370` PASS for Actions, JavaScript/TypeScript, Python and Rust,
+  CodeRabbit PASS, and PR 17 merge state `CLEAN`.
 
 The first full attempt exposed only missing local Playwright/Rust/Android/
 security tool installations in the new worktree. The repository-pinned tools
