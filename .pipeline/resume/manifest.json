@@ -1,9 +1,9 @@
 {
-  "next_action": "Verify P12 checkpoint CI and CodeRabbit; close when green. No master merge or MCP without separate authorization.",
+  "next_action": "Verify exact-head Project pipeline and CodeQL for P13, then request explicit merge approval; software complete, physical proof not claimed",
   "writer": "Codex",
-  "parent_head": "aba2cf157b9b55f7006feda994fe3f4926adacf9",
-  "date": "2026-10-13T16:48:52.380402+00:00",
-  "branch": "feat/p12-c12-import-cli-v1",
+  "parent_head": "ef1991cc73aad55c2b4b720a53bbc961324699cb",
+  "date": "2026-10-13T18:51:18.166312+00:00",
+  "branch": "feat/p13-durable-auto-use-control",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

@@ -101,6 +101,19 @@ existing `compute blake3 c10-abc-v1` demonstration remains available unchanged.
 
 This provides a typed real-input compute path, not a measured speedup claim.
 
+### Native automatic remote use control
+
+With `phoneboostd` running, use `phoneboostctl auto-use status`,
+`phoneboostctl auto-use off`, or `phoneboostctl auto-use on`.
+The daemon saves this preference across restart. ON permits automatic use but
+does not mean the phone is ready. OFF stops automatic remote work; explicit
+native compute requests can still complete as truthful local fallback.
+`Persistence: ERROR` means live OFF but unconfirmed saved state: restart may
+restore ON. A failed command is never replayed automatically; read status to
+reconcile. The local browser switch uses this same native control, displays
+pending/unknown until confirmed, and never treats browser localStorage as
+daemon authority. Without a live bridge it is unavailable, not a simulated OFF.
+
 ## Build and test
 
 Rust 1.98 is pinned by `rust-toolchain.toml`:

@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -101,11 +103,66 @@ struct NativeUnavailable;
 trait NativeBackend {
     fn status(&mut self) -> Result<NativeStatus, NativeUnavailable>;
     fn compute_blake3(&mut self) -> Result<NativeCompute, NativeUnavailable>;
+    fn auto_use(&mut self, enabled: Option<bool>)
+    -> Result<NativePreference, pb_cli::AutoUseError>;
+}
+
+struct NativePreference {
+    enabled: bool,
+    persistence: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreferenceRequest {
+    enabled: bool,
+}
+
+#[derive(Default)]
+struct Lanes {
+    compute: Mutex<()>,
+    control: Mutex<()>,
+    handlers: AtomicUsize,
+}
+
+struct HandlerPermit(Arc<Lanes>);
+impl HandlerPermit {
+    fn acquire(lanes: &Arc<Lanes>) -> Option<Self> {
+        lanes
+            .handlers
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                (count < 4).then_some(count + 1)
+            })
+            .ok()
+            .map(|_| Self(Arc::clone(lanes)))
+    }
+}
+impl Drop for HandlerPermit {
+    fn drop(&mut self) {
+        self.0.handlers.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+fn control_error(status: u16, code: &str) -> Response {
+    Response::json(status, json!({"error":code}))
 }
 
 struct ProductionNative;
 
 impl NativeBackend for ProductionNative {
+    fn auto_use(
+        &mut self,
+        enabled: Option<bool>,
+    ) -> Result<NativePreference, pb_cli::AutoUseError> {
+        let view = match enabled {
+            Some(enabled) => pb_cli::auto_use_set(enabled),
+            None => pb_cli::auto_use_get(),
+        }?;
+        Ok(NativePreference {
+            enabled: view.enabled(),
+            persistence: view.persistence().to_owned(),
+        })
+    }
     fn status(&mut self) -> Result<NativeStatus, NativeUnavailable> {
         let view = pb_cli::status_with_timeout(STATUS_TIMEOUT).map_err(|_| NativeUnavailable)?;
         Ok(NativeStatus {
@@ -153,7 +210,8 @@ struct Bridge<N> {
     token: String,
     frontend_root: PathBuf,
     native: N,
-    last_execution: Option<ExecutionObservation>,
+    last_execution: Arc<Mutex<Option<ExecutionObservation>>>,
+    lanes: Arc<Lanes>,
 }
 
 impl<N: NativeBackend> Bridge<N> {
@@ -163,6 +221,13 @@ impl<N: NativeBackend> Bridge<N> {
         }
 
         match (request.method.as_str(), request.path.as_str()) {
+            ("GET" | "POST", "/bridge/v1/auto-use") => {
+                if !self.valid_token(&request) {
+                    return Response::error(401, "BRIDGE_CAPABILITY_REQUIRED");
+                }
+                self.preference(&request)
+            }
+            (_, "/bridge/v1/auto-use") => Response::error(405, "METHOD_NOT_ALLOWED"),
             ("GET", "/bridge/v1/snapshot") => {
                 if !request.body.is_empty() {
                     return Response::error(400, "INVALID_REQUEST");
@@ -219,6 +284,10 @@ impl<N: NativeBackend> Bridge<N> {
     }
 
     fn snapshot(&mut self) -> Response {
+        let lanes = Arc::clone(&self.lanes);
+        let Ok(_permit) = lanes.control.try_lock() else {
+            return control_error(503, "BUSY");
+        };
         let observed_at_unix_ms = now_unix_ms();
         let status = match self.native.status() {
             Ok(status) => status,
@@ -258,15 +327,20 @@ impl<N: NativeBackend> Bridge<N> {
         } else {
             "UNAVAILABLE"
         };
-        let last_execution = self.last_execution.as_ref().map(|execution| {
-            json!({
-                "observed_at_unix_ms": execution.observed_at_unix_ms,
-                "fixture": BLAKE3_FIXTURE,
-                "digest_blake3_hex": execution.digest_blake3_hex,
-                "execution_source": execution.execution_source,
-                "auto_use_reason": execution.auto_use_reason,
-            })
-        });
+        let last_execution = self
+            .last_execution
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .as_ref()
+            .map(|execution| {
+                json!({
+                    "observed_at_unix_ms": execution.observed_at_unix_ms,
+                    "fixture": BLAKE3_FIXTURE,
+                    "digest_blake3_hex": execution.digest_blake3_hex,
+                    "execution_source": execution.execution_source,
+                    "auto_use_reason": execution.auto_use_reason,
+                })
+            });
         Response::json(
             200,
             json!({
@@ -328,12 +402,19 @@ impl<N: NativeBackend> Bridge<N> {
             return Response::error(400, "INVALID_COMPUTE_REQUEST");
         }
 
+        let lanes = Arc::clone(&self.lanes);
+        let Ok(_permit) = lanes.compute.try_lock() else {
+            return control_error(503, "BUSY");
+        };
         let result = match self.native.compute_blake3() {
             Ok(result) => result,
             Err(_) => return Response::error(503, "LOCAL_RUNTIME_UNAVAILABLE"),
         };
         let observed_at_unix_ms = now_unix_ms();
-        self.last_execution = Some(ExecutionObservation {
+        *self
+            .last_execution
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = Some(ExecutionObservation {
             observed_at_unix_ms,
             digest_blake3_hex: result.digest_blake3_hex.clone(),
             execution_source: result.execution_source.clone(),
@@ -351,6 +432,52 @@ impl<N: NativeBackend> Bridge<N> {
                 "auto_use_reason": result.auto_use_reason,
             }),
         )
+    }
+
+    fn preference(&mut self, request: &Request) -> Response {
+        let enabled = if request.method == "POST" {
+            if request.body.iter().find(|byte| !byte.is_ascii_whitespace()) != Some(&b'{') {
+                return control_error(400, "BAD_REQUEST");
+            }
+            if !request
+                .headers
+                .get("content-type")
+                .is_some_and(|value| is_json_content_type(value))
+            {
+                return control_error(400, "BAD_REQUEST");
+            }
+            match serde_json::from_slice::<PreferenceRequest>(&request.body) {
+                Ok(value) => Some(value.enabled),
+                Err(_) => return control_error(400, "BAD_REQUEST"),
+            }
+        } else {
+            if !request.body.is_empty() {
+                return control_error(400, "BAD_REQUEST");
+            }
+            None
+        };
+        let lanes = Arc::clone(&self.lanes);
+        let Ok(_permit) = lanes.control.try_lock() else {
+            return control_error(503, "BUSY");
+        };
+        match self.native.auto_use(enabled) {
+            Ok(view) => Response::json(
+                200,
+                json!({"enabled":view.enabled,"persistence":view.persistence}),
+            ),
+            Err(error) => {
+                use pb_cli::AutoUseError::*;
+                let (status, code) = match error {
+                    Unavailable => (503, "CONTROL_UNAVAILABLE"),
+                    InvalidResponse => (502, "INVALID_NATIVE_RESPONSE"),
+                    Timeout => (504, "CONTROL_TIMEOUT"),
+                    OutcomeUnknown => (504, "OUTCOME_UNKNOWN"),
+                    WriteFailed => (503, "STATE_WRITE_FAILED"),
+                    BadRequest => (400, "BAD_REQUEST"),
+                };
+                control_error(status, code)
+            }
+        }
     }
 
     fn static_asset(&self, request_path: &str, head_only: bool) -> Response {
@@ -668,6 +795,9 @@ fn read_request(stream: &mut impl Read) -> Result<Request, Response> {
         body.extend_from_slice(&chunk[..count]);
     }
     if method != "POST" && !body.is_empty() {
+        if path == "/bridge/v1/auto-use" {
+            return Err(control_error(400, "BAD_REQUEST"));
+        }
         return Err(Response::error(400, "INVALID_REQUEST"));
     }
     Ok(Request {
@@ -690,6 +820,8 @@ fn write_response(stream: &mut impl Write, response: &Response) -> std::io::Resu
         413 => "Content Too Large",
         415 => "Unsupported Media Type",
         503 => "Service Unavailable",
+        502 => "Bad Gateway",
+        504 => "Gateway Timeout",
         _ => "Error",
     };
     write!(stream, "HTTP/1.1 {} {}\r\n", response.status, reason)?;
@@ -770,13 +902,8 @@ pub fn run() -> Result<(), String> {
         .map_err(|_| "loopback listener address unavailable".to_owned())?;
     let token = generate_token()?;
     let expected_host = address.to_string();
-    let mut bridge = Bridge {
-        expected_host: expected_host.clone(),
-        token: token.clone(),
-        frontend_root,
-        native: ProductionNative,
-        last_execution: None,
-    };
+    let lanes = Arc::new(Lanes::default());
+    let last_execution = Arc::new(Mutex::new(None));
     println!("PhoneBoost local Control Center:");
     println!("http://{expected_host}/#token={token}");
     println!("Keep this process running; press Ctrl+C to stop it.");
@@ -787,7 +914,29 @@ pub fn run() -> Result<(), String> {
     for connection in listener.incoming() {
         match connection {
             Ok(mut stream) => {
-                let _ = handle_connection(&mut stream, &mut bridge);
+                let Some(permit) = HandlerPermit::acquire(&lanes) else {
+                    // Never block the accept loop or queue additional work.
+                    if stream.set_nonblocking(true).is_ok() {
+                        let _ = write_response(&mut stream, &control_error(503, "BUSY"));
+                    }
+                    continue;
+                };
+                let mut bridge = Bridge {
+                    expected_host: expected_host.clone(),
+                    token: token.clone(),
+                    frontend_root: frontend_root.clone(),
+                    native: ProductionNative,
+                    last_execution: Arc::clone(&last_execution),
+                    lanes: Arc::clone(&lanes),
+                };
+                // Spawn failure drops the closure and its permit. All normal,
+                // error and panic exits release the live-handler slot via RAII.
+                let _ = std::thread::Builder::new()
+                    .name("phoneboost-http".to_owned())
+                    .spawn(move || {
+                        let _permit = permit;
+                        let _ = handle_connection(&mut stream, &mut bridge);
+                    });
             }
             Err(_) => continue,
         }
@@ -806,9 +955,24 @@ mod tests {
         compute: Result<NativeCompute, NativeUnavailable>,
         status_calls: Cell<usize>,
         compute_calls: Cell<usize>,
+        control_calls: Cell<usize>,
+        control_error: Option<pb_cli::AutoUseError>,
     }
 
     impl NativeBackend for FakeNative {
+        fn auto_use(
+            &mut self,
+            enabled: Option<bool>,
+        ) -> Result<NativePreference, pb_cli::AutoUseError> {
+            self.control_calls.set(self.control_calls.get() + 1);
+            if let Some(error) = self.control_error {
+                return Err(error);
+            }
+            Ok(NativePreference {
+                enabled: enabled.unwrap_or(true),
+                persistence: "SAVED".to_owned(),
+            })
+        }
         fn status(&mut self) -> Result<NativeStatus, NativeUnavailable> {
             self.status_calls.set(self.status_calls.get() + 1);
             self.status.clone()
@@ -852,6 +1016,8 @@ mod tests {
             compute: Ok(remote_compute("REMOTE_SUCCESS", "READY")),
             status_calls: Cell::new(0),
             compute_calls: Cell::new(0),
+            control_calls: Cell::new(0),
+            control_error: None,
         }
     }
 
@@ -861,7 +1027,8 @@ mod tests {
             token: "a".repeat(TOKEN_HEX_LEN),
             frontend_root: PathBuf::from("/nonexistent-test-root"),
             native,
-            last_execution: None,
+            last_execution: Arc::new(Mutex::new(None)),
+            lanes: Arc::new(Lanes::default()),
         }
     }
 
@@ -888,6 +1055,200 @@ mod tests {
 
     fn json_body(response: &Response) -> Value {
         serde_json::from_slice(&response.body).expect("response JSON")
+    }
+
+    #[test]
+    fn auto_use_routes_are_typed_authenticated_and_fail_closed() {
+        let mut bridge = bridge(fake_native());
+        let path = "/bridge/v1/auto-use";
+        assert_eq!(
+            json_body(&bridge.handle(request("GET", path, &[], b""))),
+            json!({"enabled":true,"persistence":"SAVED"})
+        );
+        let headers = [("content-type", "application/json")];
+        assert_eq!(
+            json_body(&bridge.handle(request("POST", path, &headers, br#"{"enabled":false}"#))),
+            json!({"enabled":false,"persistence":"SAVED"})
+        );
+        let calls = bridge.native.control_calls.get();
+        for body in [
+            b"{}".as_slice(),
+            b"[false]",
+            b"null",
+            br#"{"enabled":0}"#,
+            br#"{"enabled":false,"enabled":true}"#,
+            br#"{"enabled":false,"path":"x"}"#,
+        ] {
+            let response = bridge.handle(request("POST", path, &headers, body));
+            assert_eq!(response.status, 400);
+            assert_eq!(json_body(&response), json!({"error":"BAD_REQUEST"}));
+        }
+        let mut unauthorized = request("POST", path, &headers, br#"{"enabled":false}"#);
+        unauthorized.headers.remove("x-phoneboost-bridge-token");
+        assert_eq!(bridge.handle(unauthorized).status, 401);
+        assert_eq!(
+            bridge
+                .handle(request(
+                    "POST",
+                    path,
+                    &[("origin", "https://attacker.invalid")],
+                    b"{}"
+                ))
+                .status,
+            403
+        );
+        assert_eq!(bridge.native.control_calls.get(), calls);
+    }
+
+    #[test]
+    fn auto_use_errors_are_closed_and_release_control_lane() {
+        use pb_cli::AutoUseError::*;
+        let mut bridge = bridge(fake_native());
+        for (error, status, code) in [
+            (Unavailable, 503, "CONTROL_UNAVAILABLE"),
+            (InvalidResponse, 502, "INVALID_NATIVE_RESPONSE"),
+            (Timeout, 504, "CONTROL_TIMEOUT"),
+            (OutcomeUnknown, 504, "OUTCOME_UNKNOWN"),
+            (WriteFailed, 503, "STATE_WRITE_FAILED"),
+            (BadRequest, 400, "BAD_REQUEST"),
+        ] {
+            bridge.native.control_error = Some(error);
+            let response = bridge.handle(request("GET", "/bridge/v1/auto-use", &[], b""));
+            assert_eq!(response.status, status);
+            assert_eq!(json_body(&response), json!({"error":code}));
+            assert!(bridge.lanes.control.try_lock().is_ok());
+        }
+    }
+
+    #[test]
+    fn control_and_compute_lanes_are_independent_and_never_queue() {
+        let mut bridge = bridge(fake_native());
+        let lanes = Arc::clone(&bridge.lanes);
+        let compute = lanes.compute.lock().unwrap();
+        assert_eq!(
+            bridge
+                .handle(request(
+                    "POST",
+                    "/bridge/v1/auto-use",
+                    &[("content-type", "application/json")],
+                    br#"{"enabled":false}"#
+                ))
+                .status,
+            200
+        );
+        assert_eq!(
+            bridge
+                .handle(request(
+                    "POST",
+                    "/bridge/v1/compute/blake3",
+                    &[("content-type", "application/json")],
+                    br#"{"fixture":"c10-abc-v1"}"#
+                ))
+                .status,
+            503
+        );
+        assert_eq!(bridge.native.compute_calls.get(), 0);
+        drop(compute);
+        let control = lanes.control.lock().unwrap();
+        let calls = bridge.native.control_calls.get();
+        assert_eq!(
+            json_body(&bridge.handle(request("GET", "/bridge/v1/auto-use", &[], b""))),
+            json!({"error":"BUSY"})
+        );
+        assert_eq!(bridge.native.control_calls.get(), calls);
+        drop(control);
+        assert_eq!(
+            bridge
+                .handle(request("GET", "/bridge/v1/auto-use", &[], b""))
+                .status,
+            200
+        );
+    }
+
+    #[test]
+    fn http_handler_budget_is_four_and_recovers_on_drop() {
+        let lanes = Arc::new(Lanes::default());
+        let permits: Vec<_> = (0..4)
+            .map(|_| HandlerPermit::acquire(&lanes).unwrap())
+            .collect();
+        assert!(HandlerPermit::acquire(&lanes).is_none());
+        drop(permits);
+        assert_eq!(lanes.handlers.load(Ordering::Acquire), 0);
+        assert!(HandlerPermit::acquire(&lanes).is_some());
+        assert_eq!(lanes.handlers.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn off_completes_while_native_compute_is_blocked() {
+        use std::sync::mpsc;
+        struct Blocking {
+            entered: mpsc::Sender<()>,
+            release: mpsc::Receiver<()>,
+        }
+        impl NativeBackend for Blocking {
+            fn status(&mut self) -> Result<NativeStatus, NativeUnavailable> {
+                Err(NativeUnavailable)
+            }
+            fn compute_blake3(&mut self) -> Result<NativeCompute, NativeUnavailable> {
+                self.entered.send(()).unwrap();
+                self.release.recv_timeout(Duration::from_secs(3)).unwrap();
+                Ok(remote_compute(
+                    "LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE",
+                    "TRANSPORT_LOST",
+                ))
+            }
+            fn auto_use(
+                &mut self,
+                _: Option<bool>,
+            ) -> Result<NativePreference, pb_cli::AutoUseError> {
+                unreachable!("control uses its own native connection")
+            }
+        }
+        let mut control = bridge(fake_native());
+        let (entered, started) = mpsc::channel();
+        let (release, blocked) = mpsc::channel();
+        let mut compute = Bridge {
+            expected_host: control.expected_host.clone(),
+            token: control.token.clone(),
+            frontend_root: control.frontend_root.clone(),
+            lanes: Arc::clone(&control.lanes),
+            last_execution: Arc::clone(&control.last_execution),
+            native: Blocking {
+                entered,
+                release: blocked,
+            },
+        };
+        let worker = std::thread::spawn(move || {
+            compute.handle(request(
+                "POST",
+                "/bridge/v1/compute/blake3",
+                &[("content-type", "application/json")],
+                br#"{"fixture":"c10-abc-v1"}"#,
+            ))
+        });
+        started.recv_timeout(Duration::from_secs(1)).unwrap();
+        let response = control.handle(request(
+            "POST",
+            "/bridge/v1/auto-use",
+            &[("content-type", "application/json")],
+            br#"{"enabled":false}"#,
+        ));
+        assert_eq!(response.status, 200);
+        assert_eq!(json_body(&response)["enabled"], false);
+        assert!(control.lanes.compute.try_lock().is_err());
+        release.send(()).unwrap();
+        assert_eq!(worker.join().unwrap().status, 200);
+        assert!(control.lanes.compute.try_lock().is_ok());
+        assert_eq!(
+            control
+                .last_execution
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .execution_source,
+            "LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE"
+        );
     }
 
     #[test]
@@ -1076,6 +1437,8 @@ mod tests {
             assert_eq!(
                 bridge
                     .last_execution
+                    .lock()
+                    .unwrap()
                     .as_ref()
                     .expect("last execution")
                     .execution_source,

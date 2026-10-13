@@ -83,6 +83,7 @@ test("LIVE badge tone follows fresh availability state", () => {
 });
 
 test("participation preference never fabricates runtime readiness", () => {
+  expect(runtimeSummary({ fresh: true, runtime: {} }, null)).toEqual({ state: "UNAVAILABLE", ready: false });
   expect(runtimeSummary({ fresh: false, runtime: null }, true)).toEqual({
     state: "OFFLINE",
     ready: false,

@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { copyFor, GATE_COPY, stateLabel } from "../i18n";
 
-const PARTICIPATION_KEY = "phoneboost.participation-enabled";
+
 const NAV = ["overview", "resources", "activity", "evidence"];
 const UI_COPY = {
   fr: {
@@ -52,13 +52,9 @@ const UI_COPY = {
   },
 };
 
-function readParticipation() {
-  try { const value = window.localStorage.getItem(PARTICIPATION_KEY); return value === null ? true : value === "true"; }
-  catch { return true; }
-}
-
 export function runtimeSummary(live, enabled) {
-  if (!enabled) return { state: "DISABLED", ready: false };
+  if (enabled === false) return { state: "DISABLED", ready: false };
+  if (enabled !== true) return { state: live.fresh ? "UNAVAILABLE" : "OFFLINE", ready: false };
   if (!live.fresh || !live.runtime) return { state: "OFFLINE", ready: false };
   const runtime = live.runtime;
   const ready = runtime.authenticated_session?.state === "AUTHENTICATED" &&
@@ -96,7 +92,7 @@ export function Sidebar({ active, language, setLanguage, t }) {
 }
 
 function ParticipationSwitch({ enabled, setEnabled, ui }) {
-  return <button type="button" role="switch" aria-checked={enabled} data-testid="participation-switch" onClick={() => setEnabled(!enabled)} className={`relative h-[76px] w-full max-w-[300px] rounded-full border p-1.5 transition duration-300 ${enabled ? "border-primary bg-primary shadow-[0_0_32px_rgba(99,255,25,.25)]" : "border-[#303b44] bg-[#151c22]"}`}><span className={`absolute inset-y-0 grid place-items-center text-xl font-black transition-all ${enabled ? "left-8 right-[82px] text-black" : "left-[82px] right-8 text-zinc-400"}`}>{enabled ? ui.on : ui.off}</span><span className={`absolute top-1.5 h-[62px] w-[62px] rounded-full border-2 bg-[#0a1115] transition-all duration-300 ${enabled ? "right-1.5 border-[#4cff00]" : "left-1.5 border-[#394650]"}`} /></button>;
+  return <button type="button" role={enabled === null ? "button" : "switch"} aria-checked={enabled === null ? undefined : enabled} disabled={enabled === null} aria-label={ui.helper} data-testid="participation-switch" onClick={() => setEnabled(!enabled)} className={`relative h-[76px] w-full max-w-[300px] rounded-full border p-1.5 transition duration-300 ${enabled ? "border-primary bg-primary shadow-[0_0_32px_rgba(99,255,25,.25)]" : "border-[#303b44] bg-[#151c22]"}`}><span className={`absolute inset-y-0 grid place-items-center text-xl font-black transition-all ${enabled ? "left-8 right-[82px] text-black" : "left-[82px] right-8 text-zinc-400"}`}>{enabled ? ui.on : ui.off}</span><span className={`absolute top-1.5 h-[62px] w-[62px] rounded-full border-2 bg-[#0a1115] transition-all duration-300 ${enabled ? "right-1.5 border-[#4cff00]" : "left-1.5 border-[#394650]"}`} /></button>;
 }
 
 function SummaryRow({ icon: Icon, label, children }) {
@@ -128,9 +124,9 @@ function GateLadder({ live, language, ui }) {
   return <div><h3 className="text-lg font-semibold text-white">{ui.gates}</h3><div className="mt-4 grid gap-3 lg:grid-cols-5">{gates.map(([id, observed], index) => { const current = observed || { state: "UNAVAILABLE", reason: "LIVE_UNAVAILABLE" }; return <div key={id} className="rounded-xl border border-[#202c35] bg-black/20 p-4"><span className="font-mono text-[10px] text-zinc-700">0{index + 1}</span><p className="mt-2 min-h-10 text-sm font-semibold text-zinc-200">{GATE_COPY[id]?.[language] || id}</p><StatePill state={current.state} language={language} /><p className="mt-3 break-words font-mono text-[9px] leading-4 text-zinc-700">{current.reason || "OBSERVED"}</p></div>; })}</div></div>;
 }
 
-export function LiveControl({ live, compute, onCompute, language, t }) {
+export function LiveControl({ live, compute, onCompute, language, t, participationAllowed = false }) {
   const runtime = live.fresh ? live.runtime : null;
-  return <div className="rounded-xl border border-[#202c35] bg-black/20 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-zinc-600">{t.labels.lockedFixture}</p><h3 className="mt-1 font-semibold text-white">pb.native.blake3/1</h3></div><StatePill state={runtime?.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE"} language={language} /></div><p className="mt-3 text-sm text-zinc-500">{t.labels.fixedAction}</p><button className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-black disabled:bg-zinc-800 disabled:text-zinc-500" type="button" onClick={onCompute} disabled={!runtime || compute.running} data-testid="run-blake3-control">{compute.running ? t.labels.running : t.labels.runFixture}</button>{!runtime && <p className="mt-3 text-xs text-amber-200">{t.labels.runtimeUnavailable}</p>}{compute.error && <p className="mt-2 text-xs text-amber-200">{t.labels.computeError}</p>}{compute.result && <p className="mt-3 break-all font-mono text-xs text-zinc-400">{compute.result.execution_source} · {compute.result.digest_blake3_hex}</p>}</div>;
+  return <div className="rounded-xl border border-[#202c35] bg-black/20 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-zinc-600">{t.labels.lockedFixture}</p><h3 className="mt-1 font-semibold text-white">pb.native.blake3/1</h3></div><StatePill state={runtime?.remote_blake3_available ? "AVAILABLE" : "UNAVAILABLE"} language={language} /></div><p className="mt-3 text-sm text-zinc-500">{t.labels.fixedAction}</p><button className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-black disabled:bg-zinc-800 disabled:text-zinc-500" type="button" onClick={onCompute} disabled={!runtime || compute.running || !participationAllowed} data-testid="run-blake3-control">{compute.running ? t.labels.running : t.labels.runFixture}</button>{!runtime && <p className="mt-3 text-xs text-amber-200">{t.labels.runtimeUnavailable}</p>}{compute.error && <p className="mt-2 text-xs text-amber-200">{t.labels.computeError}</p>}{compute.result && <p className="mt-3 break-all font-mono text-xs text-zinc-400">{compute.result.execution_source} · {compute.result.digest_blake3_hex}</p>}</div>;
 }
 
 export function EvidenceDrawer({ item, api, t, onClose }) {
@@ -146,8 +142,22 @@ function EvidenceList({ evidence, fixtures, api, t, ui }) {
   return <div id="evidence" className="scroll-mt-6 pt-6"><div className="mb-4 flex items-center justify-between"><div><h3 className="text-lg font-semibold text-white">{ui.evidence}</h3><p className="mt-1 text-sm text-zinc-600">{ui.evidenceHint}</p></div><span className="font-mono text-[10px] text-zinc-700">{fixtures.file_count ?? "—"} fixtures</span></div><div className="grid gap-3 md:grid-cols-2">{evidence.slice(0, 6).map((item) => <button key={item.id} type="button" onClick={() => setSelected(item)} className="flex items-center justify-between rounded-xl border border-[#202c35] bg-black/20 p-4 text-left hover:border-primary/30"><span className="flex min-w-0 items-center gap-3"><FileCheck2 className="shrink-0 text-primary" size={18} /><span className="truncate text-sm text-zinc-300">{item.title}</span></span><ChevronRight className="shrink-0 text-zinc-700" size={16} /></button>)}</div><EvidenceDrawer item={selected} api={api} t={t} onClose={() => setSelected(null)} /></div>;
 }
 
-export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures, compute, onCompute, language, setLanguage }) {
-  const [enabled, setEnabledState] = useState(readParticipation); const t = copyFor(language); const ui = UI_COPY[language] || UI_COPY.fr;
-  const setEnabled = (value) => { setEnabledState(value); try { window.localStorage.setItem(PARTICIPATION_KEY, String(value)); } catch { /* in-memory preference remains */ } };
-  return <div className="min-h-screen bg-[#06090d] text-zinc-100"><Sidebar active="overview" language={language} setLanguage={setLanguage} t={t} /><main className="mx-auto max-w-[1440px] px-5 pb-12 lg:ml-[244px] lg:px-8"><Hero live={live} enabled={enabled} setEnabled={setEnabled} language={language} setLanguage={setLanguage} ui={ui} t={t} /><MeaningCards ui={ui} /><ResourcePanels live={live} language={language} ui={ui} /><section id="activity" className="scroll-mt-6 py-5"><details data-testid="advanced-details" className="group rounded-xl border border-[#202c35] bg-[#0a1015] p-5"><summary className="flex cursor-pointer list-none items-center justify-between"><span className="flex items-center gap-4"><span className="grid h-11 w-11 place-items-center rounded-lg bg-white/[.04] text-zinc-400"><Activity size={22} /></span><span><b className="block text-white">{ui.advanced}</b><small className="text-zinc-600">{ui.advancedHint}</small></span></span><ChevronDown className="text-zinc-500 transition group-open:rotate-180" /></summary><div className="mt-6 space-y-6 border-t border-white/[.06] pt-6"><GateLadder live={live} snapshot={snapshot} language={language} ui={ui} /><LiveControl live={live} compute={compute} onCompute={onCompute} language={language} t={t} /><EvidenceList evidence={evidence} fixtures={fixtures} api={api} t={t} ui={ui} /><div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-[#202c35] bg-black/20 p-4 text-sm text-zinc-400">{(arch.layers || []).length} architecture layers · explicit remote boundary</div><div className="rounded-xl border border-[#202c35] bg-black/20 p-4 text-sm text-zinc-400">{(roadmap.next || []).length} roadmap items · separate from proven behavior</div></div></div></details></section><footer className="mt-5 border-t border-[#18222b] py-7 text-xs leading-5 text-zinc-700">{t.footer}</footer></main></div>;
+export default function Dashboard({ api, snapshot, live, evidence, roadmap, arch, fixtures, compute, onCompute, language, setLanguage, preference = { fresh: false, pending: false }, onAutoUse = () => {} }) {
+  const enabled = preference.fresh && !preference.pending ? preference.enabled : null;
+  const setEnabled = onAutoUse;
+  const t = copyFor(language);
+  const baseUi = UI_COPY[language] || UI_COPY.fr;
+  const french = language === "fr";
+  const pendingLabel = french ? "Confirmation en cours" : "Awaiting confirmation";
+  const unknownLabel = french ? "État non confirmé" : "State unconfirmed";
+  const ui = {
+    ...baseUi,
+    inactive: enabled === null ? (preference.pending ? pendingLabel : unknownLabel) : baseUi.inactive,
+    off: enabled === null ? (preference.pending ? "…" : "?") : baseUi.off,
+    disabledBody: enabled === null ? (french ? "Le daemon doit confirmer la préférence. Aucun état OFF ou ON n’est supposé." : "The daemon must confirm the preference. Neither OFF nor ON is assumed.") : baseUi.disabledBody,
+    helper: preference.pending ? pendingLabel : !preference.fresh ? unknownLabel :
+      preference.persistence === "ERROR" ? (french ? "OFF actuel, sauvegarde non confirmée : un redémarrage peut rétablir ON." : "OFF now, save unconfirmed: restarting may restore ON.") :
+      (french ? "Préférence confirmée par le daemon" : "Preference confirmed by the daemon"),
+  };
+  return <div className="min-h-screen bg-[#06090d] text-zinc-100"><Sidebar active="overview" language={language} setLanguage={setLanguage} t={t} /><main className="mx-auto max-w-[1440px] px-5 pb-12 lg:ml-[244px] lg:px-8"><Hero live={live} enabled={enabled} setEnabled={setEnabled} language={language} setLanguage={setLanguage} ui={ui} t={t} /><MeaningCards ui={ui} /><ResourcePanels live={live} language={language} ui={ui} /><section id="activity" className="scroll-mt-6 py-5"><details data-testid="advanced-details" className="group rounded-xl border border-[#202c35] bg-[#0a1015] p-5"><summary className="flex cursor-pointer list-none items-center justify-between"><span className="flex items-center gap-4"><span className="grid h-11 w-11 place-items-center rounded-lg bg-white/[.04] text-zinc-400"><Activity size={22} /></span><span><b className="block text-white">{ui.advanced}</b><small className="text-zinc-600">{ui.advancedHint}</small></span></span><ChevronDown className="text-zinc-500 transition group-open:rotate-180" /></summary><div className="mt-6 space-y-6 border-t border-white/[.06] pt-6"><GateLadder live={live} snapshot={snapshot} language={language} ui={ui} /><LiveControl participationAllowed={enabled === true} live={live} compute={compute} onCompute={onCompute} language={language} t={t} /><EvidenceList evidence={evidence} fixtures={fixtures} api={api} t={t} ui={ui} /><div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-[#202c35] bg-black/20 p-4 text-sm text-zinc-400">{(arch.layers || []).length} architecture layers · explicit remote boundary</div><div className="rounded-xl border border-[#202c35] bg-black/20 p-4 text-sm text-zinc-400">{(roadmap.next || []).length} roadmap items · separate from proven behavior</div></div></div></details></section><footer className="mt-5 border-t border-[#18222b] py-7 text-xs leading-5 text-zinc-700">{t.footer}</footer></main></div>;
 }

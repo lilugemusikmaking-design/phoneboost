@@ -391,6 +391,7 @@ name = "pb-cli"
 version = "0.1.0"
 dependencies = [
  "rustix",
+ "serde",
  "serde_json",
 ]
 
@@ -474,6 +475,7 @@ name = "pb-web-bridge"
 version = "0.1.0"
 dependencies = [
  "pb-cli",
+ "serde",
  "serde_json",
 ]
 

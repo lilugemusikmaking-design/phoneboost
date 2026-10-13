@@ -59,6 +59,7 @@ pub const A4_DEFERRED_HANDLER: &str = "A4_DEFERRED_HANDLER";
 #[derive(Clone, Default)]
 pub struct LocalApiContext {
     auto_use: Option<Arc<AutoUseController>>,
+    auto_use_control: Option<Arc<crate::AutoUseControl>>,
     import_store: Option<Arc<ImportStore>>,
 }
 
@@ -67,6 +68,7 @@ impl LocalApiContext {
         Self {
             auto_use,
             import_store: None,
+            auto_use_control: None,
         }
     }
 
@@ -77,7 +79,13 @@ impl LocalApiContext {
         Self {
             auto_use,
             import_store: Some(import_store),
+            auto_use_control: None,
         }
+    }
+
+    pub fn with_auto_use_control(mut self, control: Option<Arc<crate::AutoUseControl>>) -> Self {
+        self.auto_use_control = control;
+        self
     }
 
     fn auto_use_status(&self) -> (AutoUseState, AutoUseReason, bool, GateObservations) {
@@ -118,6 +126,7 @@ pub enum LocalHandlerDomain {
     Compute,
     Benchmark,
     Imports,
+    AutoUse,
 }
 
 /// Minimal LC-009 seam. It cannot carry params or raw request/response bytes.
@@ -146,6 +155,7 @@ impl LocalMethod {
     pub const fn handler_domain(self) -> LocalHandlerDomain {
         match self {
             Self::SystemStatus => LocalHandlerDomain::System,
+            Self::AutoUseGet | Self::AutoUseSet => LocalHandlerDomain::AutoUse,
             Self::DevicesList | Self::DevicesGet => LocalHandlerDomain::Devices,
             Self::JobsGet => LocalHandlerDomain::Jobs,
             Self::DiagnosticsRedacted => LocalHandlerDomain::Diagnostics,
@@ -275,6 +285,7 @@ fn dispatch(
 ) -> C12Response {
     match request.method() {
         LocalMethod::SystemStatus => system_status(request, framed, context),
+        LocalMethod::AutoUseGet | LocalMethod::AutoUseSet => auto_use_control(request, context),
         LocalMethod::DevicesList
         | LocalMethod::DevicesGet
         | LocalMethod::JobsGet
@@ -294,6 +305,43 @@ fn dispatch(
         LocalMethod::ImportsGet => imports_get(request, context, requester),
         LocalMethod::ImportsCancel => imports_cancel(request, context, requester),
     }
+}
+
+fn auto_use_control(request: &ValidatedLocalRequest, context: &LocalApiContext) -> C12Response {
+    let id = request.id().clone();
+    let setting = request.method() == LocalMethod::AutoUseSet;
+    let valid = request.params().as_object().is_some_and(|params| {
+        if setting {
+            params.len() == 1 && params.get("enabled").is_some_and(Value::is_boolean)
+        } else {
+            params.is_empty()
+        }
+    });
+    if !valid {
+        return C12Response::error(id, LOCAL_BAD_REQUEST, "invalid auto-use params");
+    }
+    let Some(control) = context.auto_use_control.as_ref() else {
+        return C12Response::error(id, LOCAL_UNSUPPORTED_METHOD, MESSAGE_DEFERRED_HANDLER);
+    };
+    let view = if setting {
+        match control.set(
+            request.params()["enabled"]
+                .as_bool()
+                .expect("validated boolean"),
+        ) {
+            Ok(view) => view,
+            Err(_) => {
+                return C12Response::error(
+                    id,
+                    "LOCAL_STATE_WRITE_FAILED",
+                    "unable to save auto-use preference",
+                );
+            }
+        }
+    } else {
+        control.get()
+    };
+    C12Response::success(id, json!(view))
 }
 
 fn system_status(
@@ -901,7 +949,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_domain_map_classifies_all_nineteen_methods() {
+    fn closed_domain_map_classifies_all_twenty_one_methods() {
         let expected = [
             LocalHandlerDomain::System,
             LocalHandlerDomain::Devices,
@@ -910,6 +958,7 @@ mod tests {
             LocalHandlerDomain::Diagnostics,
             LocalHandlerDomain::Events,
             LocalHandlerDomain::Imports,
+            LocalHandlerDomain::AutoUse,
             LocalHandlerDomain::Pairing,
             LocalHandlerDomain::Pairing,
             LocalHandlerDomain::Pairing,
@@ -922,6 +971,7 @@ mod tests {
             LocalHandlerDomain::Benchmark,
             LocalHandlerDomain::Imports,
             LocalHandlerDomain::Imports,
+            LocalHandlerDomain::AutoUse,
         ];
         let actual: Vec<_> = LocalMethod::ALL
             .into_iter()
@@ -990,6 +1040,8 @@ mod tests {
             !matches!(
                 method,
                 LocalMethod::SystemStatus
+                    | LocalMethod::AutoUseGet
+                    | LocalMethod::AutoUseSet
                     | LocalMethod::PairingBegin
                     | LocalMethod::PairingConfirm
                     | LocalMethod::PairingCancel
@@ -1506,6 +1558,82 @@ mod tests {
         assert_eq!(response["error"]["message_safe"], MESSAGE_MALFORMED_REQUEST);
         drop(peer);
         worker.join().expect("local server exits after EOF");
+    }
+
+    #[test]
+    fn auto_use_wire_control_is_exact_and_rejects_descriptors_and_duplicates() {
+        let (base, directory) = context_with_off_controller();
+        let controller = Arc::clone(base.auto_use.as_ref().unwrap());
+        let control = Arc::new(crate::AutoUseControl::from_state_home(
+            controller, &directory,
+        ));
+        let context = Arc::new(
+            (*base)
+                .clone()
+                .with_auto_use_control(Some(Arc::clone(&control))),
+        );
+        let (mut peer, server) = UnixStream::pair().unwrap();
+        let authenticated = authenticated_test_client(OwnedFd::from(server));
+        let worker = thread::spawn(move || serve_local_client(authenticated, context));
+        let read = br#"{"api":1,"id":"get","method":"auto_use.get","params":{}}"#;
+        let off = br#"{"api":1,"id":"set","method":"auto_use.set","params":{"enabled":false}}"#;
+        assert_eq!(
+            exchange(&mut peer, read)["result"],
+            json!({"enabled":true,"persistence":"DEFAULT"})
+        );
+        for bad in [
+            br#"{"api":1,"id":"bad","method":"auto_use.set","params":{}}"#.as_slice(),
+            br#"{"api":1,"id":"bad","method":"auto_use.set","params":{"enabled":0}}"#,
+            br#"{"api":1,"id":"bad","method":"auto_use.set","params":{"enabled":false,"path":"/tmp/x"}}"#,
+            br#"{"api":1,"id":"bad","method":"auto_use.set","params":{"enabled":false,"enabled":true}}"#,
+            br#"{"api":1,"id":"bad","method":"auto_use.set","params":{"enabled":null,"enabled":false}}"#,
+            br#"{"api":1,"id":"bad","method":"auto_use.get","params":{"enabled":false}}"#,
+        ] {
+            assert_eq!(exchange(&mut peer, bad)["error"]["code"], LOCAL_BAD_REQUEST);
+            assert!(control.get().enabled);
+        }
+        let response =
+            exchange_with_descriptor(&mut peer, off, &[File::open("/dev/null").unwrap()]);
+        assert_eq!(response["error"]["code"], LOCAL_BAD_REQUEST);
+        assert!(control.get().enabled);
+        assert_eq!(
+            exchange(&mut peer, off)["result"],
+            json!({"enabled":false,"persistence":"SAVED"})
+        );
+        assert_eq!(
+            exchange(&mut peer, read)["result"],
+            json!({"enabled":false,"persistence":"SAVED"})
+        );
+        fs::write(directory.join("phoneboost/config.json"), b"invalid").unwrap();
+        assert_eq!(
+            exchange(&mut peer, off)["error"]["code"],
+            "LOCAL_STATE_WRITE_FAILED"
+        );
+        assert_eq!(
+            exchange(&mut peer, read)["result"],
+            json!({"enabled":false,"persistence":"ERROR"})
+        );
+        drop(peer);
+        worker.join().unwrap();
+        drop(control);
+        drop(base);
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn auto_use_control_missing_context_remains_explicitly_unsupported() {
+        for method in [LocalMethod::AutoUseGet, LocalMethod::AutoUseSet] {
+            let params = if method == LocalMethod::AutoUseGet {
+                json!({})
+            } else {
+                json!({"enabled":false})
+            };
+            let value = response_value(auto_use_control(
+                &request(method, params),
+                &LocalApiContext::default(),
+            ));
+            assert_eq!(value["error"]["code"], LOCAL_UNSUPPORTED_METHOD);
+        }
     }
 
     #[test]

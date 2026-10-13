@@ -2,6 +2,19 @@ use std::fmt;
 
 use serde_json::{Map, Value};
 
+#[derive(serde::Deserialize)]
+struct ControlEnvelope {
+    #[serde(rename = "params")]
+    _params: ControlParams,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ControlParams {
+    #[serde(rename = "enabled")]
+    _enabled: Option<Value>,
+}
+
 /// Canonical LC-007 method classification. It carries no dispatch authority.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LocalMethodClass {
@@ -13,6 +26,8 @@ pub enum LocalMethodClass {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LocalMethod {
     SystemStatus,
+    AutoUseGet,
+    AutoUseSet,
     DevicesList,
     DevicesGet,
     JobsGet,
@@ -34,7 +49,7 @@ pub enum LocalMethod {
 }
 
 impl LocalMethod {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 21] = [
         Self::SystemStatus,
         Self::DevicesList,
         Self::DevicesGet,
@@ -42,6 +57,7 @@ impl LocalMethod {
         Self::DiagnosticsRedacted,
         Self::EventsTail,
         Self::ImportsGet,
+        Self::AutoUseGet,
         Self::PairingBegin,
         Self::PairingConfirm,
         Self::PairingCancel,
@@ -54,11 +70,14 @@ impl LocalMethod {
         Self::BenchmarkRun,
         Self::ImportsCreate,
         Self::ImportsCancel,
+        Self::AutoUseSet,
     ];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::SystemStatus => "system.status",
+            Self::AutoUseGet => "auto_use.get",
+            Self::AutoUseSet => "auto_use.set",
             Self::DevicesList => "devices.list",
             Self::DevicesGet => "devices.get",
             Self::JobsGet => "jobs.get",
@@ -83,6 +102,7 @@ impl LocalMethod {
     pub const fn class(self) -> LocalMethodClass {
         match self {
             Self::SystemStatus
+            | Self::AutoUseGet
             | Self::DevicesList
             | Self::DevicesGet
             | Self::JobsGet
@@ -90,6 +110,7 @@ impl LocalMethod {
             | Self::EventsTail
             | Self::ImportsGet => LocalMethodClass::ReadOnly,
             Self::PairingBegin
+            | Self::AutoUseSet
             | Self::PairingConfirm
             | Self::PairingCancel
             | Self::PeerUnpair
@@ -107,6 +128,8 @@ impl LocalMethod {
     fn parse_exact(method: &str) -> Option<Self> {
         match method {
             "system.status" => Some(Self::SystemStatus),
+            "auto_use.get" => Some(Self::AutoUseGet),
+            "auto_use.set" => Some(Self::AutoUseSet),
             "devices.list" => Some(Self::DevicesList),
             "devices.get" => Some(Self::DevicesGet),
             "jobs.get" => Some(Self::JobsGet),
@@ -363,6 +386,14 @@ fn validate_with_observer(
     };
     observe(ValidationStage::MethodAccepted);
 
+    // Value maps collapse duplicate keys. Re-read only this newly approved
+    // surface with a typed parser before dispatch, preserving legacy methods.
+    if matches!(method, LocalMethod::AutoUseGet | LocalMethod::AutoUseSet)
+        && serde_json::from_str::<ControlEnvelope>(&utf8).is_err()
+    {
+        return Err(invalid_with_id(LocalValidationCause::InvalidJson, Some(id)));
+    }
+
     let request = ValidatedLocalRequest {
         api,
         method,
@@ -396,7 +427,7 @@ const fn invalid_with_id(
 mod tests {
     use super::*;
 
-    const READ_METHODS: [&str; 7] = [
+    const READ_METHODS: [&str; 8] = [
         "system.status",
         "devices.list",
         "devices.get",
@@ -404,8 +435,9 @@ mod tests {
         "diagnostics.redacted",
         "events.tail",
         "imports.get",
+        "auto_use.get",
     ];
-    const MUTATING_METHODS: [&str; 12] = [
+    const MUTATING_METHODS: [&str; 13] = [
         "pairing.begin",
         "pairing.confirm",
         "pairing.cancel",
@@ -418,6 +450,7 @@ mod tests {
         "benchmark.run",
         "imports.create",
         "imports.cancel",
+        "auto_use.set",
     ];
 
     fn request(method: &str) -> Vec<u8> {
@@ -575,7 +608,7 @@ mod tests {
     }
 
     #[test]
-    fn val_t18_all_seven_read_only_methods_are_accepted_and_classified() {
+    fn val_t18_all_eight_read_only_methods_are_accepted_and_classified() {
         for method in READ_METHODS {
             let validated = validate(request(method)).expect("read method validates");
             assert_eq!(validated.method().as_str(), method);
@@ -584,7 +617,7 @@ mod tests {
     }
 
     #[test]
-    fn val_t19_all_twelve_mutating_methods_are_accepted_and_classified() {
+    fn val_t19_all_thirteen_mutating_methods_are_accepted_and_classified() {
         for method in MUTATING_METHODS {
             let validated = validate(request(method)).expect("mutating method validates");
             assert_eq!(validated.method().as_str(), method);
@@ -681,14 +714,14 @@ mod tests {
     }
 
     #[test]
-    fn val_t28_allowlist_structural_oracle_proves_all_nineteen_exact_names() {
+    fn val_t28_allowlist_structural_oracle_proves_all_twenty_one_exact_names() {
         let expected: Vec<&str> = READ_METHODS.into_iter().chain(MUTATING_METHODS).collect();
         let actual: Vec<&str> = LocalMethod::ALL
             .into_iter()
             .map(LocalMethod::as_str)
             .collect();
         assert_eq!(actual, expected);
-        assert_eq!(actual.len(), 19);
+        assert_eq!(actual.len(), 21);
         for (name, method) in actual.into_iter().zip(LocalMethod::ALL) {
             assert_eq!(LocalMethod::parse_exact(name), Some(method));
             assert_eq!(
@@ -745,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn fix_t07_all_nineteen_canonical_methods_remain_accepted() {
+    fn fix_t07_all_twenty_one_approved_methods_remain_accepted() {
         for method in LocalMethod::ALL {
             let validated = validate(request(method.as_str())).expect("canonical method accepted");
             assert_eq!(validated.method(), method);
