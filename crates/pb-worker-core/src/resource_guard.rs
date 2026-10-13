@@ -101,6 +101,7 @@ pub struct HealthStatus {
     pub safety: SafetyBand,
     pub thermal: ThermalBand,
     pub battery: BatteryBand,
+    pub battery_percent: u8,
     pub available_memory_bytes: u64,
     pub low_memory: bool,
     pub charging: bool,
@@ -116,6 +117,7 @@ impl HealthStatus {
             safety: SafetyBand::RefusedStaleState,
             thermal: ThermalBand::Unknown,
             battery: BatteryBand::Unknown,
+            battery_percent: 0,
             available_memory_bytes: 0,
             low_memory: true,
             charging: false,
@@ -336,6 +338,7 @@ impl ResourceGuard {
             safety,
             thermal: self.effective_thermal,
             battery: self.effective_battery,
+            battery_percent: sample.battery_percent,
             available_memory_bytes: sample.available_memory_bytes,
             low_memory: sample.low_memory,
             charging: sample.charging,
@@ -682,9 +685,13 @@ impl ResourceGuard {
         });
     }
 
+    pub const fn reserved_bytes(&self) -> u64 {
+        self.allocated_bytes
+    }
+
     #[cfg(test)]
     pub(crate) const fn held_bytes(&self) -> u64 {
-        self.allocated_bytes
+        self.reserved_bytes()
     }
 
     fn update_memory(&mut self, sample: HealthSample) {

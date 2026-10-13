@@ -1,0 +1,116 @@
+PhoneBoost P6 C11 authenticated runtime CAPACITY physical evidence
+
+Evidence date
+- 2026-10-11
+
+Production baseline exercised
+- Branch: feat/p6-c11-runtime-capacity
+- Commit: 5b31b89f26694ff04402591aa22dd045d44cf117
+- Galaxy A15 serial/model: RZ8X500LL3A / SM-A155F
+- Installed debug APK SHA-256:
+  e7e3ab5cfc3789ddf58a632672b80d80732fff3e4756a4bc9ecc436f9eefa738
+- Embedded stripped arm64 JNI SHA-256 matched the current stripped build output:
+  60431ff78d392a68a16e61b43a7234f38c1054f5d1e8974fdeb14fa008dcdd1f
+
+Evidence provenance
+- Real production phoneboostd and phoneboostctl binaries built from the exact
+  commit above were used with the installed Galaxy A15 worker.
+- The host reached the worker over its direct USB RNDIS local-IP endpoint. No
+  ADB forward or reverse tunnel was present before or after the proof.
+- A human compared the six-digit SAS on the host and Galaxy A15 and confirmed
+  the pairing on the Android UI. The SAS itself is intentionally not retained.
+- ADB was used only as the bounded physical fault-control channel to suspend
+  and resume the Android process. It did not carry the PhoneBoost transport or
+  compute data path.
+
+PHASE 1 — authenticated fresh-capacity remote execution
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Discovery observation: FRESH_HINT (C04_CANDIDATE_OBSERVED)
+Controller lease: ACTIVE (C07_ACK_FRESH)
+Remote BLAKE3: AVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: REMOTE_SUCCESS
+Auto-use reason: READY
+
+PHASE 2 — capacity metrics deliberately made stale
+
+The already-authenticated Android process was suspended at
+2026-10-11T19:23:08.249612913+02:00. The compute request was issued at
+2026-10-11T19:23:14.840749473+02:00, after the strict six-second capacity
+metric freshness window while remaining inside the ten-second transport
+liveness window.
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Controller lease: ACTIVE (C07_ACK_FRESH)
+Remote BLAKE3: AVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE
+Auto-use reason: WORKER_UNHEALTHY
+phoneboostctl exit status: 3
+
+The process was resumed at 2026-10-11T19:23:14.955632262+02:00. A separate
+nine-second watchdog would also have resumed it if the foreground proof had
+failed before cleanup.
+
+PHASE 3 — fresh metrics restored without re-pairing
+
+PhoneBoost: READY
+Local API: ACTIVE
+Android worker: AUTHENTICATED
+Auto-use: AVAILABLE
+Auto-use reason: READY
+Controller lease: ACTIVE (C07_ACK_FRESH)
+Remote BLAKE3: AVAILABLE
+
+BLAKE3 fixture: c10-abc-v1
+Input bytes: 3
+BLAKE3 digest: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+Execution source: REMOTE_SUCCESS
+Auto-use reason: READY
+
+Post-proof cleanup
+- The test daemon was stopped cleanly.
+- ADB forward list: empty.
+- ADB reverse list: empty.
+- The temporary DHCP profile used for the Galaxy A15 RNDIS link was deleted
+  and the pre-existing host USB-network profile was restored.
+- The Android process was running normally and its health sampler continued to
+  advance after the proof.
+
+Final verdict
+- P6_C11_RUNTIME_CAPACITY_PHYSICAL PASS
+- FRESH_BOUND_METRICS_REMOTE_SUCCESS PASS
+- STALE_METRICS_LOCAL_FALLBACK PASS
+- NO_FALSE_REMOTE_SUCCESS PASS
+- FRESH_METRICS_RECOVERY_REMOTE_SUCCESS PASS
+
+What this physical run proves
+- The real Android-to-host authenticated METRICS/1 path can authorize the
+  existing CAPACITY placement path on the exact P6 commit.
+- A heartbeat older than six seconds cannot authorize remote work even while
+  authentication, node availability, and the controller lease remain live.
+- The stale interval returned the exact local digest and truthfully labeled it
+  as a local fallback with WORKER_UNHEALTHY, never REMOTE_SUCCESS.
+- Resumed fresh metrics restored genuine remote execution without re-pairing.
+
+Scope limits
+- This is not a packet capture and does not independently prove Noise IK bytes.
+- The proof covers only the locked c10-abc-v1 BLAKE3 fixture and the existing
+  CAPACITY path. It does not establish arbitrary inputs, other providers,
+  performance gain, generic RPC, transparent pooling, C13 persistence, or an
+  agentic/MCP integration.

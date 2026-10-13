@@ -191,6 +191,20 @@ impl ControllerLeaseManager {
         self.last_transition
     }
 
+    pub(crate) fn current_for_session(
+        &mut self,
+        session: &AuthenticatedSession,
+        now_ms: u64,
+    ) -> Option<ControllerLeaseRef> {
+        let _ = self.expire_if_needed(now_ms);
+        self.active
+            .as_ref()
+            .filter(|active| {
+                active.peer_id == session.peer_id && active.incarnation == self.incarnation
+            })
+            .map(|active| Self::lease_ref(active, now_ms))
+    }
+
     pub(crate) fn apply_controller_command(
         &mut self,
         session: &AuthenticatedSession,

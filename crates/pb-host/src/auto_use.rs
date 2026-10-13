@@ -12,12 +12,16 @@ use pb_pbmux::{
     ResourceResultState, WireReservationState, WireResourceClass,
 };
 use pb_runtime_secure::{
-    InitiatorClientError, InitiatorSessionClient, SecureRuntime, initiator_session_channel,
-    run_initiator_session_with_client,
+    HeartbeatPayload, InitiatorClientError, InitiatorSessionClient, InitiatorSessionSnapshot,
+    SecureRuntime, initiator_session_channel, run_initiator_session_with_client,
 };
 use pb_types::PeerId;
 
-use crate::{TransportCandidate, TransportManager, os_jitter_sample, retry_delay_ms};
+use crate::{
+    BatteryPolicy, CostInput, PlacementMode, PlacementReason, PlacementTarget, PlannerInput,
+    RemoteGates, ThermalClass, TransportCandidate, TransportManager, os_jitter_sample,
+    retry_delay_ms,
+};
 
 const AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(6);
 const DISCOVERY_POLL: Duration = Duration::from_millis(250);
@@ -25,6 +29,7 @@ const MANAGER_POLL: Duration = Duration::from_millis(25);
 const READINESS_RETRY: Duration = Duration::from_secs(1);
 const RENEWAL_INTERVAL: Duration = Duration::from_secs(20);
 const FRESH_LIVENESS: Duration = Duration::from_secs(10);
+const FRESH_CAPACITY_METRICS: Duration = Duration::from_secs(6);
 const COMPUTE_STATUS_POLL: Duration = Duration::from_millis(25);
 const SCRATCH_BYTES: u64 = 1_024;
 /// P2 is passive: this only bounds how long an already-observed discovery hint
@@ -581,6 +586,14 @@ impl AutoUseController {
                 ExecutionSource::LocalFallbackAfterRemoteUnavailable,
             );
         };
+        let decision = capacity_placement_decision(status, &active, input);
+        if decision.target() == PlacementTarget::LocalOnly {
+            return local_execution(
+                input,
+                auto_use_reason_for_placement(decision.reason()),
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            );
+        }
         let access = SessionAccess {
             shared: &self.shared,
             identity: active.identity,
@@ -610,6 +623,163 @@ impl AutoUseController {
                 )
             }
         }
+    }
+}
+
+fn bound_capacity_heartbeat(
+    snapshot: InitiatorSessionSnapshot,
+    peer_id: PeerId,
+    lease: LeaseContext,
+) -> Option<HeartbeatPayload> {
+    let heartbeat = snapshot.heartbeat?;
+    let payload = heartbeat.payload;
+    (snapshot.authenticated
+        && snapshot.peer_id == Some(peer_id)
+        && heartbeat.age <= FRESH_CAPACITY_METRICS
+        && payload.peer_id == peer_id.into_bytes()
+        && payload.lease_present == 1
+        && payload.lease_id == lease.lease_id
+        && payload.worker_incarnation == lease.incarnation)
+        .then_some(payload)
+}
+
+fn wait_for_bound_capacity_heartbeat(
+    shared: &Shared,
+    client: &InitiatorSessionClient,
+    identity: SessionIdentity,
+    peer_id: PeerId,
+    lease: LeaseContext,
+) -> bool {
+    let deadline = Instant::now() + shared.timing.authentication_timeout;
+    while Instant::now() < deadline {
+        {
+            let data = lock_data(shared);
+            if !data.enabled || data.session_identity != Some(identity) {
+                return false;
+            }
+        }
+        let snapshot = client.snapshot();
+        if !snapshot.authenticated {
+            return false;
+        }
+        if bound_capacity_heartbeat(snapshot, peer_id, lease).is_some() {
+            return true;
+        }
+        thread::sleep(shared.timing.manager_poll);
+    }
+    false
+}
+
+fn capacity_placement_decision(
+    status: NodeStatus,
+    active: &ActiveContext,
+    input: &[u8],
+) -> crate::PlacementDecision {
+    let snapshot = active.client.snapshot();
+    capacity_placement_decision_from_snapshot(status, snapshot, active.peer_id, active.lease, input)
+}
+
+fn capacity_placement_decision_from_snapshot(
+    status: NodeStatus,
+    snapshot: InitiatorSessionSnapshot,
+    peer_id: PeerId,
+    lease: LeaseContext,
+    input: &[u8],
+) -> crate::PlacementDecision {
+    let heartbeat = bound_capacity_heartbeat(snapshot, peer_id, lease);
+    let payload = heartbeat.unwrap_or(HeartbeatPayload {
+        peer_id: [0; 32],
+        worker_incarnation: [0; 16],
+        lease_present: 0,
+        lease_id: [0; 16],
+        monotonic_ms: 0,
+        thermal_status: 6,
+        headroom_present: 0,
+        headroom_f32_bits: 0,
+        battery_pct: 0,
+        charging: 0,
+        power_save: 0,
+        available_bytes: 0,
+        safe_budget_bytes: 0,
+        reserved_bytes: 0,
+        queue_depth: 0,
+        provider_count: 0,
+        transport_count: 0,
+    });
+    let estimated_bytes = (input.len() as u64).saturating_add(SCRATCH_BYTES);
+    let remaining_budget = payload
+        .safe_budget_bytes
+        .saturating_sub(payload.reserved_bytes);
+    let thermal_class = match payload.thermal_status {
+        0 => ThermalClass::Nominal,
+        1 => ThermalClass::Light,
+        2 => ThermalClass::Moderate,
+        _ => ThermalClass::Severe,
+    };
+    let battery_policy = if payload.charging == 1 {
+        BatteryPolicy::ExternalPower
+    } else if payload.battery_pct < 15 {
+        BatteryPolicy::RemoteDisallowed
+    } else if payload.power_save == 1 {
+        BatteryPolicy::PowerSave
+    } else {
+        BatteryPolicy::BatteryAllowed
+    };
+    PlannerInput {
+        mode: PlacementMode::Capacity,
+        gates: RemoteGates {
+            authenticated: snapshot.authenticated && snapshot.peer_id == Some(peer_id),
+            ready: status.state == AutoUseState::Available,
+            active_lease: Instant::now() < lease.not_after,
+            fresh_metrics: heartbeat.is_some(),
+            provider_available: status.remote_blake3_available,
+            resource_estimate_nonzero: estimated_bytes > 0,
+            resource_guard_admitted: payload.safe_budget_bytes > 0,
+        },
+        cost: CostInput {
+            bytes_up: input.len() as u64,
+            bytes_down: 32,
+            resident_remote_bytes: 0,
+            expected_compute_units: 1,
+            link_bandwidth_bytes_per_second: 0,
+            link_rtt_millis: 0,
+            local_score: 0,
+            remote_score: 0,
+            thermal_class,
+            battery_policy,
+            queue_depth: u32::from(payload.queue_depth),
+        },
+        workload_phoneboost_aware: true,
+        local_execution_fits: true,
+        remote_capacity_fits: remaining_budget >= estimated_bytes,
+        current_profile_key: None,
+        profile: None,
+        now_wall_ms: 0,
+    }
+    .decide()
+}
+
+const fn auto_use_reason_for_placement(reason: PlacementReason) -> AutoUseReason {
+    match reason {
+        PlacementReason::RemoteNotAuthenticated => AutoUseReason::AuthFailed,
+        PlacementReason::LeaseInactive => AutoUseReason::LeaseUnavailable,
+        PlacementReason::RemoteNotReady
+        | PlacementReason::MetricsStale
+        | PlacementReason::ProviderUnavailable
+        | PlacementReason::ProfileUnknown
+        | PlacementReason::ProfileInvalid
+        | PlacementReason::ProfileNotSpeedQualified
+        | PlacementReason::LocalPreferred => AutoUseReason::WorkerUnhealthy,
+        PlacementReason::ResourceEstimateZero
+        | PlacementReason::ResourceGuardRefused
+        | PlacementReason::ThermalDisallowed
+        | PlacementReason::BatteryPolicyDisallowed
+        | PlacementReason::RemoteCapacityInsufficient
+        | PlacementReason::WorkloadNotPhoneBoostAware
+        | PlacementReason::LocalOnlyRequested => AutoUseReason::ResourceRefused,
+        PlacementReason::RemoteCapacityRequired
+        | PlacementReason::SpeedEvidenceQualified
+        | PlacementReason::RemoteDataLocality => AutoUseReason::Ready,
     }
 }
 
@@ -1177,6 +1347,16 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
                 }
             }
         }
+    }
+    if !wait_for_bound_capacity_heartbeat(shared, &client, identity, peer_id, lease) {
+        client.cancel_session();
+        let _ = session.join();
+        clear_session(shared, identity);
+        return if is_current(shared, epoch) {
+            ConnectionEnd::Failed(AutoUseReason::WorkerUnhealthy)
+        } else {
+            ConnectionEnd::Disabled
+        };
     }
     publish_available(shared, identity, client.clone(), peer_id, lease);
     let mut next_renewal = Instant::now() + shared.timing.renewal_interval;
@@ -2465,8 +2645,8 @@ mod tests {
 
     use pb_runtime_secure::{
         AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, BufferResult,
-        CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, PeerRecord,
-        RemoteBufferResponseKind, ResourceResponseKind, ResourceResult, StateStore,
+        CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, InitiatorHeartbeatSnapshot,
+        PeerRecord, RemoteBufferResponseKind, ResourceResponseKind, ResourceResult, StateStore,
         VerifiedPeerSession, run_responder_session_with_handler,
     };
     use pb_worker_core::{
@@ -2477,6 +2657,109 @@ mod tests {
     use super::*;
 
     static TEST_DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+    fn capacity_fixture() -> (NodeStatus, PeerId, LeaseContext, InitiatorSessionSnapshot) {
+        let peer_id = PeerId::from_sha256_digest([0x31; 32]);
+        let lease = LeaseContext {
+            lease_id: [0x41; 16],
+            incarnation: [0x51; 16],
+            next_command_seq: 0,
+            not_after: Instant::now() + Duration::from_secs(30),
+        };
+        let payload = HeartbeatPayload {
+            peer_id: peer_id.into_bytes(),
+            worker_incarnation: lease.incarnation,
+            lease_present: 1,
+            lease_id: lease.lease_id,
+            monotonic_ms: 1,
+            thermal_status: 0,
+            headroom_present: 0,
+            headroom_f32_bits: 0,
+            battery_pct: 80,
+            charging: 0,
+            power_save: 0,
+            available_bytes: 2 * 1024 * 1024 * 1024,
+            safe_budget_bytes: 4 * 1024,
+            reserved_bytes: 0,
+            queue_depth: 0,
+            provider_count: 0,
+            transport_count: 0,
+        };
+        (
+            node_status(
+                AutoUseState::Available,
+                AutoUseReason::Ready,
+                Some(peer_id),
+                Some(lease.incarnation),
+            ),
+            peer_id,
+            lease,
+            InitiatorSessionSnapshot {
+                authenticated: true,
+                peer_id: Some(peer_id),
+                generation: 1,
+                liveness_age: Some(Duration::ZERO),
+                heartbeat: Some(InitiatorHeartbeatSnapshot {
+                    payload,
+                    age: Duration::ZERO,
+                }),
+            },
+        )
+    }
+
+    #[test]
+    fn capacity_runtime_requires_fresh_bound_safe_worker_metrics() {
+        let (status, peer_id, lease, snapshot) = capacity_fixture();
+        let decision =
+            capacity_placement_decision_from_snapshot(status, snapshot, peer_id, lease, b"abc");
+        assert_eq!(decision.target(), PlacementTarget::RemoteCapacity);
+        assert_eq!(decision.reason(), PlacementReason::RemoteCapacityRequired);
+
+        let mut stale = snapshot;
+        stale.heartbeat.as_mut().expect("heartbeat").age = FRESH_CAPACITY_METRICS
+            .checked_add(Duration::from_millis(1))
+            .expect("bounded age");
+        let decision =
+            capacity_placement_decision_from_snapshot(status, stale, peer_id, lease, b"abc");
+        assert_eq!(decision.target(), PlacementTarget::LocalOnly);
+        assert_eq!(decision.reason(), PlacementReason::MetricsStale);
+
+        let mut wrong_lease = snapshot;
+        wrong_lease
+            .heartbeat
+            .as_mut()
+            .expect("heartbeat")
+            .payload
+            .lease_id = [0x99; 16];
+        let decision =
+            capacity_placement_decision_from_snapshot(status, wrong_lease, peer_id, lease, b"abc");
+        assert_eq!(decision.reason(), PlacementReason::MetricsStale);
+
+        let mut severe = snapshot;
+        severe
+            .heartbeat
+            .as_mut()
+            .expect("heartbeat")
+            .payload
+            .thermal_status = 3;
+        let decision =
+            capacity_placement_decision_from_snapshot(status, severe, peer_id, lease, b"abc");
+        assert_eq!(decision.reason(), PlacementReason::ThermalDisallowed);
+
+        let mut insufficient = snapshot;
+        insufficient
+            .heartbeat
+            .as_mut()
+            .expect("heartbeat")
+            .payload
+            .safe_budget_bytes = SCRATCH_BYTES;
+        let decision =
+            capacity_placement_decision_from_snapshot(status, insufficient, peer_id, lease, b"abc");
+        assert_eq!(
+            decision.reason(),
+            PlacementReason::RemoteCapacityInsufficient
+        );
+    }
 
     #[test]
     fn public_auto_use_string_mappings_are_exhaustive_and_exact() {
@@ -3048,6 +3331,17 @@ mod tests {
                 .lock()
                 .map_err(|_| AuthenticatedCommandHandlerError::Failed)?
                 .apply_compute_request(verified_session, request_id, request))
+        }
+
+        fn authenticated_heartbeat(
+            &self,
+            verified_session: &VerifiedPeerSession<'_>,
+        ) -> Result<Option<HeartbeatPayload>, AuthenticatedCommandHandlerError> {
+            Ok(self
+                .core
+                .lock()
+                .map_err(|_| AuthenticatedCommandHandlerError::Failed)?
+                .heartbeat_payload(verified_session))
         }
 
         fn authenticated_session_ended(

@@ -1,9 +1,9 @@
 {
-  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
+  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
   "writer": "Codex",
-  "parent_head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
-  "date": "2026-09-20T19:10:17.526118+00:00",
-  "branch": "feat/android-durable-background-worker",
+  "parent_head": "5b31b89f26694ff04402591aa22dd045d44cf117",
+  "date": "2026-10-11T17:31:29.907678+00:00",
+  "branch": "feat/p6-c11-runtime-capacity",
   "push": "verify remote on resume",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts."
+  "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

@@ -6,12 +6,13 @@ mod storage;
 mod wire;
 
 pub use initiator::{
-    InitiatorClientError, InitiatorSessionClient, InitiatorSessionDriver, InitiatorSessionSnapshot,
-    initiator_session_channel,
+    InitiatorClientError, InitiatorHeartbeatSnapshot, InitiatorSessionClient,
+    InitiatorSessionDriver, InitiatorSessionSnapshot, initiator_session_channel,
 };
 pub use pb_pbmux::{
-    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, RemoteBufferRequest,
-    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult,
+    AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, HeartbeatPayload,
+    RemoteBufferRequest, RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind,
+    ResourceResult,
 };
 pub use runtime::{
     AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, EndpointRole,

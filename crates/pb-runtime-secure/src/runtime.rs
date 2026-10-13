@@ -9,16 +9,17 @@ use std::time::{Duration, Instant};
 
 use pb_pbmux::{
     AckPayload, BufferResult, CommandPayload, ComputeRequest, ComputeResponse, DispatchMode, Frame,
-    Header, PbmuxErrorKind, Reassembler, RemoteBufferRequest, RemoteBufferResponseKind,
-    ResourceRequest, ResourceResponseKind, ResourceResult, SequenceTracker, authorize_dispatch,
-    build_command_ack_frame, build_command_frame, build_compute_request_frame,
-    build_compute_response_frame, build_remote_buffer_request_frames,
-    build_remote_buffer_result_frames, build_resource_request_frame, build_resource_result_frame,
-    decode, encode, pair_confirm_frame, parse_command_ack_frame, parse_command_frame,
-    parse_compute_request_frame, parse_compute_response_frame, parse_heartbeat_frame,
-    parse_remote_buffer_request_payload, parse_remote_buffer_result_payload,
-    parse_resource_request_frame, parse_resource_result_frame, validate_pair_confirm,
-    validate_remote_buffer_request_fragment, validate_remote_buffer_result_fragment,
+    Header, HeartbeatPayload, PbmuxErrorKind, Reassembler, RemoteBufferRequest,
+    RemoteBufferResponseKind, ResourceRequest, ResourceResponseKind, ResourceResult,
+    SequenceTracker, authorize_dispatch, build_command_ack_frame, build_command_frame,
+    build_compute_request_frame, build_compute_response_frame, build_heartbeat_frame,
+    build_remote_buffer_request_frames, build_remote_buffer_result_frames,
+    build_resource_request_frame, build_resource_result_frame, decode, encode, pair_confirm_frame,
+    parse_command_ack_frame, parse_command_frame, parse_compute_request_frame,
+    parse_compute_response_frame, parse_heartbeat_frame, parse_remote_buffer_request_payload,
+    parse_remote_buffer_result_payload, parse_resource_request_frame, parse_resource_result_frame,
+    validate_pair_confirm, validate_remote_buffer_request_fragment,
+    validate_remote_buffer_result_fragment,
 };
 use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
@@ -32,8 +33,8 @@ use snow::{Builder, HandshakeState, TransportState, params::NoiseParams};
 use crate::storage::{Identity, PeerRecord, StateStore, StorageError, wall_clock_ms};
 use crate::wire::{SecureWireError, read_encrypted, read_record, write_encrypted, write_record};
 use crate::{
-    InitiatorClientError, InitiatorSessionDriver, initiator::InitiatorRequest,
-    initiator::InitiatorResponse, initiator::PendingInitiatorRequest,
+    InitiatorClientError, InitiatorSessionDriver, initiator::INITIATOR_REQUEST_TIMEOUT,
+    initiator::InitiatorRequest, initiator::InitiatorResponse, initiator::PendingInitiatorRequest,
 };
 
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
@@ -144,6 +145,16 @@ pub trait AuthenticatedCommandHandler: Send + Sync {
         _request: ComputeRequest,
     ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
         Err(AuthenticatedCommandHandlerError::Unavailable)
+    }
+
+    /// Returns a redacted worker-health heartbeat bound to this authenticated
+    /// session. Responders may decline to emit one until local health and a
+    /// controller lease are both available.
+    fn authenticated_heartbeat(
+        &self,
+        _verified_session: &VerifiedPeerSession<'_>,
+    ) -> Result<Option<HeartbeatPayload>, AuthenticatedCommandHandlerError> {
+        Ok(None)
     }
 
     fn authenticated_session_ended(
@@ -1340,9 +1351,23 @@ fn run_authenticated_loop(
         {
             return Ok(SessionOutcome::Cancelled);
         }
-        if last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT {
-            verified_peer.revoke();
-            return Err(RuntimeError::SessionLost);
+        if !initiator && Instant::now() >= next_heartbeat {
+            if let Some(mut payload) = command_handler
+                .authenticated_heartbeat(verified_peer)
+                .map_err(handler_runtime_error)?
+            {
+                // The secure runtime, not the downstream worker handler, owns
+                // the authenticated local identity carried by this frame.
+                payload.peer_id =
+                    PeerId::from_static_public_key(runtime.identity.public()).into_bytes();
+                let heartbeat = build_heartbeat_frame(&payload, send_sequence)
+                    .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                send_sequence = send_sequence.checked_add(1).ok_or(RuntimeError::Pbmux)?;
+                send_frame(stream, &mut transport, &heartbeat)?;
+                next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
+            } else {
+                next_heartbeat = Instant::now() + SESSION_POLL;
+            }
         }
         if initiator
             && Instant::now() >= next_heartbeat
@@ -1597,10 +1622,10 @@ fn run_authenticated_loop(
                 }
             } else if frame.header.channel == Channel::Metrics {
                 if frame.header.message_type == 1 {
-                    parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
+                    let payload = parse_heartbeat_frame(&frame).map_err(|_| RuntimeError::Pbmux)?;
                     runtime.heartbeat();
                     if let Some(driver) = initiator_driver.as_deref() {
-                        driver.mark_liveness();
+                        driver.mark_heartbeat(payload);
                     }
                 } else {
                     return Err(RuntimeError::Pbmux);
@@ -1608,9 +1633,30 @@ fn run_authenticated_loop(
             } else {
                 return Err(RuntimeError::Pbmux);
             }
+        } else if initiator_transport_expired(
+            last_authenticated_traffic.elapsed(),
+            application_outstanding
+                .as_ref()
+                .map(|request| request.sent_at.elapsed()),
+        ) {
+            // A large fragmented send can occupy this thread long enough for
+            // authenticated heartbeats or the application response to queue in
+            // the socket. Process queued traffic before declaring the peer
+            // offline. An active request retains its separate bounded deadline;
+            // all idle sessions still fail closed at the ten-second bound.
+            verified_peer.revoke();
+            return Err(RuntimeError::SessionLost);
         }
         std::thread::sleep(SESSION_POLL);
     }
+}
+
+fn initiator_transport_expired(
+    last_authenticated_traffic_age: Duration,
+    outstanding_request_age: Option<Duration>,
+) -> bool {
+    last_authenticated_traffic_age >= DEVICE_OFFLINE_TIMEOUT
+        && outstanding_request_age.is_none_or(|age| age >= INITIATOR_REQUEST_TIMEOUT)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1644,6 +1690,7 @@ impl ExpectedInitiatorResponse {
 struct InitiatorOutstanding {
     request_id: u64,
     expected: ExpectedInitiatorResponse,
+    sent_at: Instant,
     response: Option<std::sync::mpsc::SyncSender<Result<InitiatorResponse, InitiatorClientError>>>,
 }
 
@@ -1747,6 +1794,7 @@ fn start_initiator_request(
     Ok(Some(InitiatorOutstanding {
         request_id,
         expected,
+        sent_at: Instant::now(),
         response: Some(response),
     }))
 }
@@ -1944,8 +1992,21 @@ fn send_frame(
     frame: &Frame,
 ) -> Result<(), RuntimeError> {
     let plaintext = encode(frame).map_err(|_| RuntimeError::Pbmux)?;
-    write_encrypted(stream, transport, &plaintext)?;
-    Ok(())
+    // The authenticated loop polls reads in nonblocking mode. A PBMUX logical
+    // message can, however, contain many near-maximum encrypted records. Using
+    // `write_all` while the socket is still nonblocking turns ordinary TCP
+    // backpressure into a false session loss as soon as the send buffer fills.
+    // Bound each record write instead, then restore the polling mode.
+    stream
+        .set_nonblocking(false)
+        .and_then(|()| stream.set_write_timeout(Some(HANDSHAKE_TIMEOUT)))
+        .map_err(|_| RuntimeError::SessionLost)?;
+    let write_result = write_encrypted(stream, transport, &plaintext);
+    let restore_result = stream
+        .set_write_timeout(None)
+        .and_then(|()| stream.set_nonblocking(true));
+    write_result?;
+    restore_result.map_err(|_| RuntimeError::SessionLost)
 }
 
 fn control_frame(message_type: ControlType, request_id: u64, sequence: u64) -> Frame {
@@ -2285,6 +2346,23 @@ mod tests {
     fn authenticated_liveness_profile_is_two_second_heartbeat_and_ten_second_offline() {
         assert_eq!(HEARTBEAT_INTERVAL, Duration::from_secs(2));
         assert_eq!(DEVICE_OFFLINE_TIMEOUT, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn initiator_liveness_keeps_active_requests_on_their_bounded_deadline() {
+        assert!(initiator_transport_expired(DEVICE_OFFLINE_TIMEOUT, None));
+        assert!(!initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT,
+            Some(INITIATOR_REQUEST_TIMEOUT - Duration::from_millis(1))
+        ));
+        assert!(initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT,
+            Some(INITIATOR_REQUEST_TIMEOUT)
+        ));
+        assert!(!initiator_transport_expired(
+            DEVICE_OFFLINE_TIMEOUT - Duration::from_millis(1),
+            Some(INITIATOR_REQUEST_TIMEOUT)
+        ));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/android-durable-background-worker",
-  "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
-  "task": "P3 RemoteBuffer reconciliation, minimal lease-lifecycle closure, and validation",
+  "branch": "feat/p6-c11-runtime-capacity",
+  "head": "5b31b89f26694ff04402591aa22dd045d44cf117",
+  "task": "P6 C11 authenticated runtime capacity placement",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -42,7 +42,29 @@
     "fix(android): keep durable worker restartable",
     "test(android): archive one-hour durable worker soak",
     "test(p2): close lease and ResourceGuard proof",
-    "fix(worker): release RemoteBuffer capacity with lease"
+    "fix(worker): release RemoteBuffer capacity with lease",
+    "P4: General Compute architecture and A-Z coverage-before-changes matrix archived",
+    "P4: targeted C10, WorkerCore, JNI, host and C12 reconciliation passed without product changes",
+    "P4: final check-fast and check-full 14/14 passed; evidence-only closure ready for CI",
+    "P4: GitHub Actions run 35643969840 passed 7/7 on checkpoint bc6cb01",
+    "docs(p4): close native ops C10 evidence",
+    "docs(p4): record green CI closure",
+    "feat(host): add fail-closed C11 planner core",
+    "fix(ci): refresh Android and vulnerable web locks",
+    "docs(p5): close C11 planner core evidence",
+    "P6: authenticated metrics bridge and C11 CAPACITY runtime wiring implemented",
+    "P6: targeted runtime, planner, worker and host tests passed",
+    "P6: JNI test client consumes authenticated unsolicited metrics while awaiting application responses",
+    "P6: final local check-full passed all 14 commands",
+    "P6: corrected exact-head GitHub Actions passed 7/7",
+    "feat(host): wire authenticated C11 capacity placement",
+    "test(android): handle unsolicited capacity metrics",
+    "docs(p6): record capacity runtime software closure",
+    "P6 closure follow-up: authenticated transport backpressure and active-request liveness corrected without changing product deadlines",
+    "P6 closure follow-up: JNI resilience harness aligned with the existing 35-second application request bound",
+    "P6 closure follow-up: final local check-full passed all 14 commands",
+    "fix(runtime): preserve authenticated transfers under backpressure",
+    "docs(p6): record Galaxy A15 capacity proof"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -101,7 +123,28 @@
     "P3 root gap closed: C07 RELEASE/expiry now policy-evicts dependent RemoteBuffers and releases consumed class-1 accounting exactly once",
     "P3 targeted: pb-worker-core 53/53 plus 2/2 doc tests; RemoteBuffer 4/4; authenticated JNI RELEASE/successor full-capacity admission PASS",
     "P3 integration: host automatic IK C08-C09-C10 Remote BLAKE3 truth path PASS; secure transport stop during active C09 PASS",
-    "P3 final check-fast PASS and check-full PASS 14/14, including nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax"
+    "P3 final check-fast PASS and check-full PASS 14/14, including nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security, and Maestro syntax",
+    "P4 C10 wire checker PASS: 17 vectors plus registry, manifest, offsets, replay/conflict, exact-once release, non-resurrection and negative matrices",
+    "P4 targeted Rust PASS: PBMUX C10 2/2, WorkerCore compute 3/3, C12 local API 16/16",
+    "P4 authenticated JNI PASS: 64 MiB exact BLAKE3 plus nine same-buffer repeats, nine deterministic loss/reconnect cases, and active C10 session revocation",
+    "P4 host PASS: full IK/C07/C08/C09/C10 authority path and truthful ambiguous fallback/recovery",
+    "P4 check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
+    "P4 final check-full PASS 14/14: nextest 360/360, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P4 GitHub CI run 35643969840 PASS 7/7 for bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
+    "P5 C11 planner core PASS: 14/14 exact planner tests, pb-host 180/180, Rust nextest 374/374 and mandatory workspace cargo test",
+    "P5 GitHub CI run 38124078271 PASS 7/7 for 7d3b34f733d4ede3ce9498633fabdfcf20199940, including Android and fixed-CRITICAL security gates",
+    "P6 targeted: secure/runtime and WorkerCore suites PASS 22/22 and 53/53 before the added heartbeat binding test; added binding test PASS 1/1",
+    "P6 host: deterministic planner PASS 14/14, runtime CAPACITY gate test PASS 1/1, authenticated remote path PASS 1/1, full pb-host PASS 181/181",
+    "P6 check-fast PASS: diff check, 12 pipeline tests including staged-secret rejection, actionlint and cargo fmt",
+    "P6 first full-run diagnostic: nextest 376/376 PASS; JNI async-frame assumption identified and corrected; phoneboost-core-jni 16/16 PASS",
+    "P6 final check-full PASS 14/14: nextest 376/376, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P6 GitHub CI run 38126598519 PASS 7/7 for 67c00547626ff57d258f0dceeadf122878dea04d",
+    "P6 closure CI run 38127226539 failed twice only on the 64 MiB host proof; bounded rerun stopped and load-sensitive transport loss reproduced locally",
+    "P6 transport correction: bounded encrypted-record writes, queued authenticated traffic before idle expiry, idle 10-second bound preserved, active request bounded by the existing 35-second deadline",
+    "P6 corrected secure runtime PASS 24/24, host PASS 181/181, deterministic JNI disconnect scenario PASS 1/1, full JNI PASS 16/16",
+    "P6 corrected final check-full PASS 14/14: nextest 377/377, mandatory Rust workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
+    "P6 corrected exact-head GitHub Actions run 38152665185 PASS 7/7 for 5b31b89f26694ff04402591aa22dd045d44cf117",
+    "P6 Galaxy A15 physical PASS: fresh authenticated capacity metrics produced REMOTE_SUCCESS; metrics older than six seconds with an active lease produced truthful WORKER_UNHEALTHY local fallback; resumed fresh metrics restored REMOTE_SUCCESS"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -113,7 +156,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Observe required GitHub CI for P3 checkpoint; STOP before P4.",
+  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -127,8 +170,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:10.131910+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-10-11T17:31:01.690758+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
@@ -141,16 +184,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:10.176472+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-10-11T17:31:01.745259+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:11.610986+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-10-11T17:31:05.031292+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     },
     {
       "command": [
@@ -161,129 +204,17 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-09-20T18:59:11.629442+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "clippy",
-        "--locked",
-        "--workspace",
-        "--all-targets"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T18:59:12.857329+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "nextest",
-        "run",
-        "--locked",
-        "--workspace",
-        "--profile",
-        "ci"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T18:59:17.836292+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-with-sccache",
-        "cargo",
-        "test",
-        "--locked",
-        "--workspace"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:00:52.799164+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "install",
-        "--frozen-lockfile",
-        "--non-interactive"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:05:48.011046+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "test",
-        "--watchAll=false",
-        "--runInBand"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:05:49.032265+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "yarn",
-        "--cwd",
-        "frontend",
-        "build"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:05:52.308257+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-playwright",
-        "test"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:06:32.595653+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "bash",
-        "scripts/pipeline-android"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:07:04.171560+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-security"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:08:29.671409+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
-    },
-    {
-      "command": [
-        "scripts/pipeline-maestro",
-        "--syntax-only"
-      ],
-      "returncode": 0,
-      "date": "2026-09-20T19:09:02.081581+00:00",
-      "head": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93"
+      "date": "2026-10-11T17:31:05.173033+00:00",
+      "head": "5b31b89f26694ff04402591aa22dd045d44cf117"
     }
   ],
   "checkpoint": {
-    "date": "2026-09-20T19:10:17.450754+00:00",
-    "commit": "0583c0aaf639b51c0d4da939bcbebcf2117f8d93",
+    "date": "2026-10-11T17:31:29.896649+00:00",
+    "commit": "5b31b89f26694ff04402591aa22dd045d44cf117",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "software_proof": "P3 RemoteBuffer authority and ALLOC/PUT/GET/FREE coverage mapped; lease-end capacity retention fixed; targeted store, lease, JNI, transport, host integration and wire checks PASS; final check-full 14/14 PASS.",
-  "physical_proof": "Galaxy A15 SM-A155F/RZ8X500LL3A: sticky process recovery PASS without Activity; pairing identity and listener restored; genuine REMOTE_SUCCESS after 300 s, 1800 s, and 3600 s with screen already Dozing, Activity absent, screen remained Dozing; no ADB tunnel or manual wake during the soak. Existing P1 transport-loss/reconnect proof remains valid. P3 physical test NOT RUN: the correction is an internal lease-end accounting transition and the existing product host normally FREEs before RELEASE; no existing physical harness exposes the gap without building a new one. Retained Galaxy A15 P2 evidence is reused only for its authenticated remote-compute/loss/reconnect facts.",
+  "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
+  "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present.",
   "canonical_documents": {
     "order": [
       {
@@ -382,6 +313,57 @@
     "check_fast": "PASS",
     "check_full": "PASS 14/14",
     "physical_test": "NOT RUN; existing P2 evidence retained without promotion",
-    "status": "LOCAL_COMPLETE_CI_PENDING"
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p4_native_ops_c10": {
+    "baseline": "17817c11c2bc556e17d984dcb52a05b9a8497c2f",
+    "authority": [
+      "docs/protocol/PHONEBOOST_C10_REGISTRY_RESOLUTION_V0_1_001.md",
+      "docs/protocol/PHONEBOOST_C10_WIRE_ADDENDUM_V0_1_LOCKED_001.md",
+      "docs/protocol/PHONEBOOST_C12_AUTO_USE_BLAKE3_PROFILE_V0_1_LOCKED_20260901.md"
+    ],
+    "coverage_matrix": "docs/evidence/p4-native-ops-c10-coverage-before-changes.md",
+    "root_gap": "Consolidated P4 architecture, A-Z coverage, gap decision and closure evidence were absent; no product defect was demonstrated",
+    "closure": "Evidence and pipeline state only; no production, wire, Android, JNI, host or test implementation changed",
+    "targeted_result": "PASS",
+    "check_fast": "PASS",
+    "check_full": "PASS 14/14",
+    "physical_test": "NOT RUN; no runtime behavior changed and existing physical evidence retained without promotion",
+    "ci_run": 35643969840,
+    "ci_result": "PASS 7/7 at bc6cb01d39c6bc336a0e916cc40cec057d353a9d",
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p5_planner_c11_core": {
+    "baseline": "765dbf1b1f679c15897812f7ebc6fe2eb8c10196",
+    "authority": [
+      "PHONEBOOST_CONTRACT_SET_V1_3_QR01A_QR01B_LOCKED.docx#C11",
+      "PHONEBOOST_TECH_SHEET_V1_3_QR01A_QR01B_LOCKED_IMPLEMENTATION_HANDOFF.docx#14",
+      "PHONEBOOST_PSEUDOCODE_CRITICAL_PATHS_V1_1_FINAL.docx#17.15"
+    ],
+    "authority_sha256": {
+      "contract_set": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+      "tech_sheet": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1"
+    },
+    "coverage_matrix": "docs/evidence/p5-c11-planner-core-coverage-before-changes.md",
+    "root_gap": "No C11 host planner or performance-profile decision model existed.",
+    "scope": "Pure deterministic host decision core only; no runtime wiring, persistence, benchmark producer or claim.",
+    "targeted_result": "PASS 14/14",
+    "pb_host_result": "PASS 180/180",
+    "check_fast": "PASS",
+    "rust_check_full": "PASS: clippy, nextest 374/374, mandatory workspace cargo test",
+    "physical_test": "NOT RUN; no runtime or Android behavior changed",
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p6_c11_runtime_capacity": {
+    "baseline": "0fcd23140123257ae84d8ab7ca8477057abc9a2c",
+    "coverage_evidence": "docs/evidence/p6-c11-runtime-capacity.md",
+    "scope": "Existing C12 BLAKE3 auto-use path only, using C11 CAPACITY; no C12 schema change and no C13 persistence or fabricated performance evidence.",
+    "runtime_binding": "Authenticated responder identity plus active C07 lease, worker incarnation and C08 health freshness; host TTL is six seconds.",
+    "targeted_result": "PASS: planner 14/14, pb-host 181/181, secure heartbeat binding 1/1, worker baseline 53/53",
+    "check_fast": "PASS",
+    "check_full": "PASS 14/14",
+    "physical_test": "NOT RUN; no authorized Android device attached",
+    "ci_result": "PASS 7/7 at 67c00547626ff57d258f0dceeadf122878dea04d, run 38126598519",
+    "status": "SOFTWARE_CI_PASS_PENDING_PHYSICAL"
   }
 }
