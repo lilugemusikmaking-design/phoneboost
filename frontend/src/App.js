@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "@/App.css";
 import Dashboard from "@/pages/Dashboard";
+import useAutoUsePreference from "@/useAutoUsePreference";
 import { safeRecordedPayloads } from "@/recordedApi";
 import {
   consumeBridgeToken,
@@ -27,6 +28,8 @@ const BRIDGE_CAPABILITY =
 const COMPUTE_ACTION_UNAVAILABLE = "COMPUTE_ACTION_UNAVAILABLE";
 
 export default function App() {
+  const { preference, refresh: refreshPreference, change: changePreference } = useAutoUsePreference(BRIDGE_CAPABILITY);
+  const runtimeGeneration = useRef(0);
   const recordedApiBase = BRIDGE_CAPABILITY ? null : RECORDED_API;
   const [language, setLanguage] = useState(() =>
     loadLanguagePreference(typeof window === "undefined" ? null : window)
@@ -78,15 +81,23 @@ export default function App() {
     if (!BRIDGE_CAPABILITY) return undefined;
     let cancelled = false;
     const headers = { "X-PhoneBoost-Bridge-Token": BRIDGE_CAPABILITY };
+    let polling = false;
     const poll = async () => {
+      if (polling) return;
+      polling = true;
+      const currentGeneration = runtimeGeneration.current;
       try {
+        await refreshPreference();
+        if (cancelled || currentGeneration !== runtimeGeneration.current) return;
         const response = await axios.get("/bridge/v1/snapshot", { headers, timeout: 2500 });
-        if (!cancelled) setLive(normalizeLiveSnapshot(response.data));
+        if (!cancelled && currentGeneration === runtimeGeneration.current) setLive(normalizeLiveSnapshot(response.data));
       } catch {
-        if (!cancelled) {
+        if (!cancelled && currentGeneration === runtimeGeneration.current) {
           setLive((previous) => unavailableLive("LOCAL_RUNTIME_UNAVAILABLE", previous.runtime));
           setCompute((current) => ({ ...current, result: null }));
         }
+      } finally {
+        polling = false;
       }
     };
     poll();
@@ -99,7 +110,7 @@ export default function App() {
       window.clearInterval(pollTimer);
       window.clearInterval(freshnessTimer);
     };
-  }, []);
+  }, [refreshPreference]);
 
   useEffect(() => {
     if (!live.fresh) {
@@ -115,7 +126,7 @@ export default function App() {
   }, [language]);
 
   const runCompute = useCallback(async () => {
-    if (!BRIDGE_CAPABILITY) return;
+    if (!BRIDGE_CAPABILITY || !preference.fresh || preference.pending || preference.enabled !== true) return;
     setCompute({ running: true, result: null, error: null });
     try {
       const response = await axios.post(
@@ -132,9 +143,19 @@ export default function App() {
     } catch {
       setCompute({ running: false, result: null, error: COMPUTE_ACTION_UNAVAILABLE });
     }
-  }, []);
+  }, [preference]);
 
   const api = useMemo(() => ({ base: recordedApiBase }), [recordedApiBase]);
+
+  const changeAutoUse = useCallback(async (enabled) => {
+    runtimeGeneration.current += 1;
+    setLive(unavailableLive("PREFERENCE_CHANGING"));
+    await changePreference(enabled);
+    // Readiness observed before/during an epoch change cannot be reused as
+    // proof after ON, even when its previous three-second TTL has not expired.
+    runtimeGeneration.current += 1;
+    setLive(unavailableLive("PREFERENCE_CHANGED"));
+  }, [changePreference]);
 
   return (
     <Dashboard
@@ -146,6 +167,8 @@ export default function App() {
       arch={arch}
       fixtures={fixtures}
       compute={compute}
+      preference={preference}
+      onAutoUse={changeAutoUse}
       onCompute={runCompute}
       language={language}
       setLanguage={setLanguage}

@@ -55,6 +55,13 @@ struct ConfigStore {
     directory: OwnedFd,
 }
 
+fn valid_config_metadata(stat: &rustix::fs::Stat) -> bool {
+    FileType::from_raw_mode(stat.st_mode) == FileType::RegularFile
+        && stat.st_uid == getuid().as_raw()
+        && stat.st_mode & 0o7777 == 0o600
+        && (0..=256).contains(&stat.st_size)
+}
+
 impl ConfigStore {
     fn open(state_home: &Path) -> Result<Self, PreferenceWriteFailed> {
         if !state_home.is_absolute() {
@@ -125,12 +132,7 @@ impl ConfigStore {
             Err(_) => return Err(PreferenceWriteFailed),
         };
         let before = fstat(&fd).map_err(|_| PreferenceWriteFailed)?;
-        if FileType::from_raw_mode(before.st_mode) != FileType::RegularFile
-            || before.st_uid != getuid().as_raw()
-            || before.st_mode & 0o7777 != 0o600
-            || before.st_size < 0
-            || before.st_size > 256
-        {
+        if !valid_config_metadata(&before) {
             return Err(PreferenceWriteFailed);
         }
         let mut file = File::from(fd);
@@ -147,6 +149,9 @@ impl ConfigStore {
             || before.st_ctime != after.st_ctime
             || before.st_ctime_nsec != after.st_ctime_nsec
         {
+            return Err(PreferenceWriteFailed);
+        }
+        if bytes.iter().find(|byte| !byte.is_ascii_whitespace()) != Some(&b'{') {
             return Err(PreferenceWriteFailed);
         }
         let config: Config = serde_json::from_slice(&bytes).map_err(|_| PreferenceWriteFailed)?;
@@ -447,6 +452,7 @@ mod tests {
     fn preference_invalid_config_is_never_repaired() {
         for bytes in [
             "{}",
+            "[1,true]",
             "{",
             "null",
             "{\"schema_version\":2,\"auto_use_enabled\":true}",
@@ -514,6 +520,16 @@ mod tests {
         assert!(control.set(true).is_err());
         assert_eq!(fixture.controller.current_state(), AutoUseState::Off);
         assert_eq!(fs::read(fixture.config()).unwrap(), b"unknown version");
+    }
+
+    #[test]
+    fn preference_owner_gate_rejects_other_uid_metadata() {
+        let fixture = Fixture::new();
+        fixture.control().set(false).unwrap();
+        let mut stat = fstat(File::open(fixture.config()).unwrap()).unwrap();
+        assert!(valid_config_metadata(&stat));
+        stat.st_uid = getuid().as_raw().wrapping_add(1);
+        assert!(!valid_config_metadata(&stat));
     }
 
     #[test]

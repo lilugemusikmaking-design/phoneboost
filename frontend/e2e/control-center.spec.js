@@ -21,6 +21,11 @@ function runtime(overrides = {}) {
 }
 
 async function openWithRuntime(page, snapshot) {
+  let enabled = true;
+  await page.route("**/bridge/v1/auto-use", async (route) => {
+    if (route.request().method() === "POST") enabled = route.request().postDataJSON().enabled;
+    await route.fulfill({ json: { enabled, persistence: "SAVED" } });
+  });
   await page.route("**/bridge/v1/snapshot", async (route) => {
     await route.fulfill({ json: { ...snapshot, observed_at_unix_ms: Date.now() } });
   });
@@ -40,15 +45,24 @@ test("opens the Control Center without page errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("ON is a user preference and does not imply READY", async ({ page }) => {
-  await page.goto("/");
+test("daemon-confirmed ON does not imply READY and OFF needs a real command", async ({ page }) => {
+  await openWithRuntime(page, runtime());
   const control = page.getByTestId("participation-switch");
   await expect(control).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByText("OFFLINE", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Reconnexion", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("READY", { exact: true })).toHaveCount(0);
   await control.click();
   await expect(control).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("DISABLED", { exact: true }).first()).toBeVisible();
+});
+
+test("without daemon control the switch is unknown, not a localStorage OFF", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("phoneboost.participation-enabled", "false"));
+  await page.goto("/");
+  const control = page.getByTestId("participation-switch");
+  await expect(control).toBeDisabled();
+  await expect(control).toHaveText("?");
+  await expect(page.getByText("DISABLED", { exact: true })).toHaveCount(0);
 });
 
 test("a reconnecting runtime cannot become READY", async ({ page }) => {

@@ -3,12 +3,17 @@
 Status: implementation contract for the P1 local Control Center bridge.  
 Date: 2026-09-05 Europe/Paris.
 
+P13 extension approved 2026-10-13: exact durable preference/control behavior is
+locked by `docs/protocol/PHONEBOOST_DESKTOP_AUTO_USE_CONTROL_PROPOSAL_V0_1.md`.
+
 ## Authority and scope
 
 `phoneboost-web-bridge` is a presentation adapter. It is not an authentication,
 lease, admission, discovery, or provider authority. It consumes only the existing
 typed `pb-cli` client for C12 `system.status` and the locked synchronous
 `compute.submit` profile for `pb.native.blake3/1` with fixture `c10-abc-v1`.
+P13 additionally consumes only typed C12 `auto_use.get/set` for the daemon-owned
+local scheduling preference. It does not reinterpret Android lease methods.
 
 The bridge itself does not change Noise, PBMUX, C07, C08, C09, C10, Android,
 JNI, `ResourceGuard`, or worker state. The separate locked P2 C12 profile adds
@@ -37,9 +42,11 @@ The only native-facing routes are:
 ```text
 GET  /bridge/v1/snapshot
 POST /bridge/v1/compute/blake3
+GET  /bridge/v1/auto-use
+POST /bridge/v1/auto-use
 ```
 
-The POST body is exactly:
+The compute POST body is exactly:
 
 ```json
 {"fixture":"c10-abc-v1"}
@@ -49,9 +56,16 @@ Missing, extra, mistyped, unknown, or non-object values are rejected before any
 native call. No browser-supplied C12 method, operation identifier, path, input
 bytes, provider, endpoint, lease, resource parameter, or command is accepted.
 
+The preference GET has an empty body; its POST accepts exactly
+`{"enabled":boolean}` with no duplicate keys. The result has exactly `enabled`
+and `persistence`; it is not a readiness claim. See the approved P13 profile for
+the closed HTTP error map and loss-of-response reconciliation.
+
 ## Limits
 
-- One request is processed at a time by one process.
+- At most four live HTTP handlers; at most one native compute and one native
+  control/status call. No request queue; saturation returns 503 `{"error":"BUSY"}`.
+  Each handler owns its native client; OFF does not wait for compute to finish.
 - HTTP headers are bounded to 8 KiB and 32 fields.
 - API request bodies are bounded to 1 KiB.
 - Native responses and API responses are bounded to 64 KiB.
@@ -62,6 +76,9 @@ bytes, provider, endpoint, lease, resource parameter, or command is accepted.
 - Header/body reads and writes have five-second socket timeouts.
 - Native status has a two-second I/O timeout; the locked compute action has the
   existing bounded 60-second I/O timeout.
+- Native preference control uses a fresh connection with an absolute five-second
+  bound and no automatic mutation replay. Requests/results/errors, storage
+  semantics and reconciliation follow the approved P13 profile exactly.
 - Connections close after one response; transfer encoding and request pipelining
   are rejected.
 

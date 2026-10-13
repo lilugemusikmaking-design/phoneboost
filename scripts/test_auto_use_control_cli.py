@@ -5,18 +5,24 @@ import json
 import os
 from pathlib import Path
 import socket
+import selectors
 import subprocess
 import tempfile
 import time
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--daemon', default='target/debug/phoneboostd')
     parser.add_argument('--client', default='target/debug/phoneboostctl')
+    parser.add_argument('--bridge', default='target/debug/phoneboost-web-bridge')
     args = parser.parse_args()
     daemon_bin = str(Path(args.daemon).resolve(strict=True))
     client_bin = str(Path(args.client).resolve(strict=True))
+    bridge_bin = str(Path(args.bridge).resolve(strict=True))
     with tempfile.TemporaryDirectory(prefix='pb-auto-use-') as temporary, tempfile.TemporaryFile() as log:
         root = Path(temporary)
         env = dict(os.environ)
@@ -99,6 +105,60 @@ def main():
             assert read_wire('auto_use.get', {})['result'] == dict(enabled=True, persistence='SAVED')
             assert command('auto-use', 'off', 'extra').returncode == 2
             print('PASS invalid requests and CLI arguments do not mutate preference')
+
+            # Real authenticated HTTP -> typed client -> daemon. The bridge's
+            # static root is isolated too; no production frontend/server reuse.
+            frontend = root / 'frontend/build'
+            frontend.mkdir(parents=True)
+            (frontend / 'index.html').write_text('<!doctype html><title>Isolated proof</title>')
+            bridge = subprocess.Popen([bridge_bin], cwd=root, env=env, stdout=subprocess.PIPE,
+                                      stderr=log, text=True, bufsize=1)
+            try:
+                deadline = time.monotonic() + 5
+                launch = ''
+                # Read bytes directly: no TextIO buffering hiding ready lines.
+                with selectors.DefaultSelector() as selector:
+                    selector.register(bridge.stdout, selectors.EVENT_READ)
+                    while '#token=' not in launch:
+                        remaining = deadline - time.monotonic()
+                        assert remaining > 0 and selector.select(remaining), 'bridge startup deadline'
+                        chunk = os.read(bridge.stdout.fileno(), 4096)
+                        assert chunk, 'bridge exited before launch'
+                        launch += chunk.decode()
+                url = next(line for line in launch.splitlines() if line.startswith('http://'))
+                parsed = urlsplit(url)
+                origin = f'{parsed.scheme}://{parsed.netloc}'
+                token = parsed.fragment.removeprefix('token=')
+
+                def http(method, data=None, authorized=True):
+                    headers = {'Origin': origin, 'Content-Type': 'application/json'}
+                    if authorized:
+                        headers['X-PhoneBoost-Bridge-Token'] = token
+                    request = Request(origin + '/bridge/v1/auto-use', method=method,
+                                      headers=headers, data=None if data is None else json.dumps(data).encode())
+                    try:
+                        response = urlopen(request, timeout=8)
+                    except HTTPError as error:
+                        response = error
+                    with response:
+                        return response.status, json.loads(response.read(65537))
+
+                assert http('GET') == (200, dict(enabled=True, persistence='SAVED'))
+                assert http('POST', {'enabled': False}) == (200, dict(enabled=False, persistence='SAVED'))
+                assert read_wire('system.status', {})['result']['auto_use_state'] == 'OFF'
+                assert http('POST', {'enabled': 1}) == (400, dict(error='BAD_REQUEST'))
+                assert http('POST', {'enabled': True}, authorized=False)[0] == 401
+                assert http('GET') == (200, dict(enabled=False, persistence='SAVED'))
+                assert http('POST', {'enabled': True}) == (200, dict(enabled=True, persistence='SAVED'))
+                print('PASS real authenticated HTTP ON/OFF controls daemon; malformed/unauthorized requests do not mutate')
+            finally:
+                bridge.terminate()
+                try:
+                    bridge.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    bridge.kill()
+                    bridge.wait(timeout=5)
+                bridge.stdout.close()
 
             stop()
             corrupt = '{"schema_version":99,"auto_use_enabled":true}'
