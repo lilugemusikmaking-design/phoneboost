@@ -388,6 +388,8 @@ fn resolve_service(
             ipv6_scope_id(address, interface_index),
         )),
     };
+    // Avahi's interface is discovery evidence, not proof of the route selected
+    // by the eventual connected socket. D1 classification happens after connect.
     Some(TransportCandidate::discovered(
         endpoint,
         interface_index,

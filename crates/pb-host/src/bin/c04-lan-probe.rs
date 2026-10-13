@@ -50,10 +50,10 @@ fn main() {
         fail("reconnect accounting mismatch");
     }
     println!(
-        "C04_PROBE connect=PASS bidirectional=PASS loss=PASS reconnect=PASS max_state=CONNECTED_UNAUTHENTICATED rtt_ms={} tx_Bps={} rx_Bps={} reconnect_count={} stability_score={} permission_state=NOT_APPLICABLE_HOST",
-        metrics.rtt_ms.unwrap_or(0),
-        metrics.sustained_tx_bps.unwrap_or(0),
-        metrics.sustained_rx_bps.unwrap_or(0),
+        "C04_PROBE connect=PASS bidirectional=PASS loss=PASS reconnect=PASS max_state=CONNECTED_UNAUTHENTICATED connect_latency_ms={} raw_tx_Bps={} raw_rx_Bps={} reconnect_count={} stability_score={} permission_state=NOT_APPLICABLE_HOST",
+        metrics.connect_latency_ms.unwrap_or(0),
+        metrics.raw_tx_bps.unwrap_or(0),
+        metrics.raw_rx_bps.unwrap_or(0),
         metrics.reconnect_count,
         metrics.stability_score,
     );

@@ -173,8 +173,9 @@ fn run_manual_transport(endpoint: SocketAddr, runtime: Arc<SecureRuntime>) -> ! 
             Ok(()) => {
                 let metrics = transport.metrics();
                 println!(
-                    "C04_TRANSPORT state=CONNECTED_UNAUTHENTICATED type=LOCAL_IP rtt_ms={} reconnect_count={} stability_score={} trust=NONE",
-                    metrics.rtt_ms.unwrap_or(0),
+                    "C04_TRANSPORT state=CONNECTED_UNAUTHENTICATED type=LOCAL_IP link_class={} connect_latency_ms={} reconnect_count={} stability_score={} trust=NONE",
+                    metrics.link_class.as_str(),
+                    metrics.connect_latency_ms.unwrap_or(0),
                     metrics.reconnect_count,
                     metrics.stability_score,
                 );
