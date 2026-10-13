@@ -4447,7 +4447,12 @@ mod tests {
         controller.disable();
         let request_count = worker.remote_request_count.load(Ordering::Acquire);
         worker.unblock();
-        let _ = upload.join().expect("upload fallback");
+        let upload_result = upload.join().expect("upload fallback");
+        assert_ne!(upload_result.source(), ExecutionSource::RemoteSuccess);
+        assert_eq!(
+            upload_result.digest(),
+            *blake3::hash(b"disable upload").as_bytes()
+        );
         thread::sleep(Duration::from_millis(100));
         assert_eq!(controller.current_state(), AutoUseState::Off);
         assert_eq!(
@@ -4467,7 +4472,12 @@ mod tests {
         controller.disable();
         let request_count = worker.remote_request_count.load(Ordering::Acquire);
         worker.unblock();
-        let _ = compute.join().expect("compute fallback");
+        let compute_result = compute.join().expect("compute fallback");
+        assert_ne!(compute_result.source(), ExecutionSource::RemoteSuccess);
+        assert_eq!(
+            compute_result.digest(),
+            *blake3::hash(b"disable compute").as_bytes()
+        );
         thread::sleep(Duration::from_millis(100));
         assert_eq!(controller.current_state(), AutoUseState::Off);
         assert_eq!(

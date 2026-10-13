@@ -5,6 +5,7 @@ cd "$root"
 git diff --cached --check
 python3 -m unittest discover -s tests/pipeline -v
 python3 scripts/check_agentic_boundary_v0_1.py
+python3 scripts/check_desktop_auto_use_proposal_v0_1.py
 if [[ -x "$root/.tooling/pipeline-bin/actionlint" ]]; then
     "$root/.tooling/pipeline-bin/actionlint"
 else

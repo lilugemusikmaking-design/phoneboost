@@ -1,9 +1,9 @@
 {
-  "next_action": "Verify P12 checkpoint CI and CodeRabbit; close when green. No master merge or MCP without separate authorization.",
+  "next_action": "Await explicit approval of PHONEBOOST_DESKTOP_AUTO_USE_CONTROL_PROPOSAL_V0_1.md before implementing exact C12/C13/bridge extension; no merge without approval",
   "writer": "Codex",
-  "parent_head": "aba2cf157b9b55f7006feda994fe3f4926adacf9",
-  "date": "2026-10-13T16:48:52.380402+00:00",
-  "branch": "feat/p12-c12-import-cli-v1",
+  "parent_head": "50633fe65c8d1568cc0555d606543dace11cf718",
+  "date": "2026-10-13T18:18:56.248898+00:00",
+  "branch": "docs/p13-auto-use-control-v1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }
