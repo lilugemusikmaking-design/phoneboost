@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "branch": "docs/p13-auto-use-control-v1",
-  "head": "50633fe65c8d1568cc0555d606543dace11cf718",
-  "task": "P13 preparation only: exact durable desktop auto-use control proposal; no public activation before approval",
+  "branch": "feat/p13-durable-auto-use-control",
+  "head": "d63023412d002846135e81f73088dfb721e96d12",
+  "task": "P13 approved durable auto-use control implementation; native daemon and CLI first",
   "p13_auto_use_control": {
-    "status": "PREPARED_AWAITING_EXPLICIT_SCHEMA_APPROVAL",
+    "status": "NATIVE_IMPLEMENTED_LOCAL_VALIDATION_PASS_BRIDGE_UI_PENDING",
     "proposal": "docs/protocol/PHONEBOOST_DESKTOP_AUTO_USE_CONTROL_PROPOSAL_V0_1.md",
-    "evidence": "docs/evidence/p13-desktop-auto-use-preparation.md",
-    "runtime_activation": "NONE",
+    "evidence": "docs/evidence/p13-durable-auto-use-native.md",
+    "runtime_activation": "Approved C12 auto_use.get/set and C13 config active in native binaries; browser unchanged",
     "proposal_vectors": "PASS: 6 unittest groups",
     "existing_controller_tests": "PASS: 3 disable_ tests, including strengthened digest/provenance assertions",
     "fast_checks": "PASS: native check-fast and pre-commit-fast",
     "physical": "NOT RUN",
     "ci": "NOT RUN at preparation checkpoint; consult PR checks after publication",
-    "next_action": "Request explicit approval of exact C12 auto_use.get/set, C13 config and typed bridge extension; do not implement or merge on implicit continue"
+    "next_action": "Implement approved typed browser routes with bounded independent control lane, then truthful frontend preference state; no further schema approval needed; no master merge authorized"
   },
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -113,7 +113,8 @@
     "Integration: PRs 12 through 19 merged sequentially; master aba2cf1 Project pipeline 7/7 and CodeQL 4/4 PASS",
     "P12: native same-connection imported BLAKE3 CLI implemented, strict failure tests and isolated real-process proof PASS",
     "feat(cli): compute BLAKE3 over private C12 imports",
-    "docs(p13): propose durable desktop auto-use control"
+    "docs(p13): propose durable desktop auto-use control",
+    "feat(host): persist approved auto-use control and expose typed CLI"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -228,7 +229,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Await explicit approval of PHONEBOOST_DESKTOP_AUTO_USE_CONTROL_PROPOSAL_V0_1.md before implementing exact C12/C13/bridge extension; no merge without approval",
+  "next_action": "Implement approved bridge routes and bounded independent control lane, then frontend confirmed preference; no new schema approval needed; no master merge authorized",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -242,8 +243,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T18:16:24.602957+00:00",
-      "head": "50633fe65c8d1568cc0555d606543dace11cf718"
+      "date": "2026-10-13T18:34:33.223934+00:00",
+      "head": "d63023412d002846135e81f73088dfb721e96d12"
     },
     {
       "command": [
@@ -256,16 +257,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T18:16:24.626353+00:00",
-      "head": "50633fe65c8d1568cc0555d606543dace11cf718"
+      "date": "2026-10-13T18:34:33.268411+00:00",
+      "head": "d63023412d002846135e81f73088dfb721e96d12"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T18:16:25.655823+00:00",
-      "head": "50633fe65c8d1568cc0555d606543dace11cf718"
+      "date": "2026-10-13T18:34:34.193605+00:00",
+      "head": "d63023412d002846135e81f73088dfb721e96d12"
     },
     {
       "command": [
@@ -276,13 +277,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T18:16:25.700971+00:00",
-      "head": "50633fe65c8d1568cc0555d606543dace11cf718"
+      "date": "2026-10-13T18:34:34.210997+00:00",
+      "head": "d63023412d002846135e81f73088dfb721e96d12"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T18:18:56.245902+00:00",
-    "commit": "50633fe65c8d1568cc0555d606543dace11cf718",
+    "date": "2026-10-13T18:36:24.138456+00:00",
+    "commit": "d63023412d002846135e81f73088dfb721e96d12",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",

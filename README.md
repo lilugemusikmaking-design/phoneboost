@@ -103,6 +103,17 @@ This provides a typed real-input compute path, not a measured speedup claim.
 
 ## Build and test
 
+### Native automatic remote use control
+
+With `phoneboostd` running, use `phoneboostctl auto-use status`,
+`phoneboostctl auto-use off`, or `phoneboostctl auto-use on`.
+The daemon saves this preference across restart. ON permits automatic use but
+does not mean the phone is ready. OFF stops automatic remote work; explicit
+native compute requests can still complete as truthful local fallback.
+`Persistence: ERROR` means live OFF but unconfirmed saved state: restart may
+restore ON. A failed command is never replayed automatically; read status to
+reconcile. The browser switch is not yet connected to this native control.
+
 Rust 1.98 is pinned by `rust-toolchain.toml`:
 
 ```sh

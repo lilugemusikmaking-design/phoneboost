@@ -5,10 +5,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use pb_host::{
-    AutoUseController, AutoUseReason, AutoUseState, AvahiDiscovery, FixedDeviceDiscovery,
-    ImportStore, LocalApiContext, ReadyRuntime, StartupOutcome, TransportCandidate,
-    TransportManager, TransportState, host_startup, initialize_remote_secure, os_jitter_sample,
-    retry_delay_ms, serve_local_client,
+    AutoUseControl, AutoUseController, AutoUseReason, AutoUseState, AvahiDiscovery,
+    FixedDeviceDiscovery, ImportStore, LocalApiContext, ReadyRuntime, StartupOutcome,
+    TransportCandidate, TransportManager, TransportState, host_startup, initialize_remote_secure,
+    os_jitter_sample, retry_delay_ms, serve_local_client,
 };
 use pb_runtime_secure::{SecureRuntime, run_initiator_session};
 
@@ -45,6 +45,7 @@ fn main() {
                 }
             };
             let mut auto_use = None;
+            let mut auto_use_control = None;
             if let Some(endpoint) = arguments.manual_endpoint
                 && runtime.snapshot().committed_peer_count == 0
             {
@@ -68,7 +69,8 @@ fn main() {
                         std::process::exit(1);
                     }
                 };
-                controller.enable();
+                let control = Arc::new(AutoUseControl::from_environment(Arc::clone(&controller)));
+                auto_use_control = Some(control);
                 let startup = wait_for_auto_use_startup(
                     || {
                         let status = controller.current_node_status();
@@ -89,8 +91,10 @@ fn main() {
                 println!("READY");
                 let _flush_result = io::stdout().flush();
             }
-            let local_api_context =
-                Arc::new(LocalApiContext::with_import_store(auto_use, import_store));
+            let local_api_context = Arc::new(
+                LocalApiContext::with_import_store(auto_use, import_store)
+                    .with_auto_use_control(auto_use_control),
+            );
             run_local_loop(ready, local_api_context);
         }
         Ok(outcome @ StartupOutcome::AlreadyRunning(_)) => {

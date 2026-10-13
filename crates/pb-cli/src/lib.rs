@@ -9,7 +9,9 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
+mod auto_use;
 mod import;
+pub use auto_use::{AutoUseError, AutoUseView, auto_use_get, auto_use_set};
 pub use import::{ImportedComputeView, compute_blake3_import};
 
 const MAX_NDJSON_LINE_BYTES: usize = 65_536;
@@ -25,6 +27,7 @@ const LOCAL_FALLBACK_AFTER_AMBIGUOUS_REMOTE: &str = "LOCAL_FALLBACK_AFTER_AMBIGU
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CliError {
+    AutoUse(AutoUseError),
     RuntimeUnavailable,
     ConnectFailed,
     IoFailed,
@@ -39,6 +42,7 @@ pub enum CliError {
 impl fmt::Display for CliError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::AutoUse(error) => error.fmt(formatter),
             Self::RuntimeUnavailable => formatter.write_str("PhoneBoost runtime unavailable"),
             Self::ConnectFailed => formatter.write_str("unable to connect to phoneboostd"),
             Self::IoFailed => formatter.write_str("local API I/O failed"),

@@ -46,6 +46,7 @@ jobs:
         run: |
           scripts/pipeline-with-sccache cargo build --locked -p pb-host --bin phoneboostd -p pb-cli --bin phoneboostctl
           python3 scripts/test_c12_import_cli.py
+          python3 scripts/test_auto_use_control_cli.py
       - if: always()
         run: .tooling/p1/bin/sccache --show-stats || true
   frontend:

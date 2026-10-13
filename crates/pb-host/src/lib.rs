@@ -5,6 +5,7 @@
 
 mod admission;
 mod auto_use;
+mod auto_use_control;
 mod discovery;
 mod import_store;
 mod local_api;
@@ -25,6 +26,9 @@ pub use auto_use::{
     AutoUseController, AutoUseError, AutoUseReason, AutoUseState, Blake3Execution,
     ControllerObservabilitySnapshot, DeviceDiscovery, DiscoveryError, ExecutionSource,
     FixedDeviceDiscovery, GateObservation, GateObservations, NodeStatus,
+};
+pub use auto_use_control::{
+    AutoUseControl, AutoUsePreference, PreferencePersistence, PreferenceWriteFailed,
 };
 pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE_TYPE};
 pub use import_store::{

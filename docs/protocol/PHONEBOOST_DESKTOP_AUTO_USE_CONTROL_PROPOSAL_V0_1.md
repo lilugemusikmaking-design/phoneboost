@@ -1,13 +1,14 @@
 # Durable desktop ON/OFF control proposal V0.1
 
-Status: PROPOSED — explicit product-owner approval required before implementation.
+Status: LOCKED FOR IMPLEMENTATION — product-owner approved on 2026-10-13.
+Approval: “allons y , faut avancer”, in direct response to the explicit request
+to approve the exact PR #21 ON/OFF contract including persistence and UI bridge.
 Baseline: master `50633fe65c8d1568cc0555d606543dace11cf718`.
 
 ## Decision requested
 
-Approve the following bounded C12, C13 and browser-bridge extension as one
-implementation scope. No runtime method, route or persistence is activated by
-this proposal. Existing C12 methods and result schemas remain unchanged.
+The following bounded C12, C13 and browser-bridge extension is the approved
+implementation scope. Existing C12 methods and result schemas remain unchanged.
 
 Desktop ON means this Linux host may automatically use a paired Android worker.
 It does not make Linux a worker and does not mean READY. Desktop OFF prevents

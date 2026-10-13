@@ -1,10 +1,11 @@
 use std::ffi::OsString;
 use std::os::fd::AsFd;
 
-const USAGE: &str = "usage: phoneboostctl <status|pair|pair-confirm|pair-cancel|compute blake3 c10-abc-v1|compute blake3 --stdin>\n--stdin requires a readable regular file redirected to stdin (1..128 MiB); pipes and terminals are rejected";
+const USAGE: &str = "usage: phoneboostctl <status|auto-use status|auto-use on|auto-use off|pair|pair-confirm|pair-cancel|compute blake3 c10-abc-v1|compute blake3 --stdin>\n--stdin requires a readable regular file redirected to stdin (1..128 MiB); pipes and terminals are rejected";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Command {
+    AutoUse(Option<bool>),
     Status,
     Pair,
     PairConfirm,
@@ -32,6 +33,15 @@ fn main() {
 fn parse_command(args: impl IntoIterator<Item = OsString>) -> Option<Command> {
     let args: Vec<_> = args.into_iter().collect();
     match args.as_slice() {
+        [command, action] if command == "auto-use" && action == "status" => {
+            Some(Command::AutoUse(None))
+        }
+        [command, action] if command == "auto-use" && action == "on" => {
+            Some(Command::AutoUse(Some(true)))
+        }
+        [command, action] if command == "auto-use" && action == "off" => {
+            Some(Command::AutoUse(Some(false)))
+        }
         [command] if command == "status" => Some(Command::Status),
         [command] if command == "pair" => Some(Command::Pair),
         [command] if command == "pair-confirm" => Some(Command::PairConfirm),
@@ -52,6 +62,17 @@ fn parse_command(args: impl IntoIterator<Item = OsString>) -> Option<Command> {
 
 fn execute(command: Command) -> Result<(String, i32), pb_cli::CliError> {
     match command {
+        Command::AutoUse(enabled) => match enabled {
+            Some(enabled) => pb_cli::auto_use_set(enabled),
+            None => pb_cli::auto_use_get(),
+        }
+        .map(|view| {
+            (
+                view.to_string(),
+                if view.persistence() == "ERROR" { 1 } else { 0 },
+            )
+        })
+        .map_err(pb_cli::CliError::AutoUse),
         Command::Status => pb_cli::status().map(|view| (view.to_string(), 0)),
         Command::Pair => pb_cli::pair().map(|view| (view.to_string(), 0)),
         Command::PairConfirm => pb_cli::pair_confirm().map(|view| (view.to_string(), 0)),
@@ -81,6 +102,19 @@ mod tests {
 
     #[test]
     fn command_syntax_is_exact_and_closed() {
+        for (action, expected) in [("status", None), ("on", Some(true)), ("off", Some(false))] {
+            assert_eq!(
+                parse_command(["auto-use", action].map(OsString::from)),
+                Some(Command::AutoUse(expected))
+            );
+        }
+        for args in [
+            vec!["auto-use"],
+            vec!["auto-use", "toggle"],
+            vec!["auto-use", "off", "extra"],
+        ] {
+            assert_eq!(parse_command(args.into_iter().map(OsString::from)), None);
+        }
         assert_eq!(
             parse_command([OsString::from("status")]),
             Some(Command::Status)
