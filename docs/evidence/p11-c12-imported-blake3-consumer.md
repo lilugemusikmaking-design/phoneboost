@@ -51,10 +51,14 @@ C07-C10 host integration harness. A new physical run is deferred unless final
 software/CI evidence exposes an Android-specific regression or a dedicated
 physical acceptance step is selected.
 
-## CI note
+## Exact-head CI and review
 
-The locked documentation commit `25772796dc2a8dfd0a49087d63c958b7993e6370`
-passed CodeQL. Its first Project pipeline attempt failed only in an unchanged
-JNI disconnect assertion (`Wire(Io)` versus `SessionLost`), after which the
-serialized JNI test lock was poisoned. One bounded rerun was requested; no
-blind retry loop is permitted.
+- Locked contract commit `25772796dc2a8dfd0a49087d63c958b7993e6370`:
+  CodeQL PASS; its first Project pipeline attempt hit one unchanged JNI
+  disconnect assertion (`Wire(Io)` versus `SessionLost`) and poisoned the
+  serialized JNI test lock; the single bounded rerun PASSed.
+- Product commit `0201a9310639202440ff6779a31c244a71fd6aae`:
+  Project pipeline runs `38425087918` and `38425128934` PASS 7/7; CodeQL run
+  `38425128984` PASS; CodeRabbit PASS; PR #19 merge state `CLEAN`.
+
+No retry beyond the single recorded contract rerun was needed.
