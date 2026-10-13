@@ -30,7 +30,7 @@ pub use discovery::{AvahiDiscovery, DISCOVERY_CANDIDATE_LIFETIME, DNS_SD_SERVICE
 pub use import_store::{
     ConsumedImport, IMPORT_CANCELLATION_DEADLINE, IMPORT_COPY_CHUNK_BYTES, IMPORT_READY_TTL,
     IMPORT_RECEIVING_TIMEOUT, IMPORT_TOMBSTONE_TTL, ImportCancellation, ImportHandle,
-    ImportRequester, ImportStore, ImportStoreError, ImportTerminalState,
+    ImportRequester, ImportStatus, ImportStore, ImportStoreError, ImportTerminalState,
     MAXIMUM_AGGREGATE_BYTES_PER_UID, MAXIMUM_IMPORT_BYTES, MAXIMUM_IMPORTS_PER_REQUESTER,
     MAXIMUM_IMPORTS_PER_UID, MAXIMUM_RECEIVING_PER_REQUESTER, MAXIMUM_RECEIVING_PER_UID,
     MAXIMUM_TOMBSTONES_PER_UID, ReadyImport,

@@ -27,16 +27,20 @@ pub enum LocalMethod {
     ComputeSubmit,
     ComputeCancel,
     BenchmarkRun,
+    ImportsCreate,
+    ImportsGet,
+    ImportsCancel,
 }
 
 impl LocalMethod {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 18] = [
         Self::SystemStatus,
         Self::DevicesList,
         Self::DevicesGet,
         Self::JobsGet,
         Self::DiagnosticsRedacted,
         Self::EventsTail,
+        Self::ImportsGet,
         Self::PairingBegin,
         Self::PairingConfirm,
         Self::PairingCancel,
@@ -46,6 +50,8 @@ impl LocalMethod {
         Self::ComputeSubmit,
         Self::ComputeCancel,
         Self::BenchmarkRun,
+        Self::ImportsCreate,
+        Self::ImportsCancel,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -65,6 +71,9 @@ impl LocalMethod {
             Self::ComputeSubmit => "compute.submit",
             Self::ComputeCancel => "compute.cancel",
             Self::BenchmarkRun => "benchmark.run",
+            Self::ImportsCreate => "imports.create",
+            Self::ImportsGet => "imports.get",
+            Self::ImportsCancel => "imports.cancel",
         }
     }
 
@@ -75,7 +84,8 @@ impl LocalMethod {
             | Self::DevicesGet
             | Self::JobsGet
             | Self::DiagnosticsRedacted
-            | Self::EventsTail => LocalMethodClass::ReadOnly,
+            | Self::EventsTail
+            | Self::ImportsGet => LocalMethodClass::ReadOnly,
             Self::PairingBegin
             | Self::PairingConfirm
             | Self::PairingCancel
@@ -84,7 +94,9 @@ impl LocalMethod {
             | Self::ControllerRelease
             | Self::ComputeSubmit
             | Self::ComputeCancel
-            | Self::BenchmarkRun => LocalMethodClass::Mutating,
+            | Self::BenchmarkRun
+            | Self::ImportsCreate
+            | Self::ImportsCancel => LocalMethodClass::Mutating,
         }
     }
 
@@ -105,6 +117,9 @@ impl LocalMethod {
             "compute.submit" => Some(Self::ComputeSubmit),
             "compute.cancel" => Some(Self::ComputeCancel),
             "benchmark.run" => Some(Self::BenchmarkRun),
+            "imports.create" => Some(Self::ImportsCreate),
+            "imports.get" => Some(Self::ImportsGet),
+            "imports.cancel" => Some(Self::ImportsCancel),
             _ => None,
         }
     }
@@ -376,15 +391,16 @@ const fn invalid_with_id(
 mod tests {
     use super::*;
 
-    const READ_METHODS: [&str; 6] = [
+    const READ_METHODS: [&str; 7] = [
         "system.status",
         "devices.list",
         "devices.get",
         "jobs.get",
         "diagnostics.redacted",
         "events.tail",
+        "imports.get",
     ];
-    const MUTATING_METHODS: [&str; 9] = [
+    const MUTATING_METHODS: [&str; 11] = [
         "pairing.begin",
         "pairing.confirm",
         "pairing.cancel",
@@ -394,6 +410,8 @@ mod tests {
         "compute.submit",
         "compute.cancel",
         "benchmark.run",
+        "imports.create",
+        "imports.cancel",
     ];
 
     fn request(method: &str) -> Vec<u8> {
@@ -551,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    fn val_t18_all_six_read_only_methods_are_accepted_and_classified() {
+    fn val_t18_all_seven_read_only_methods_are_accepted_and_classified() {
         for method in READ_METHODS {
             let validated = validate(request(method)).expect("read method validates");
             assert_eq!(validated.method().as_str(), method);
@@ -560,7 +578,7 @@ mod tests {
     }
 
     #[test]
-    fn val_t19_all_nine_mutating_methods_are_accepted_and_classified() {
+    fn val_t19_all_eleven_mutating_methods_are_accepted_and_classified() {
         for method in MUTATING_METHODS {
             let validated = validate(request(method)).expect("mutating method validates");
             assert_eq!(validated.method().as_str(), method);
@@ -657,14 +675,14 @@ mod tests {
     }
 
     #[test]
-    fn val_t28_allowlist_structural_oracle_proves_all_fifteen_exact_names() {
+    fn val_t28_allowlist_structural_oracle_proves_all_eighteen_exact_names() {
         let expected: Vec<&str> = READ_METHODS.into_iter().chain(MUTATING_METHODS).collect();
         let actual: Vec<&str> = LocalMethod::ALL
             .into_iter()
             .map(LocalMethod::as_str)
             .collect();
         assert_eq!(actual, expected);
-        assert_eq!(actual.len(), 15);
+        assert_eq!(actual.len(), 18);
         for (name, method) in actual.into_iter().zip(LocalMethod::ALL) {
             assert_eq!(LocalMethod::parse_exact(name), Some(method));
             assert_eq!(
@@ -721,7 +739,7 @@ mod tests {
     }
 
     #[test]
-    fn fix_t07_all_fifteen_canonical_methods_remain_accepted() {
+    fn fix_t07_all_eighteen_canonical_methods_remain_accepted() {
         for method in LocalMethod::ALL {
             let validated = validate(request(method.as_str())).expect("canonical method accepted");
             assert_eq!(validated.method(), method);

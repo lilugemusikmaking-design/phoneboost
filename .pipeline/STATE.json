@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "feat/p9-c12-import-ingress-v1",
-  "head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267",
+  "head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580",
   "task": "P10 locked C12 descriptor ingress and private import lifecycle",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -86,7 +86,9 @@
     "P10 C12 import: authenticated SCM_RIGHTS framing and bounded private lifecycle core implemented without public schema activation",
     "feat(host): add bounded C12 import foundations",
     "P10 C12 async wire schema: explicitly approved by the product owner and locked without runtime activation",
-    "docs: lock asynchronous C12 import wire schema"
+    "docs: lock asynchronous C12 import wire schema",
+    "P10 C12 async runtime: exact create/get/cancel dispatch, bounded receiver cancellation and connection cleanup implemented",
+    "feat(host): activate bounded C12 async imports"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -181,7 +183,9 @@
     "P9 C12 import proposal native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt",
     "P10 targeted: SCM_RIGHTS framing 32/32, import lifecycle 12/12, admission 87/87, full pb-host 211/211 including 64 MiB proof",
     "P10 static: locked C12 contract checker PASS and changed-crate Clippy -D warnings PASS; workspace Clippy remains blocked only by unchanged pb-pbmux manual-range-pattern warning",
-    "P10 async wire contract checker PASS: exact 3/3 methods, authority/cancellation boundary, 12/12 negative mutations and MCP absent"
+    "P10 async wire contract checker PASS: exact 3/3 methods, authority/cancellation boundary, 12/12 negative mutations and MCP absent",
+    "P10 async targeted PASS: admission 37/37, import lifecycle 18/18, local API 18/18, complete pb-host 219/219 including authenticated 64 MiB proof",
+    "P10 async corrected full software aggregate PASS 14/14: nextest 415/415, workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -192,8 +196,10 @@
     "P2 Galaxy A15 remote success/loss/fallback/reconnect proof",
     "Android durable worker one-hour physical screen-off proof"
   ],
-  "blockers": [],
-  "next_action": "Implement the locked asynchronous imports.create/imports.get/imports.cancel worker lifecycle and C12 dispatch; do not add MCP",
+  "blockers": [
+    "A separately reviewed and locked typed C12 consumer is required before a READY import may feed compute; MCP implementation remains unauthorized"
+  ],
+  "next_action": "Confirm exact-head CI, then propose or approve the first typed C12 import consumer without generic execution or MCP",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -207,8 +213,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:45:34.120998+00:00",
-      "head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267"
+      "date": "2026-10-13T05:28:33.008617+00:00",
+      "head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580"
     },
     {
       "command": [
@@ -221,16 +227,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:45:34.149848+00:00",
-      "head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267"
+      "date": "2026-10-13T05:28:33.031655+00:00",
+      "head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:45:35.436579+00:00",
-      "head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267"
+      "date": "2026-10-13T05:28:33.751693+00:00",
+      "head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580"
     },
     {
       "command": [
@@ -241,13 +247,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-12T19:45:35.461523+00:00",
-      "head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267"
+      "date": "2026-10-13T05:28:33.766490+00:00",
+      "head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-12T19:46:32.030618+00:00",
-    "commit": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267",
+    "date": "2026-10-13T05:29:22.659193+00:00",
+    "commit": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -462,16 +468,22 @@
   },
   "p10_c12_import_ingress": {
     "baseline": "a042eaec84c2fe13bd5a3fb833c6409bae6a63af",
-    "scope": "SCM_RIGHTS-safe authenticated framing, connection identity, private disk-backed copy/lifecycle core and negative tests; no public C12 method enabled and no MCP",
+    "scope": "SCM_RIGHTS-safe authenticated framing, connection identity, private disk-backed async copy/lifecycle and exact imports.create/get/cancel dispatch; no public payload read/consume, typed compute consumer or MCP",
     "framing": "PASS 32/32 including one/two descriptor preservation, request-line binding and ancillary truncation fail-closed",
     "storage": "PASS 12/12 including regular files, sealed memfd, owner/type rejection, quotas, TTL, restart, cancellation, privacy and no retained partial",
     "host": "PASS 211/211 including authenticated 64 MiB proof",
     "clippy": "PASS for pb-host all targets with -D warnings and --no-deps; workspace dependency warning unchanged in pb-pbmux",
-    "public_schema": "LOCKED_PRODUCT_OWNER_APPROVED \u2014 exact imports.create/imports.get/imports.cancel v1 contract; runtime remains inactive",
+    "public_schema": "ACTIVE_LOCKED_PRODUCT_OWNER_APPROVED \u2014 exact imports.create/imports.get/imports.cancel v1 contract",
     "wire_decision": "docs/agentic-integration/PHONEBOOST_C12_IMPORT_ASYNC_WIRE_DECISION_V0_1.md",
     "wire_contract": "docs/agentic-integration/contracts/phoneboost-c12-import-async-wire-v1.json",
     "wire_checker": "PASS: exact 3/3 methods, authority/cancellation boundary, 12/12 negative mutations and MCP absent",
+    "runtime": "PASS: scheduled bounded receiver, exact passive status, confirmed cancellation, disconnect cleanup and fail-closed startup before READY",
+    "runtime_evidence": "docs/evidence/p10-c12-async-import-runtime.md",
+    "targeted_result": "PASS: admission 37/37, import lifecycle 18/18, local API 18/18, pb-host 219/219",
+    "check_fast": "PASS",
+    "check_full": "PASS 14/14 corrected aggregate on unchanged tree; first attempt exposed only missing worktree tools",
+    "physical_test": "NOT RUN; Linux same-UID local ingress only, no Android or remote behavior change",
     "mcp": "NOT STARTED",
-    "status": "FOUNDATION_AND_WIRE_LOCKED_READY_FOR_RUNTIME_WIRING"
+    "status": "RUNTIME_IMPLEMENTED_LOCAL_FULL_PASS_CI_PENDING"
   }
 }

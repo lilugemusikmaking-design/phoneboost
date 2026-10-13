@@ -1,13 +1,15 @@
 use serde_json::{Value, json};
+use std::os::fd::OwnedFd;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::{
     AuthenticatedLocalClient, AutoUseController, AutoUseReason, AutoUseState,
     ControllerObservabilitySnapshot, ExecutionSource, FramedLocalClient, GateObservations,
-    LocalFrameOutcome, LocalMethod, LocalValidationError, LocalValidationErrorKind,
-    ValidatedLocalRequest, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,
-    remote_status,
+    ImportHandle, ImportRequester, ImportStatus, ImportStore, ImportStoreError,
+    ImportTerminalState, LocalFrameOutcome, LocalMethod, LocalValidationError,
+    LocalValidationErrorKind, ValidatedLocalRequest, remote_pairing_begin, remote_pairing_cancel,
+    remote_pairing_confirm, remote_status,
 };
 use pb_runtime_secure::PairingActionResult;
 
@@ -21,6 +23,20 @@ const MESSAGE_UNSUPPORTED_METHOD: &str = "unsupported local method";
 const MESSAGE_INVALID_STATUS_PARAMS: &str = "system.status requires empty object params";
 const MESSAGE_DEFERRED_HANDLER: &str = "method unavailable in current build";
 const MESSAGE_INVALID_COMPUTE_SUBMIT_PARAMS: &str = "invalid compute.submit params";
+const MESSAGE_INVALID_IMPORT_REQUEST: &str = "invalid import request";
+const MESSAGE_IMPORT_NOT_FOUND: &str = "import not found";
+const MESSAGE_IMPORT_LIMIT_REACHED: &str = "import limit reached";
+const MESSAGE_IMPORT_SOURCE_REJECTED: &str = "import source rejected";
+const MESSAGE_IMPORT_RECEIVING_TIMEOUT: &str = "import receiving timeout";
+const MESSAGE_IMPORT_CLEANUP_UNCONFIRMED: &str = "import cleanup unconfirmed";
+const MESSAGE_IMPORT_UNAVAILABLE: &str = "import unavailable";
+
+const IMPORT_NOT_FOUND: &str = "IMPORT_NOT_FOUND";
+const IMPORT_LIMIT_REACHED: &str = "IMPORT_LIMIT_REACHED";
+const IMPORT_SOURCE_REJECTED: &str = "IMPORT_SOURCE_REJECTED";
+const IMPORT_RECEIVING_TIMEOUT: &str = "IMPORT_RECEIVING_TIMEOUT";
+const IMPORT_CLEANUP_UNCONFIRMED: &str = "IMPORT_CLEANUP_UNCONFIRMED";
+const IMPORT_UNAVAILABLE: &str = "IMPORT_UNAVAILABLE";
 
 const C12_BLAKE3_OP_ID: &str = "pb.native.blake3/1";
 const C12_BLAKE3_FIXTURE: &str = "c10-abc-v1";
@@ -36,11 +52,25 @@ pub const A4_DEFERRED_HANDLER: &str = "A4_DEFERRED_HANDLER";
 #[derive(Clone, Default)]
 pub struct LocalApiContext {
     auto_use: Option<Arc<AutoUseController>>,
+    import_store: Option<Arc<ImportStore>>,
 }
 
 impl LocalApiContext {
     pub const fn new(auto_use: Option<Arc<AutoUseController>>) -> Self {
-        Self { auto_use }
+        Self {
+            auto_use,
+            import_store: None,
+        }
+    }
+
+    pub const fn with_import_store(
+        auto_use: Option<Arc<AutoUseController>>,
+        import_store: Arc<ImportStore>,
+    ) -> Self {
+        Self {
+            auto_use,
+            import_store: Some(import_store),
+        }
     }
 
     fn auto_use_status(&self) -> (AutoUseState, AutoUseReason, bool, GateObservations) {
@@ -80,6 +110,7 @@ pub enum LocalHandlerDomain {
     Controller,
     Compute,
     Benchmark,
+    Imports,
 }
 
 /// Minimal LC-009 seam. It cannot carry params or raw request/response bytes.
@@ -119,6 +150,9 @@ impl LocalMethod {
             Self::ControllerAcquire | Self::ControllerRelease => LocalHandlerDomain::Controller,
             Self::ComputeSubmit | Self::ComputeCancel => LocalHandlerDomain::Compute,
             Self::BenchmarkRun => LocalHandlerDomain::Benchmark,
+            Self::ImportsCreate | Self::ImportsGet | Self::ImportsCancel => {
+                LocalHandlerDomain::Imports
+            }
         }
     }
 }
@@ -180,35 +214,37 @@ fn serve_local_client_observed(
     let Ok(mut framed) = client.into_framed() else {
         return;
     };
+    let requester = ImportRequester::new(framed.peer_uid(), framed.connection_id());
 
     loop {
         let (line, descriptors) = match framed.next_line_bytes() {
             Ok(LocalFrameOutcome::Line(frame)) => frame.into_parts(),
-            Ok(LocalFrameOutcome::CleanEof | LocalFrameOutcome::IdleTimeout) | Err(_) => return,
+            Ok(LocalFrameOutcome::CleanEof | LocalFrameOutcome::IdleTimeout) | Err(_) => break,
         };
 
         let started = Instant::now();
         let (method, response) = match framed.validate_request_line(line) {
-            Ok(request) if descriptors.is_empty() => (
-                Some(request.method()),
-                dispatch(&request, &framed, &context),
-            ),
-            Ok(request) => (
-                Some(request.method()),
-                C12Response::error(
-                    request.id().clone(),
-                    LOCAL_BAD_REQUEST,
-                    MESSAGE_MALFORMED_REQUEST,
-                ),
-            ),
+            Ok(request) => {
+                let method = request.method();
+                let response = if method == LocalMethod::ImportsCreate || descriptors.is_empty() {
+                    dispatch(&request, &framed, &context, requester, descriptors)
+                } else {
+                    C12Response::error(
+                        request.id().clone(),
+                        LOCAL_BAD_REQUEST,
+                        MESSAGE_MALFORMED_REQUEST,
+                    )
+                };
+                (Some(method), response)
+            }
             Err(error) => (None, response_for_validation_error(error)),
         };
         let result_code = response.result_code();
         let Ok(serialized) = serialize_c12_response(response) else {
-            return;
+            break;
         };
         if framed.write_response_ndjson(&serialized).is_err() {
-            return;
+            break;
         }
         observe(LocalApiRequestEvent {
             method,
@@ -216,12 +252,17 @@ fn serve_local_client_observed(
             result_code,
         });
     }
+    if let Some(store) = context.import_store.as_deref() {
+        let _ = store.disconnect(requester);
+    }
 }
 
 fn dispatch(
     request: &ValidatedLocalRequest,
     framed: &FramedLocalClient,
     context: &LocalApiContext,
+    requester: ImportRequester,
+    descriptors: Vec<OwnedFd>,
 ) -> C12Response {
     match request.method() {
         LocalMethod::SystemStatus => system_status(request, framed, context),
@@ -239,6 +280,9 @@ fn dispatch(
         LocalMethod::PairingBegin => pairing_begin(request),
         LocalMethod::PairingConfirm => pairing_confirm(request),
         LocalMethod::PairingCancel => pairing_cancel(request),
+        LocalMethod::ImportsCreate => imports_create(request, context, requester, descriptors),
+        LocalMethod::ImportsGet => imports_get(request, context, requester),
+        LocalMethod::ImportsCancel => imports_cancel(request, context, requester),
     }
 }
 
@@ -349,6 +393,152 @@ fn encode_lower_hex(bytes: &[u8]) -> String {
         output.push(HEX[(byte & 0x0f) as usize] as char);
     }
     output
+}
+
+fn imports_create(
+    request: &ValidatedLocalRequest,
+    context: &LocalApiContext,
+    requester: ImportRequester,
+    mut descriptors: Vec<OwnedFd>,
+) -> C12Response {
+    if !system_status_params_are_empty(request) || descriptors.len() != 1 {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_BAD_REQUEST,
+            MESSAGE_INVALID_IMPORT_REQUEST,
+        );
+    }
+    let Some(store) = context.import_store.as_ref() else {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    };
+    let descriptor = descriptors.pop().expect("exact descriptor count checked");
+    match store.start_import(requester, descriptor) {
+        Ok(handle) => C12Response::success(
+            request.id().clone(),
+            json!({
+                "state": "RECEIVING",
+                "import_handle": handle.as_str(),
+            }),
+        ),
+        Err(error) => import_error_response(request.id().clone(), error),
+    }
+}
+
+fn imports_get(
+    request: &ValidatedLocalRequest,
+    context: &LocalApiContext,
+    requester: ImportRequester,
+) -> C12Response {
+    let Some(handle) = import_handle_param(request.params()) else {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_BAD_REQUEST,
+            MESSAGE_INVALID_IMPORT_REQUEST,
+        );
+    };
+    let Some(store) = context.import_store.as_deref() else {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    };
+    match store.status(requester, &handle) {
+        Ok(ImportStatus::Receiving) => {
+            C12Response::success(request.id().clone(), json!({"state": "RECEIVING"}))
+        }
+        Ok(ImportStatus::Ready { bytes }) => C12Response::success(
+            request.id().clone(),
+            json!({"state": "READY", "input_bytes": bytes}),
+        ),
+        Ok(ImportStatus::Terminal(terminal)) => C12Response::success(
+            request.id().clone(),
+            json!({"state": terminal_state_name(terminal)}),
+        ),
+        Err(error) => import_error_response(request.id().clone(), error),
+    }
+}
+
+fn imports_cancel(
+    request: &ValidatedLocalRequest,
+    context: &LocalApiContext,
+    requester: ImportRequester,
+) -> C12Response {
+    let Some(handle) = import_handle_param(request.params()) else {
+        return C12Response::error(
+            request.id().clone(),
+            LOCAL_BAD_REQUEST,
+            MESSAGE_INVALID_IMPORT_REQUEST,
+        );
+    };
+    let Some(store) = context.import_store.as_deref() else {
+        return C12Response::error(
+            request.id().clone(),
+            IMPORT_UNAVAILABLE,
+            MESSAGE_IMPORT_UNAVAILABLE,
+        );
+    };
+    match store.cancel(requester, &handle) {
+        Ok(cancelled) => C12Response::success(
+            request.id().clone(),
+            json!({
+                "state": terminal_state_name(cancelled.state()),
+                "state_changed": cancelled.state_changed(),
+            }),
+        ),
+        Err(error) => import_error_response(request.id().clone(), error),
+    }
+}
+
+fn import_handle_param(params: &Value) -> Option<ImportHandle> {
+    let Value::Object(params) = params else {
+        return None;
+    };
+    if params.len() != 1 {
+        return None;
+    }
+    ImportHandle::parse_exact(params.get("import_handle")?.as_str()?)
+}
+
+const fn terminal_state_name(state: ImportTerminalState) -> &'static str {
+    match state {
+        ImportTerminalState::Cancelled => "CANCELLED",
+        ImportTerminalState::Consumed => "CONSUMED",
+        ImportTerminalState::Expired => "EXPIRED",
+    }
+}
+
+fn import_error_response(id: Value, error: ImportStoreError) -> C12Response {
+    let (code, message) = match error {
+        ImportStoreError::UnsafeSource | ImportStoreError::UnsealedMemfd => {
+            (IMPORT_SOURCE_REJECTED, MESSAGE_IMPORT_SOURCE_REJECTED)
+        }
+        ImportStoreError::RequesterObjectLimit
+        | ImportStoreError::UidObjectLimit
+        | ImportStoreError::RequesterReceiverLimit
+        | ImportStoreError::UidReceiverLimit
+        | ImportStoreError::ObjectTooLarge
+        | ImportStoreError::UidByteLimit => (IMPORT_LIMIT_REACHED, MESSAGE_IMPORT_LIMIT_REACHED),
+        ImportStoreError::ReceivingTimedOut => {
+            (IMPORT_RECEIVING_TIMEOUT, MESSAGE_IMPORT_RECEIVING_TIMEOUT)
+        }
+        ImportStoreError::NotFound => (IMPORT_NOT_FOUND, MESSAGE_IMPORT_NOT_FOUND),
+        ImportStoreError::CleanupUnconfirmed => (
+            IMPORT_CLEANUP_UNCONFIRMED,
+            MESSAGE_IMPORT_CLEANUP_UNCONFIRMED,
+        ),
+        ImportStoreError::CacheRootUnavailable
+        | ImportStoreError::UnsafeCacheRoot
+        | ImportStoreError::UnsafeDirectory
+        | ImportStoreError::EntropyUnavailable
+        | ImportStoreError::NotReady
+        | ImportStoreError::Io => (IMPORT_UNAVAILABLE, MESSAGE_IMPORT_UNAVAILABLE),
+    };
+    C12Response::error(id, code, message)
 }
 
 fn pairing_begin(request: &ValidatedLocalRequest) -> C12Response {
@@ -485,12 +675,15 @@ mod tests {
     use pb_runtime_secure::{EndpointRole, SecureRuntime, StateStore};
     use std::cell::Cell;
     use std::fs::{self, File};
-    use std::io::{Read, Write};
-    use std::os::fd::OwnedFd;
+    use std::io::{IoSlice, Read, Write};
+    use std::mem::MaybeUninit;
+    use std::os::fd::{AsFd, OwnedFd};
     use std::os::unix::fs::DirBuilderExt;
     use std::os::unix::net::UnixStream;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::thread;
+
+    use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 
     static TEST_DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
@@ -530,6 +723,23 @@ mod tests {
         (Arc::new(LocalApiContext::new(Some(controller))), path)
     }
 
+    fn context_with_import_store() -> (Arc<LocalApiContext>, std::path::PathBuf) {
+        let path = std::env::temp_dir().join(format!(
+            "phoneboost-local-import-{}-{}",
+            std::process::id(),
+            TEST_DIRECTORY_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&path)
+            .expect("private import API test directory");
+        let store = Arc::new(ImportStore::from_cache_home(&path).expect("import store"));
+        (
+            Arc::new(LocalApiContext::with_import_store(None, store)),
+            path,
+        )
+    }
+
     fn request(method: LocalMethod, params: Value) -> ValidatedLocalRequest {
         validate_local_request(
             serde_json::to_vec(&json!({
@@ -551,7 +761,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_domain_map_classifies_all_fifteen_methods() {
+    fn closed_domain_map_classifies_all_eighteen_methods() {
         let expected = [
             LocalHandlerDomain::System,
             LocalHandlerDomain::Devices,
@@ -559,6 +769,7 @@ mod tests {
             LocalHandlerDomain::Jobs,
             LocalHandlerDomain::Diagnostics,
             LocalHandlerDomain::Events,
+            LocalHandlerDomain::Imports,
             LocalHandlerDomain::Pairing,
             LocalHandlerDomain::Pairing,
             LocalHandlerDomain::Pairing,
@@ -568,6 +779,8 @@ mod tests {
             LocalHandlerDomain::Compute,
             LocalHandlerDomain::Compute,
             LocalHandlerDomain::Benchmark,
+            LocalHandlerDomain::Imports,
+            LocalHandlerDomain::Imports,
         ];
         let actual: Vec<_> = LocalMethod::ALL
             .into_iter()
@@ -640,6 +853,9 @@ mod tests {
                     | LocalMethod::PairingConfirm
                     | LocalMethod::PairingCancel
                     | LocalMethod::ComputeSubmit
+                    | LocalMethod::ImportsCreate
+                    | LocalMethod::ImportsGet
+                    | LocalMethod::ImportsCancel
             )
         }) {
             let value = response_value(a4_deferred_handler(&request(method, json!({}))));
@@ -707,6 +923,76 @@ mod tests {
                 value["error"]["message_safe"],
                 MESSAGE_INVALID_COMPUTE_SUBMIT_PARAMS
             );
+        }
+    }
+
+    #[test]
+    fn import_params_descriptor_counts_and_public_errors_are_closed() {
+        let valid_handle = "0123456789abcdef".repeat(4);
+        assert_eq!(
+            import_handle_param(&json!({"import_handle": valid_handle}))
+                .unwrap()
+                .as_str(),
+            valid_handle
+        );
+        for invalid in [
+            json!(null),
+            json!([]),
+            json!({}),
+            json!({"import_handle": 7}),
+            json!({"import_handle": "0"}),
+            json!({"import_handle": "A".repeat(64)}),
+            json!({"import_handle": valid_handle, "extra": true}),
+        ] {
+            assert!(import_handle_param(&invalid).is_none(), "{invalid}");
+        }
+
+        let no_descriptor = response_value(imports_create(
+            &request(LocalMethod::ImportsCreate, json!({})),
+            &LocalApiContext::default(),
+            ImportRequester::new(1, 1),
+            Vec::new(),
+        ));
+        assert_eq!(no_descriptor["error"]["code"], LOCAL_BAD_REQUEST);
+        let two_descriptors = response_value(imports_create(
+            &request(LocalMethod::ImportsCreate, json!({})),
+            &LocalApiContext::default(),
+            ImportRequester::new(1, 1),
+            vec![
+                File::open("/dev/null").unwrap().into(),
+                File::open("/dev/null").unwrap().into(),
+            ],
+        ));
+        assert_eq!(two_descriptors["error"]["code"], LOCAL_BAD_REQUEST);
+        let extra_param = response_value(imports_create(
+            &request(LocalMethod::ImportsCreate, json!({"path": "/tmp/x"})),
+            &LocalApiContext::default(),
+            ImportRequester::new(1, 1),
+            vec![File::open("/dev/null").unwrap().into()],
+        ));
+        assert_eq!(extra_param["error"]["code"], LOCAL_BAD_REQUEST);
+
+        let cases = [
+            (ImportStoreError::NotFound, IMPORT_NOT_FOUND),
+            (ImportStoreError::RequesterObjectLimit, IMPORT_LIMIT_REACHED),
+            (ImportStoreError::UnsafeSource, IMPORT_SOURCE_REJECTED),
+            (
+                ImportStoreError::ReceivingTimedOut,
+                IMPORT_RECEIVING_TIMEOUT,
+            ),
+            (
+                ImportStoreError::CleanupUnconfirmed,
+                IMPORT_CLEANUP_UNCONFIRMED,
+            ),
+            (ImportStoreError::Io, IMPORT_UNAVAILABLE),
+        ];
+        for (error, expected) in cases {
+            let value = response_value(import_error_response(json!("opaque"), error));
+            assert_eq!(value["error"]["code"], expected);
+            let rendered = serde_json::to_string(&value).unwrap();
+            for forbidden in ["import_handle", "peer_uid", "descriptor", "/tmp/x"] {
+                assert!(!rendered.contains(forbidden));
+            }
         }
     }
 
@@ -857,6 +1143,30 @@ mod tests {
     fn exchange(stream: &mut UnixStream, request: &[u8]) -> Value {
         stream.write_all(request).expect("write local request");
         stream.write_all(b"\n").expect("terminate local request");
+        read_response(stream)
+    }
+
+    fn exchange_with_descriptor(
+        stream: &mut UnixStream,
+        request: &[u8],
+        descriptors: &[File],
+    ) -> Value {
+        let borrowed = descriptors.iter().map(File::as_fd).collect::<Vec<_>>();
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+        let mut ancillary = SendAncillaryBuffer::new(&mut space);
+        assert!(ancillary.push(SendAncillaryMessage::ScmRights(&borrowed)));
+        let sent = sendmsg(
+            &*stream,
+            &[IoSlice::new(request), IoSlice::new(b"\n")],
+            &mut ancillary,
+            SendFlags::NOSIGNAL,
+        )
+        .expect("send request with descriptor");
+        assert_eq!(sent, request.len() + 1);
+        read_response(stream)
+    }
+
+    fn read_response(stream: &mut UnixStream) -> Value {
         let mut response = Vec::new();
         let mut byte = [0_u8; 1];
         loop {
@@ -1009,6 +1319,115 @@ mod tests {
         worker.join().expect("controller C12 worker exits");
         drop(context);
         fs::remove_dir_all(directory).expect("remove local API test directory");
+    }
+
+    #[test]
+    fn real_client_loop_enforces_locked_async_import_wire_and_connection_authority() {
+        let (context, directory) = context_with_import_store();
+        let source_path = directory.join("source.bin");
+        fs::write(&source_path, b"wire-payload").expect("write import source");
+
+        let (mut first_peer, first_server) = UnixStream::pair().expect("first C12 socket");
+        let first_client = authenticated_test_client(OwnedFd::from(first_server));
+        let first_context = Arc::clone(&context);
+        let first_worker = thread::spawn(move || serve_local_client(first_client, first_context));
+
+        let missing_descriptor = exchange(
+            &mut first_peer,
+            br#"{"api":1,"id":"missing","method":"imports.create","params":{}}"#,
+        );
+        assert_eq!(missing_descriptor["error"]["code"], LOCAL_BAD_REQUEST);
+
+        let source = File::open(&source_path).expect("open import source");
+        let created = exchange_with_descriptor(
+            &mut first_peer,
+            br#"{"api":1,"id":"create","method":"imports.create","params":{}}"#,
+            &[source],
+        );
+        assert_eq!(created["ok"], true);
+        assert_eq!(created["result"]["state"], "RECEIVING");
+        let handle = created["result"]["import_handle"]
+            .as_str()
+            .expect("wire handle")
+            .to_owned();
+        assert!(ImportHandle::parse_exact(&handle).is_some());
+        assert_eq!(
+            created["result"].as_object().expect("create result").len(),
+            2
+        );
+
+        let (mut second_peer, second_server) = UnixStream::pair().expect("second C12 socket");
+        let second_client = authenticated_test_client(OwnedFd::from(second_server));
+        let second_context = Arc::clone(&context);
+        let second_worker =
+            thread::spawn(move || serve_local_client(second_client, second_context));
+        let cross_connection = exchange(
+            &mut second_peer,
+            format!(
+                r#"{{"api":1,"id":"cross","method":"imports.get","params":{{"import_handle":"{handle}"}}}}"#
+            )
+            .as_bytes(),
+        );
+        assert_eq!(cross_connection["error"]["code"], IMPORT_NOT_FOUND);
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            let status = exchange(
+                &mut first_peer,
+                format!(
+                    r#"{{"api":1,"id":"get","method":"imports.get","params":{{"import_handle":"{handle}"}}}}"#
+                )
+                .as_bytes(),
+            );
+            match status["result"]["state"].as_str() {
+                Some("RECEIVING") => assert!(Instant::now() < deadline),
+                Some("READY") => {
+                    assert_eq!(status["result"]["input_bytes"], 12);
+                    assert_eq!(status["result"].as_object().unwrap().len(), 2);
+                    break;
+                }
+                other => panic!("unexpected import state: {other:?}"),
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+
+        let unexpected_descriptor = File::open("/dev/null").unwrap();
+        let rejected_get = exchange_with_descriptor(
+            &mut first_peer,
+            format!(
+                r#"{{"api":1,"id":"get-fd","method":"imports.get","params":{{"import_handle":"{handle}"}}}}"#
+            )
+            .as_bytes(),
+            &[unexpected_descriptor],
+        );
+        assert_eq!(rejected_get["error"]["code"], LOCAL_BAD_REQUEST);
+
+        let cancelled = exchange(
+            &mut first_peer,
+            format!(
+                r#"{{"api":1,"id":"cancel","method":"imports.cancel","params":{{"import_handle":"{handle}"}}}}"#
+            )
+            .as_bytes(),
+        );
+        assert_eq!(cancelled["result"]["state"], "CANCELLED");
+        assert_eq!(cancelled["result"]["state_changed"], true);
+        assert_eq!(cancelled["result"].as_object().unwrap().len(), 2);
+
+        let terminal = exchange(
+            &mut first_peer,
+            format!(
+                r#"{{"api":1,"id":"terminal","method":"imports.get","params":{{"import_handle":"{handle}"}}}}"#
+            )
+            .as_bytes(),
+        );
+        assert_eq!(terminal["result"], json!({"state": "CANCELLED"}));
+
+        drop(first_peer);
+        drop(second_peer);
+        first_worker.join().expect("first client exits");
+        second_worker.join().expect("second client exits");
+        drop(context);
+        fs::remove_dir_all(directory).expect("remove import API test directory");
     }
 
     #[test]

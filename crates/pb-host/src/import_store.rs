@@ -9,7 +9,8 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::mem::MaybeUninit;
 use std::os::fd::{AsFd, OwnedFd};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use rustix::fs::{
@@ -76,6 +77,14 @@ impl ImportHandle {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn parse_exact(value: &str) -> Option<Self> {
+        (value.len() == 64
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
+        .then(|| Self(value.to_owned()))
+    }
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -134,6 +143,13 @@ pub enum ImportTerminalState {
     Cancelled,
     Consumed,
     Expired,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ImportStatus {
+    Receiving,
+    Ready { bytes: u64 },
+    Terminal(ImportTerminalState),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -211,6 +227,9 @@ struct ImportPolicy {
     ready_ttl: Duration,
     tombstone_ttl: Duration,
     maximum_tombstones_per_uid: usize,
+    cancellation_deadline: Duration,
+    receiver_start_delay: Duration,
+    receiver_chunk_pause: Duration,
 }
 
 impl ImportPolicy {
@@ -225,6 +244,9 @@ impl ImportPolicy {
         ready_ttl: IMPORT_READY_TTL,
         tombstone_ttl: IMPORT_TOMBSTONE_TTL,
         maximum_tombstones_per_uid: MAXIMUM_TOMBSTONES_PER_UID,
+        cancellation_deadline: IMPORT_CANCELLATION_DEADLINE,
+        receiver_start_delay: Duration::ZERO,
+        receiver_chunk_pause: Duration::ZERO,
     };
 }
 
@@ -234,16 +256,36 @@ enum ImportPhase {
     Ready { since: Instant },
 }
 
+enum AsyncReceiveError {
+    Cancelled,
+    Store(ImportStoreError),
+}
+
+impl From<ImportStoreError> for AsyncReceiveError {
+    fn from(error: ImportStoreError) -> Self {
+        Self::Store(error)
+    }
+}
+
 struct LiveImport {
     requester: ImportRequester,
     bytes: u64,
     phase: ImportPhase,
+    cancel_requested: bool,
+    worker_running: bool,
+    failure: Option<ImportStoreError>,
+}
+
+#[derive(Clone, Copy)]
+enum TombstoneOutcome {
+    Terminal(ImportTerminalState),
+    Failed(ImportStoreError),
 }
 
 struct Tombstone {
     handle: String,
     requester: ImportRequester,
-    state: ImportTerminalState,
+    outcome: TombstoneOutcome,
     created: Instant,
 }
 
@@ -256,6 +298,7 @@ struct ImportState {
 pub struct ImportStore {
     directory: OwnedFd,
     state: Mutex<ImportState>,
+    worker_changed: Condvar,
     policy: ImportPolicy,
 }
 
@@ -302,8 +345,289 @@ impl ImportStore {
         Ok(Self {
             directory,
             state: Mutex::new(ImportState::default()),
+            worker_changed: Condvar::new(),
             policy,
         })
+    }
+
+    /// Validate and schedule a bounded receiver, returning only after the
+    /// receiver thread owns both descriptors.
+    pub fn start_import(
+        self: &Arc<Self>,
+        requester: ImportRequester,
+        source: OwnedFd,
+    ) -> Result<ImportHandle, ImportStoreError> {
+        validate_source(&source, requester.peer_uid)?;
+        let mut source = File::from(source);
+        source
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| ImportStoreError::UnsafeSource)?;
+        let handle = self.reserve_import_with_worker(requester, true)?;
+        let receiving_name = receiving_name(&handle);
+        let destination = match openat(
+            &self.directory,
+            receiving_name.as_str(),
+            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+            Mode::RUSR | Mode::WUSR,
+        ) {
+            Ok(descriptor) => descriptor,
+            Err(_) => return self.fail_import(&handle, ImportStoreError::Io),
+        };
+        if validate_private_regular_file(&destination).is_err() {
+            return self.fail_import(&handle, ImportStoreError::UnsafeDirectory);
+        }
+        let destination = File::from(destination);
+        let worker_store = Arc::clone(self);
+        let worker_handle = handle.clone();
+        if thread::Builder::new()
+            .name("phoneboost-import-receiver".to_owned())
+            .spawn(move || {
+                worker_store.receive_async(worker_handle, requester, source, destination)
+            })
+            .is_err()
+        {
+            self.mark_worker_stopped(&handle, requester, Some(ImportStoreError::Io));
+            return self.fail_import(&handle, ImportStoreError::Io);
+        }
+        Ok(ImportHandle(handle))
+    }
+
+    pub fn status(
+        &self,
+        requester: ImportRequester,
+        handle: &ImportHandle,
+    ) -> Result<ImportStatus, ImportStoreError> {
+        self.expire_ready_at(Instant::now())?;
+        let mut state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
+        prune_tombstones(&mut state, Instant::now(), self.policy.tombstone_ttl);
+        if let Some(tombstone) = state
+            .tombstones
+            .iter()
+            .find(|item| item.handle == handle.0 && item.requester == requester)
+        {
+            return match tombstone.outcome {
+                TombstoneOutcome::Terminal(terminal) => Ok(ImportStatus::Terminal(terminal)),
+                TombstoneOutcome::Failed(error) => Err(error),
+            };
+        }
+        let Some(entry) = state.live.get(&handle.0) else {
+            return Err(ImportStoreError::NotFound);
+        };
+        if entry.requester != requester {
+            return Err(ImportStoreError::NotFound);
+        }
+        if let Some(error) = entry.failure {
+            return Err(error);
+        }
+        Ok(match entry.phase {
+            ImportPhase::Receiving => ImportStatus::Receiving,
+            ImportPhase::Ready { .. } => ImportStatus::Ready { bytes: entry.bytes },
+        })
+    }
+
+    fn receive_async(
+        &self,
+        handle: String,
+        requester: ImportRequester,
+        mut source: File,
+        mut destination: File,
+    ) {
+        if !self.policy.receiver_start_delay.is_zero() {
+            thread::sleep(self.policy.receiver_start_delay);
+        }
+        let outcome = self.copy_async(&handle, requester, &mut source, &mut destination);
+        drop(source);
+        drop(destination);
+        match outcome {
+            Ok(()) => self.finish_async_ready(&handle, requester),
+            Err(AsyncReceiveError::Cancelled) => self.finish_async_cancelled(&handle, requester),
+            Err(AsyncReceiveError::Store(error)) => {
+                self.finish_async_failed(&handle, requester, error)
+            }
+        }
+    }
+
+    fn copy_async(
+        &self,
+        handle: &str,
+        requester: ImportRequester,
+        source: &mut File,
+        destination: &mut File,
+    ) -> Result<(), AsyncReceiveError> {
+        let started = Instant::now();
+        let mut chunk = [0_u8; IMPORT_COPY_CHUNK_BYTES];
+        loop {
+            if self.receiver_cancelled(handle, requester)? {
+                return Err(AsyncReceiveError::Cancelled);
+            }
+            if started.elapsed() >= self.policy.receiving_timeout {
+                return Err(ImportStoreError::ReceivingTimedOut.into());
+            }
+            let read = source.read(&mut chunk).map_err(|_| ImportStoreError::Io)?;
+            if !self.policy.receiver_chunk_pause.is_zero() {
+                thread::sleep(self.policy.receiver_chunk_pause);
+            }
+            if started.elapsed() >= self.policy.receiving_timeout {
+                return Err(ImportStoreError::ReceivingTimedOut.into());
+            }
+            if self.receiver_cancelled(handle, requester)? {
+                return Err(AsyncReceiveError::Cancelled);
+            }
+            if read == 0 {
+                break;
+            }
+            if let Err(error) = self.reserve_bytes(handle, requester, read as u64) {
+                if self.receiver_cancelled(handle, requester).unwrap_or(false) {
+                    return Err(AsyncReceiveError::Cancelled);
+                }
+                return Err(error.into());
+            }
+            destination
+                .write_all(&chunk[..read])
+                .map_err(|_| ImportStoreError::Io)?;
+        }
+        destination.flush().map_err(|_| ImportStoreError::Io)?;
+        fsync(&*destination).map_err(|_| ImportStoreError::Io)?;
+        if self.receiver_cancelled(handle, requester)? {
+            return Err(AsyncReceiveError::Cancelled);
+        }
+        Ok(())
+    }
+
+    fn receiver_cancelled(
+        &self,
+        handle: &str,
+        requester: ImportRequester,
+    ) -> Result<bool, ImportStoreError> {
+        let state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
+        let Some(entry) = state.live.get(handle) else {
+            return Err(ImportStoreError::NotFound);
+        };
+        if entry.requester != requester || entry.phase != ImportPhase::Receiving {
+            return Err(ImportStoreError::NotFound);
+        }
+        Ok(entry.cancel_requested)
+    }
+
+    fn finish_async_ready(&self, handle: &str, requester: ImportRequester) {
+        let mut state = match self.state.lock() {
+            Ok(state) => state,
+            Err(_) => return,
+        };
+        let Some(entry) = state.live.get(handle) else {
+            return;
+        };
+        if entry.requester != requester || entry.phase != ImportPhase::Receiving {
+            return;
+        }
+        if entry.cancel_requested {
+            drop(state);
+            self.finish_async_cancelled(handle, requester);
+            return;
+        }
+        if renameat(
+            &self.directory,
+            receiving_name(handle).as_str(),
+            &self.directory,
+            ready_name(handle).as_str(),
+        )
+        .is_err()
+        {
+            drop(state);
+            self.finish_async_failed(handle, requester, ImportStoreError::Io);
+            return;
+        }
+        if let Some(entry) = state.live.get_mut(handle) {
+            entry.phase = ImportPhase::Ready {
+                since: Instant::now(),
+            };
+            entry.worker_running = false;
+        }
+        self.worker_changed.notify_all();
+    }
+
+    fn finish_async_cancelled(&self, handle: &str, requester: ImportRequester) {
+        let mut state = match self.state.lock() {
+            Ok(state) => state,
+            Err(_) => return,
+        };
+        let Some(entry) = state.live.get(handle) else {
+            self.worker_changed.notify_all();
+            return;
+        };
+        if entry.requester != requester {
+            return;
+        }
+        if cleanup_live_path(&self.directory, handle, entry.phase).is_err() {
+            if let Some(entry) = state.live.get_mut(handle) {
+                entry.worker_running = false;
+                entry.failure = Some(ImportStoreError::CleanupUnconfirmed);
+            }
+            self.worker_changed.notify_all();
+            return;
+        }
+        state.live.remove(handle);
+        push_tombstone(
+            &mut state,
+            handle.to_owned(),
+            requester,
+            ImportTerminalState::Cancelled,
+            Instant::now(),
+            self.policy,
+        );
+        self.worker_changed.notify_all();
+    }
+
+    fn finish_async_failed(
+        &self,
+        handle: &str,
+        requester: ImportRequester,
+        error: ImportStoreError,
+    ) {
+        let mut state = match self.state.lock() {
+            Ok(state) => state,
+            Err(_) => return,
+        };
+        let Some(entry) = state.live.get(handle) else {
+            return;
+        };
+        if entry.requester != requester {
+            return;
+        }
+        if cleanup_live_path(&self.directory, handle, entry.phase).is_err() {
+            if let Some(entry) = state.live.get_mut(handle) {
+                entry.worker_running = false;
+                entry.failure = Some(ImportStoreError::CleanupUnconfirmed);
+            }
+            self.worker_changed.notify_all();
+            return;
+        }
+        state.live.remove(handle);
+        push_failure_tombstone(
+            &mut state,
+            handle.to_owned(),
+            requester,
+            error,
+            Instant::now(),
+            self.policy,
+        );
+        self.worker_changed.notify_all();
+    }
+
+    fn mark_worker_stopped(
+        &self,
+        handle: &str,
+        requester: ImportRequester,
+        failure: Option<ImportStoreError>,
+    ) {
+        if let Ok(mut state) = self.state.lock()
+            && let Some(entry) = state.live.get_mut(handle)
+            && entry.requester == requester
+        {
+            entry.worker_running = false;
+            entry.failure = failure;
+            self.worker_changed.notify_all();
+        }
     }
 
     pub fn import_descriptor(
@@ -316,7 +640,7 @@ impl ImportStore {
         source
             .seek(SeekFrom::Start(0))
             .map_err(|_| ImportStoreError::UnsafeSource)?;
-        let handle = self.reserve_import(requester)?;
+        let handle = self.reserve_import_with_worker(requester, false)?;
         let receiving_name = receiving_name(&handle);
         let ready_name = ready_name(&handle);
         let destination = match openat(
@@ -402,39 +726,65 @@ impl ImportStore {
         requester: ImportRequester,
         handle: &ImportHandle,
     ) -> Result<ImportCancellation, ImportStoreError> {
-        let now = Instant::now();
+        let started = Instant::now();
+        let mut requested_cancellation = false;
         let mut state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
-        prune_tombstones(&mut state, now, self.policy.tombstone_ttl);
-        if let Some(tombstone) = state
-            .tombstones
-            .iter()
-            .find(|item| item.handle == handle.0 && item.requester == requester)
-        {
+        loop {
+            let now = Instant::now();
+            prune_tombstones(&mut state, now, self.policy.tombstone_ttl);
+            if let Some(tombstone) = state
+                .tombstones
+                .iter()
+                .find(|item| item.handle == handle.0 && item.requester == requester)
+            {
+                return match tombstone.outcome {
+                    TombstoneOutcome::Terminal(terminal) => Ok(ImportCancellation {
+                        state: terminal,
+                        state_changed: requested_cancellation
+                            && terminal == ImportTerminalState::Cancelled,
+                    }),
+                    TombstoneOutcome::Failed(error) => Err(error),
+                };
+            }
+            let Some(entry) = state.live.get_mut(&handle.0) else {
+                return Err(ImportStoreError::NotFound);
+            };
+            if entry.requester != requester {
+                return Err(ImportStoreError::NotFound);
+            }
+            if entry.phase == ImportPhase::Receiving && entry.worker_running {
+                entry.cancel_requested = true;
+                requested_cancellation = true;
+                let elapsed = started.elapsed();
+                let Some(remaining) = self.policy.cancellation_deadline.checked_sub(elapsed) else {
+                    return Err(ImportStoreError::CleanupUnconfirmed);
+                };
+                let (next, wait) = self
+                    .worker_changed
+                    .wait_timeout(state, remaining)
+                    .map_err(|_| ImportStoreError::Io)?;
+                state = next;
+                if wait.timed_out() {
+                    return Err(ImportStoreError::CleanupUnconfirmed);
+                }
+                continue;
+            }
+            let phase = entry.phase;
+            cleanup_live_path(&self.directory, &handle.0, phase)?;
+            state.live.remove(&handle.0);
+            push_tombstone(
+                &mut state,
+                handle.0.clone(),
+                requester,
+                ImportTerminalState::Cancelled,
+                now,
+                self.policy,
+            );
             return Ok(ImportCancellation {
-                state: tombstone.state,
-                state_changed: false,
+                state: ImportTerminalState::Cancelled,
+                state_changed: true,
             });
         }
-        let Some(entry) = state.live.get(&handle.0) else {
-            return Err(ImportStoreError::NotFound);
-        };
-        if entry.requester != requester {
-            return Err(ImportStoreError::NotFound);
-        }
-        cleanup_live_path(&self.directory, &handle.0, entry.phase)?;
-        state.live.remove(&handle.0);
-        push_tombstone(
-            &mut state,
-            handle.0.clone(),
-            requester,
-            ImportTerminalState::Cancelled,
-            now,
-            self.policy,
-        );
-        Ok(ImportCancellation {
-            state: ImportTerminalState::Cancelled,
-            state_changed: true,
-        })
     }
 
     pub fn consume(
@@ -477,30 +827,22 @@ impl ImportStore {
     }
 
     pub fn disconnect(&self, requester: ImportRequester) -> Result<(), ImportStoreError> {
-        let mut state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
-        let handles = state
-            .live
-            .iter()
-            .filter_map(|(handle, entry)| (entry.requester == requester).then_some(handle.clone()))
-            .collect::<Vec<_>>();
-        for handle in handles {
-            let phase = state
+        let handles = {
+            let state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
+            state
                 .live
-                .get(&handle)
-                .expect("collected live import")
-                .phase;
-            cleanup_live_path(&self.directory, &handle, phase)?;
-            state.live.remove(&handle);
-            push_tombstone(
-                &mut state,
-                handle,
-                requester,
-                ImportTerminalState::Cancelled,
-                Instant::now(),
-                self.policy,
-            );
+                .iter()
+                .filter(|(_, entry)| entry.requester == requester)
+                .map(|(handle, _)| ImportHandle(handle.clone()))
+                .collect::<Vec<_>>()
+        };
+        let mut failure = None;
+        for handle in handles {
+            if let Err(error) = self.cancel(requester, &handle) {
+                failure.get_or_insert(error);
+            }
         }
-        Ok(())
+        failure.map_or(Ok(()), Err)
     }
 
     pub fn expire_ready(&self) -> Result<usize, ImportStoreError> {
@@ -537,7 +879,16 @@ impl ImportStore {
         Ok(expired.len())
     }
 
+    #[cfg(test)]
     fn reserve_import(&self, requester: ImportRequester) -> Result<String, ImportStoreError> {
+        self.reserve_import_with_worker(requester, false)
+    }
+
+    fn reserve_import_with_worker(
+        &self,
+        requester: ImportRequester,
+        worker_running: bool,
+    ) -> Result<String, ImportStoreError> {
         let mut state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
         prune_tombstones(&mut state, Instant::now(), self.policy.tombstone_ttl);
         let requester_live = state
@@ -582,6 +933,9 @@ impl ImportStore {
                 requester,
                 bytes: 0,
                 phase: ImportPhase::Receiving,
+                cancel_requested: false,
+                worker_running,
+                failure: None,
             },
         );
         Ok(handle)
@@ -604,6 +958,9 @@ impl ImportStore {
             return Err(ImportStoreError::NotFound);
         };
         if entry.requester != requester || entry.phase != ImportPhase::Receiving {
+            return Err(ImportStoreError::NotFound);
+        }
+        if entry.cancel_requested {
             return Err(ImportStoreError::NotFound);
         }
         let object_total = entry
@@ -719,11 +1076,47 @@ fn push_tombstone(
     now: Instant,
     policy: ImportPolicy,
 ) {
+    push_tombstone_outcome(
+        state,
+        handle,
+        requester,
+        TombstoneOutcome::Terminal(terminal),
+        now,
+        policy,
+    );
+}
+
+fn push_failure_tombstone(
+    state: &mut ImportState,
+    handle: String,
+    requester: ImportRequester,
+    error: ImportStoreError,
+    now: Instant,
+    policy: ImportPolicy,
+) {
+    push_tombstone_outcome(
+        state,
+        handle,
+        requester,
+        TombstoneOutcome::Failed(error),
+        now,
+        policy,
+    );
+}
+
+fn push_tombstone_outcome(
+    state: &mut ImportState,
+    handle: String,
+    requester: ImportRequester,
+    outcome: TombstoneOutcome,
+    now: Instant,
+    policy: ImportPolicy,
+) {
     prune_tombstones(state, now, policy.tombstone_ttl);
     state.tombstones.push_back(Tombstone {
         handle,
         requester,
-        state: terminal,
+        outcome,
         created: now,
     });
     while state
@@ -1252,5 +1645,177 @@ mod tests {
         let restarted = ImportStore::from_cache_home(&sandbox.root).unwrap();
         assert_eq!(restarted.live_count(), 0);
         assert_eq!(fs::read_dir(sandbox.version()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn asynchronous_receiver_exposes_only_receiving_then_ready_and_terminal_state() {
+        let sandbox = Sandbox::new();
+        let store = Arc::new(ImportStore::from_cache_home(&sandbox.root).unwrap());
+        let requester = requester(41);
+        let handle = store
+            .start_import(
+                requester,
+                source(&sandbox, "async-ready.bin", b"async-payload"),
+            )
+            .expect("schedule receiver");
+        assert_eq!(handle.as_str().len(), 64);
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            match store.status(requester, &handle).expect("observable import") {
+                ImportStatus::Receiving => assert!(Instant::now() < deadline),
+                ImportStatus::Ready { bytes } => {
+                    assert_eq!(bytes, 13);
+                    break;
+                }
+                ImportStatus::Terminal(state) => panic!("unexpected terminal state: {state:?}"),
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+
+        let cancelled = store.cancel(requester, &handle).unwrap();
+        assert_eq!(cancelled.state(), ImportTerminalState::Cancelled);
+        assert!(cancelled.state_changed());
+        assert_eq!(
+            store.status(requester, &handle).unwrap(),
+            ImportStatus::Terminal(ImportTerminalState::Cancelled)
+        );
+        let repeated = store.cancel(requester, &handle).unwrap();
+        assert!(!repeated.state_changed());
+    }
+
+    #[test]
+    fn cancellation_waits_for_receiver_descriptor_shutdown_before_success() {
+        let sandbox = Sandbox::new();
+        let policy = ImportPolicy {
+            receiver_chunk_pause: Duration::from_millis(50),
+            ..ImportPolicy::LOCKED
+        };
+        let store =
+            Arc::new(ImportStore::from_cache_home_with_policy(&sandbox.root, policy).unwrap());
+        let requester = requester(42);
+        let payload = vec![7_u8; IMPORT_COPY_CHUNK_BYTES * 2];
+        let handle = store
+            .start_import(requester, source(&sandbox, "async-cancel.bin", &payload))
+            .unwrap();
+
+        let cancelled = store.cancel(requester, &handle).unwrap();
+        assert_eq!(cancelled.state(), ImportTerminalState::Cancelled);
+        assert!(cancelled.state_changed());
+        assert_eq!(store.live_count(), 0);
+        assert_eq!(fs::read_dir(sandbox.version()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn cancellation_timeout_keeps_quota_until_receiver_later_confirms_cleanup() {
+        let sandbox = Sandbox::new();
+        let policy = ImportPolicy {
+            cancellation_deadline: Duration::ZERO,
+            receiver_start_delay: Duration::from_millis(200),
+            ..ImportPolicy::LOCKED
+        };
+        let store =
+            Arc::new(ImportStore::from_cache_home_with_policy(&sandbox.root, policy).unwrap());
+        let requester = requester(43);
+        let handle = store
+            .start_import(
+                requester,
+                source(&sandbox, "async-timeout-cancel.bin", b"payload"),
+            )
+            .unwrap();
+
+        assert_eq!(
+            store.cancel(requester, &handle).unwrap_err(),
+            ImportStoreError::CleanupUnconfirmed
+        );
+        assert_eq!(store.live_count(), 1, "quota remains charged at timeout");
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            if store.status(requester, &handle)
+                == Ok(ImportStatus::Terminal(ImportTerminalState::Cancelled))
+            {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "receiver cleanup acknowledgement"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(store.live_count(), 0);
+    }
+
+    #[test]
+    fn connection_close_waits_for_live_receiver_cleanup() {
+        let sandbox = Sandbox::new();
+        let policy = ImportPolicy {
+            receiver_start_delay: Duration::from_millis(50),
+            ..ImportPolicy::LOCKED
+        };
+        let store =
+            Arc::new(ImportStore::from_cache_home_with_policy(&sandbox.root, policy).unwrap());
+        let requester = requester(46);
+        let handle = store
+            .start_import(
+                requester,
+                source(&sandbox, "disconnect-receiving.bin", b"payload"),
+            )
+            .unwrap();
+        store.disconnect(requester).expect("disconnect cleanup");
+        assert_eq!(
+            store.status(requester, &handle).unwrap(),
+            ImportStatus::Terminal(ImportTerminalState::Cancelled)
+        );
+        assert_eq!(store.live_count(), 0);
+        assert_eq!(fs::read_dir(sandbox.version()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn asynchronous_failure_is_retained_without_handle_or_authority_disclosure() {
+        let sandbox = Sandbox::new();
+        let policy = ImportPolicy {
+            receiving_timeout: Duration::ZERO,
+            ..ImportPolicy::LOCKED
+        };
+        let store =
+            Arc::new(ImportStore::from_cache_home_with_policy(&sandbox.root, policy).unwrap());
+        let owner = requester(44);
+        let handle = store
+            .start_import(
+                owner,
+                source(&sandbox, "async-receive-timeout.bin", b"payload"),
+            )
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            match store.status(owner, &handle) {
+                Err(ImportStoreError::ReceivingTimedOut) => break,
+                Ok(ImportStatus::Receiving) => {}
+                other => panic!("unexpected async failure state: {other:?}"),
+            }
+            assert!(Instant::now() < deadline, "timeout tombstone retained");
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(
+            store.status(requester(45), &handle).unwrap_err(),
+            ImportStoreError::NotFound
+        );
+        assert_eq!(store.live_count(), 0);
+        assert_eq!(fs::read_dir(sandbox.version()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn wire_handle_parser_accepts_only_exact_lowercase_hex() {
+        let valid = "0123456789abcdef".repeat(4);
+        assert_eq!(ImportHandle::parse_exact(&valid).unwrap().as_str(), valid);
+        for invalid in [
+            "0123456789abcdef".repeat(3),
+            format!("{}g", &valid[..63]),
+            valid.to_uppercase(),
+            format!("{valid}0"),
+        ] {
+            assert!(ImportHandle::parse_exact(&invalid).is_none(), "{invalid}");
+        }
     }
 }

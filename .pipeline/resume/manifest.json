@@ -1,8 +1,8 @@
 {
-  "next_action": "Implement the locked asynchronous imports.create/imports.get/imports.cancel worker lifecycle and C12 dispatch; do not add MCP",
+  "next_action": "Confirm exact-head CI, then propose or approve the first typed C12 import consumer without generic execution or MCP",
   "writer": "Codex",
-  "parent_head": "c2abca6f99e8f2177460ab50cc4f1bbc41e93267",
-  "date": "2026-10-12T19:46:32.034188+00:00",
+  "parent_head": "0bf1877d3b8196d28358cf6c17a2d8b5ff0fd580",
+  "date": "2026-10-13T05:29:22.663546+00:00",
   "branch": "feat/p9-c12-import-ingress-v1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
