@@ -1,9 +1,9 @@
 {
-  "next_action": "Implement the locked compute.submit_import consumer without MCP",
+  "next_action": "Keep PR 19 stacked on PR 18; do not merge protected branches or start MCP without explicit approval",
   "writer": "Codex",
-  "parent_head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
-  "date": "2026-10-13T15:34:55.448417+00:00",
-  "branch": "docs/c12-imported-blake3-consumer-v0-1",
+  "parent_head": "0201a9310639202440ff6779a31c244a71fd6aae",
+  "date": "2026-10-13T15:56:02.421848+00:00",
+  "branch": "feat/p11-c12-imported-blake3-consumer-v1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

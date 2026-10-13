@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "docs/c12-imported-blake3-consumer-v0-1",
-  "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
-  "task": "P11 exact typed C12 imported BLAKE3 consumer proposal",
+  "branch": "feat/p11-c12-imported-blake3-consumer-v1",
+  "head": "0201a9310639202440ff6779a31c244a71fd6aae",
+  "task": "P11 locked typed C12 imported BLAKE3 consumer implementation",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -93,7 +93,11 @@
     "docs(p10): record async import runtime closure",
     "P11 C12 imported BLAKE3 consumer exact proposal and deterministic negative contract prepared without implementation",
     "docs: propose typed C12 imported BLAKE3 consumer",
-    "docs: lock typed C12 imported BLAKE3 consumer"
+    "docs: lock typed C12 imported BLAKE3 consumer",
+    "P11 C12 imported BLAKE3 consumer: exact single-use streaming implementation and targeted evidence complete",
+    "feat(host): consume private imports for BLAKE3",
+    "P11 exact-head Project pipeline, CodeQL and CodeRabbit passed; PR 19 CLEAN",
+    "docs(p11): record imported BLAKE3 consumer closure"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -192,7 +196,11 @@
     "P10 async targeted PASS: admission 37/37, import lifecycle 18/18, local API 18/18, complete pb-host 219/219 including authenticated 64 MiB proof",
     "P10 async corrected full software aggregate PASS 14/14: nextest 415/415, workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
     "P10 async exact-head de53224 PASS: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN",
-    "P11 imported BLAKE3 consumer proposal PASS: exact 1/1 typed candidate, lifecycle/streaming/authority boundary and 16/16 negative oracles; implementation unauthorized and MCP absent"
+    "P11 imported BLAKE3 consumer locked contract PASS: exact 1/1 typed method, lifecycle/streaming/authority boundary and 16/16 negative oracles; implementation authorized and MCP absent",
+    "P11 host core PASS 224/224 including authenticated 64 MiB; exact wire, FD rejection, concurrent consume, 1-byte/128 MiB local streaming and authenticated remote reader tests PASS",
+    "P11 pb-host all-target Clippy -D warnings and native check-fast PASS",
+    "P11 exact-head 0201a93 PASS: Project pipeline runs 38425087918 and 38425128934 7/7, CodeQL 38425128984, CodeRabbit, PR 19 CLEAN",
+    "P11 locked contract 2577279: CodeQL PASS and single bounded Project pipeline rerun PASS after unchanged JNI disconnect flake"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -204,7 +212,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Implement the locked compute.submit_import consumer without MCP",
+  "next_action": "Keep PR 19 stacked on PR 18; do not merge protected branches or start MCP without explicit approval",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -218,8 +226,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:44.681192+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:55:55.533360+00:00",
+      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
     },
     {
       "command": [
@@ -232,16 +240,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:44.698449+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:55:55.546302+00:00",
+      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:45.728195+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:55:56.219766+00:00",
+      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
     },
     {
       "command": [
@@ -252,13 +260,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:34:45.802737+00:00",
-      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
+      "date": "2026-10-13T15:55:56.234681+00:00",
+      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T15:34:55.444219+00:00",
-    "commit": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
+    "date": "2026-10-13T15:56:02.418657+00:00",
+    "commit": "0201a9310639202440ff6779a31c244a71fd6aae",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -490,7 +498,7 @@
     "physical_test": "NOT RUN; Linux same-UID local ingress only, no Android or remote behavior change",
     "ci_result": "PASS at de53224b11d9548e053fee6ed057aea1f69820f0: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN",
     "mcp": "NOT STARTED",
-    "status": "COMPLETE_CI_PASS_BLOCKED_ON_TYPED_CONSUMER_DECISION"
+    "status": "COMPLETE_CI_PASS_TYPED_CONSUMER_IMPLEMENTED_P11"
   },
   "p11_c12_imported_blake3_consumer_proposal": {
     "baseline": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6",
@@ -502,5 +510,22 @@
     "existing_async_contract": "PASS unchanged: exact imports.create/get/cancel 3/3 and 12/12 negative mutations",
     "approval": "PRODUCT_OWNER_APPROVED_2026_10_13",
     "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
+  },
+  "p11_c12_imported_blake3_consumer": {
+    "baseline": "25772796dc2a8dfd0a49087d63c958b7993e6370",
+    "scope": "Exact locked compute.submit_import over one READY private import; no generic execution, public payload access, C12 job or MCP",
+    "evidence": "docs/evidence/p11-c12-imported-blake3-consumer.md",
+    "allowlist": "PASS: exact 19 methods, 12 mutating and 7 read-only",
+    "lifecycle": "PASS: same-authority READY preflight, atomic single-use consume, concurrent at-most-once and retained CONSUMED tombstone",
+    "streaming": "PASS: fixed 65536-byte local chunks at 1 and 134217728 bytes; existing MAX_PUT_BODY remote chunks and authenticated C09/C10 success",
+    "wire": "PASS: exact params, zero descriptors, seven-field terminal result, no handle echo, real create/get/submit/get flow",
+    "targeted_result": "PASS: all added import consumer tests plus modified authenticated remote reader path",
+    "host": "PASS 224/224 after core implementation including authenticated 64 MiB; subsequently added wire/FD tests and remote-reader assertion passed targeted",
+    "clippy": "PASS for pb-host all targets with -D warnings and --no-deps",
+    "check_fast": "PASS",
+    "physical_test": "NOT RUN; Linux local C12 ingress with existing authenticated remote harness coverage",
+    "ci_result": "PASS at 0201a9310639202440ff6779a31c244a71fd6aae: Project pipeline runs 38425087918 and 38425128934 7/7, CodeQL 38425128984, CodeRabbit, PR 19 CLEAN",
+    "mcp": "NOT STARTED",
+    "status": "COMPLETE_CI_PASS"
   }
 }

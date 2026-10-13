@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Read, Seek, SeekFrom};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
@@ -32,6 +32,7 @@ const FRESH_LIVENESS: Duration = Duration::from_secs(10);
 const FRESH_CAPACITY_METRICS: Duration = Duration::from_secs(6);
 const COMPUTE_STATUS_POLL: Duration = Duration::from_millis(25);
 const SCRATCH_BYTES: u64 = 1_024;
+const LOCAL_DIGEST_CHUNK_BYTES: usize = 65_536;
 /// P2 is passive: this only bounds how long an already-observed discovery hint
 /// may be reported. It never schedules discovery.
 const DISCOVERY_OBSERVATION_MAX_AGE: Duration = Duration::from_secs(30);
@@ -624,6 +625,93 @@ impl AutoUseController {
             }
         }
     }
+
+    pub fn execute_blake3_reader<R: Read + Seek>(
+        &self,
+        input: &mut R,
+        input_bytes: u64,
+    ) -> io::Result<Blake3Execution> {
+        let _operation = self
+            .shared
+            .operation
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let (enabled, status, active) = {
+            let data = lock_data(&self.shared);
+            (data.enabled, data.status, data.active.clone())
+        };
+        if !enabled || status.state != AutoUseState::Available {
+            return local_execution_reader(
+                input,
+                input_bytes,
+                status.reason,
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            );
+        }
+        if input_bytes == 0 || input_bytes > MAX_COMPUTE_INPUT_BYTES {
+            return local_execution_reader(
+                input,
+                input_bytes,
+                AutoUseReason::ResourceRefused,
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            );
+        }
+        let Some(active) = active else {
+            return local_execution_reader(
+                input,
+                input_bytes,
+                AutoUseReason::TransportLost,
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            );
+        };
+        let decision = capacity_placement_decision_for_length(status, &active, input_bytes);
+        if decision.target() == PlacementTarget::LocalOnly {
+            return local_execution_reader(
+                input,
+                input_bytes,
+                auto_use_reason_for_placement(decision.reason()),
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            );
+        }
+        input.seek(SeekFrom::Start(0))?;
+        let access = SessionAccess {
+            shared: &self.shared,
+            identity: active.identity,
+            client: &active.client,
+        };
+        match execute_remote_blake3_reader(
+            &access,
+            active.peer_id,
+            active.lease,
+            input,
+            input_bytes,
+        ) {
+            Ok(digest) => Ok(Blake3Execution {
+                digest,
+                source: ExecutionSource::RemoteSuccess,
+                reason: AutoUseReason::Ready,
+            }),
+            Err(RemoteStreamFailure::Input(error)) => Err(error),
+            Err(RemoteStreamFailure::Remote(failure)) => {
+                if failure.transport_lost {
+                    active.client.cancel_session();
+                    mark_connection_lost(&self.shared, &active);
+                } else {
+                    mark_degraded(&self.shared, &active, failure.reason);
+                }
+                local_execution_reader(
+                    input,
+                    input_bytes,
+                    failure.reason,
+                    if failure.ambiguous {
+                        ExecutionSource::LocalFallbackAfterAmbiguousRemote
+                    } else {
+                        ExecutionSource::LocalFallbackAfterRemoteUnavailable
+                    },
+                )
+            }
+        }
+    }
 }
 
 fn bound_capacity_heartbeat(
@@ -675,16 +763,47 @@ fn capacity_placement_decision(
     active: &ActiveContext,
     input: &[u8],
 ) -> crate::PlacementDecision {
-    let snapshot = active.client.snapshot();
-    capacity_placement_decision_from_snapshot(status, snapshot, active.peer_id, active.lease, input)
+    capacity_placement_decision_for_length(status, active, input.len() as u64)
 }
 
+fn capacity_placement_decision_for_length(
+    status: NodeStatus,
+    active: &ActiveContext,
+    input_bytes: u64,
+) -> crate::PlacementDecision {
+    let snapshot = active.client.snapshot();
+    capacity_placement_decision_from_snapshot_for_length(
+        status,
+        snapshot,
+        active.peer_id,
+        active.lease,
+        input_bytes,
+    )
+}
+
+#[cfg(test)]
 fn capacity_placement_decision_from_snapshot(
     status: NodeStatus,
     snapshot: InitiatorSessionSnapshot,
     peer_id: PeerId,
     lease: LeaseContext,
     input: &[u8],
+) -> crate::PlacementDecision {
+    capacity_placement_decision_from_snapshot_for_length(
+        status,
+        snapshot,
+        peer_id,
+        lease,
+        input.len() as u64,
+    )
+}
+
+fn capacity_placement_decision_from_snapshot_for_length(
+    status: NodeStatus,
+    snapshot: InitiatorSessionSnapshot,
+    peer_id: PeerId,
+    lease: LeaseContext,
+    input_bytes: u64,
 ) -> crate::PlacementDecision {
     let heartbeat = bound_capacity_heartbeat(snapshot, peer_id, lease);
     let payload = heartbeat.unwrap_or(HeartbeatPayload {
@@ -706,7 +825,7 @@ fn capacity_placement_decision_from_snapshot(
         provider_count: 0,
         transport_count: 0,
     });
-    let estimated_bytes = (input.len() as u64).saturating_add(SCRATCH_BYTES);
+    let estimated_bytes = input_bytes.saturating_add(SCRATCH_BYTES);
     let remaining_budget = payload
         .safe_budget_bytes
         .saturating_sub(payload.reserved_bytes);
@@ -737,7 +856,7 @@ fn capacity_placement_decision_from_snapshot(
             resource_guard_admitted: payload.safe_budget_bytes > 0,
         },
         cost: CostInput {
-            bytes_up: input.len() as u64,
+            bytes_up: input_bytes,
             bytes_down: 32,
             resident_remote_bytes: 0,
             expected_compute_units: 1,
@@ -1993,31 +2112,59 @@ struct RemoteResources {
     scratch_reservation: Option<[u8; 16]>,
 }
 
+enum RemoteStreamFailure {
+    Remote(RemoteFailure),
+    Input(io::Error),
+}
+
+impl From<RemoteFailure> for RemoteStreamFailure {
+    fn from(failure: RemoteFailure) -> Self {
+        Self::Remote(failure)
+    }
+}
+
 fn execute_remote_blake3(
     access: &SessionAccess<'_>,
     peer_id: PeerId,
     lease: LeaseContext,
     input: &[u8],
 ) -> Result<[u8; 32], RemoteFailure> {
+    let mut reader = input;
+    match execute_remote_blake3_reader(access, peer_id, lease, &mut reader, input.len() as u64) {
+        Ok(digest) => Ok(digest),
+        Err(RemoteStreamFailure::Remote(failure)) => Err(failure),
+        Err(RemoteStreamFailure::Input(_)) => {
+            Err(RemoteFailure::known(AutoUseReason::ResourceRefused))
+        }
+    }
+}
+
+fn execute_remote_blake3_reader<R: Read>(
+    access: &SessionAccess<'_>,
+    peer_id: PeerId,
+    lease: LeaseContext,
+    input: &mut R,
+    input_bytes: u64,
+) -> Result<[u8; 32], RemoteStreamFailure> {
     let mut resources = RemoteResources {
         class_one_reservation: None,
         buffer_id: None,
         scratch_reservation: None,
     };
-    let result = (|| {
+    let result: Result<[u8; 32], RemoteStreamFailure> = (|| {
         let class_one = reserve_and_commit(
             access,
             peer_id,
             lease,
             WireResourceClass::RemoteBufferBytes,
-            input.len() as u64,
+            input_bytes,
         )?;
         resources.class_one_reservation = Some(class_one);
         let allocation = match access.remote_buffer(RemoteBufferRequest::Alloc {
             lease_id: lease.lease_id,
             worker_incarnation_id: lease.incarnation,
             reservation_id: class_one,
-            size_bytes: input.len() as u64,
+            size_bytes: input_bytes,
             allocation_flags: AllocationFlags::NONE,
         }) {
             Ok(allocation) => allocation,
@@ -2028,7 +2175,7 @@ fn execute_remote_blake3(
                     peer_id,
                     lease,
                 );
-                return Err(failure);
+                return Err(failure.into());
             }
         };
         if !allocation.completed
@@ -2036,13 +2183,13 @@ fn execute_remote_blake3(
             || allocation.worker_incarnation_id != lease.incarnation
             || allocation.reservation_id != Some(class_one)
         {
-            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
         }
         let allocated = allocation
             .buffer
             .ok_or_else(|| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
-        if allocated.state != BufferState::Allocated || allocated.size_bytes != input.len() as u64 {
-            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+        if allocated.state != BufferState::Allocated || allocated.size_bytes != input_bytes {
+            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
         }
         let buffer = allocated.buffer_id;
         resources.buffer_id = Some(buffer);
@@ -2055,27 +2202,33 @@ fn execute_remote_blake3(
             lease,
             access.identity,
         );
-        for (index, chunk) in input.chunks(MAX_PUT_BODY).enumerate() {
-            let offset = index
-                .checked_mul(MAX_PUT_BODY)
-                .and_then(|value| u64::try_from(value).ok())
-                .ok_or_else(|| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
+        let mut offset = 0_u64;
+        while offset < input_bytes {
+            let chunk_len = usize::try_from((input_bytes - offset).min(MAX_PUT_BODY as u64))
+                .map_err(|_| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
+            let mut chunk = vec![0_u8; chunk_len];
+            input
+                .read_exact(&mut chunk)
+                .map_err(RemoteStreamFailure::Input)?;
             let put = access.remote_buffer(RemoteBufferRequest::Put {
                 lease_id: lease.lease_id,
                 worker_incarnation_id: lease.incarnation,
                 buffer_id: buffer,
                 offset,
-                data: chunk.to_vec(),
+                data: chunk,
             })?;
             if !put.completed
                 || put.lease_id != lease.lease_id
                 || put.worker_incarnation_id != lease.incarnation
                 || put.buffer.is_none_or(|entry| entry.buffer_id != buffer)
                 || put.offset != offset
-                || put.data_len != chunk.len() as u32
+                || put.data_len != chunk_len as u32
             {
-                return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+                return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
             }
+            offset = offset
+                .checked_add(chunk_len as u64)
+                .ok_or_else(|| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
         }
         let ready = access.remote_buffer(RemoteBufferRequest::Stat {
             lease_id: lease.lease_id,
@@ -2089,7 +2242,7 @@ fn execute_remote_blake3(
                 .buffer
                 .is_none_or(|entry| entry.buffer_id != buffer || entry.state != BufferState::Ready)
         {
-            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+            return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
         }
         let scratch = reserve_and_commit(
             access,
@@ -2108,7 +2261,7 @@ fn execute_remote_blake3(
             input_kind: REMOTE_BUFFER_INPUT_KIND,
             buffer_id: buffer,
             input_offset: 0,
-            input_length: input.len() as u64,
+            input_length: input_bytes,
         })) {
             Ok(response) => response,
             Err(failure) => {
@@ -2118,7 +2271,7 @@ fn execute_remote_blake3(
                     peer_id,
                     lease,
                 );
-                return Err(failure);
+                return Err(failure.into());
             }
         };
         let deadline = Instant::now() + Duration::from_secs(30);
@@ -2134,7 +2287,7 @@ fn execute_remote_blake3(
                                 || admitted_job_id.is_some_and(|expected| expected != job.job_id)
                         })
                     {
-                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed));
+                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed).into());
                     }
                     if result.job.is_some() {
                         resources.scratch_reservation = None;
@@ -2162,7 +2315,8 @@ fn execute_remote_blake3(
                         } else {
                             AutoUseReason::ResourceRefused
                         },
-                    ));
+                    )
+                    .into());
                 }
                 ComputeResponse::Status(status) => {
                     if status.lease_id != lease.lease_id
@@ -2172,13 +2326,13 @@ fn execute_remote_blake3(
                                 || job.provider_version != BLAKE3_PROVIDER_VERSION
                         })
                     {
-                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed));
+                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed).into());
                     }
                     let Some(job) = status.job else {
-                        return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+                        return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
                     };
                     if admitted_job_id.is_some_and(|expected| expected != job.job_id) {
-                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed));
+                        return Err(RemoteFailure::known(AutoUseReason::AuthFailed).into());
                     }
                     admitted_job_id = Some(job.job_id);
                     resources.scratch_reservation = None;
@@ -2189,7 +2343,7 @@ fn execute_remote_blake3(
                         lease,
                     );
                     if Instant::now() >= deadline {
-                        return Err(RemoteFailure::ambiguous());
+                        return Err(RemoteFailure::ambiguous().into());
                     }
                     thread::sleep(COMPUTE_STATUS_POLL);
                     response = access.compute(ComputeRequest::Status(ComputeJobRequest {
@@ -2199,14 +2353,18 @@ fn execute_remote_blake3(
                     }))?;
                 }
                 ComputeResponse::Cancel(_) => {
-                    return Err(RemoteFailure::known(AutoUseReason::ResourceRefused));
+                    return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
                 }
             }
         }
     })();
-    match cleanup_remote(access, peer_id, lease, &mut resources) {
-        Ok(()) => result,
-        Err(cleanup_failure) => Err(cleanup_failure),
+    match (
+        result,
+        cleanup_remote(access, peer_id, lease, &mut resources),
+    ) {
+        (Err(RemoteStreamFailure::Input(error)), _) => Err(RemoteStreamFailure::Input(error)),
+        (result, Ok(())) => result,
+        (_, Err(cleanup_failure)) => Err(RemoteStreamFailure::Remote(cleanup_failure)),
     }
 }
 
@@ -2487,6 +2645,30 @@ fn local_execution(
     }
 }
 
+fn local_execution_reader<R: Read + Seek>(
+    input: &mut R,
+    input_bytes: u64,
+    reason: AutoUseReason,
+    source: ExecutionSource,
+) -> io::Result<Blake3Execution> {
+    input.seek(SeekFrom::Start(0))?;
+    let mut hasher = blake3::Hasher::new();
+    let mut chunk = [0_u8; LOCAL_DIGEST_CHUNK_BYTES];
+    let mut remaining = input_bytes;
+    while remaining > 0 {
+        let chunk_len = usize::try_from(remaining.min(LOCAL_DIGEST_CHUNK_BYTES as u64))
+            .map_err(|_| io::Error::other("input chunk length is not representable"))?;
+        input.read_exact(&mut chunk[..chunk_len])?;
+        hasher.update(&chunk[..chunk_len]);
+        remaining -= chunk_len as u64;
+    }
+    Ok(Blake3Execution {
+        digest: *hasher.finalize().as_bytes(),
+        source,
+        reason,
+    })
+}
+
 fn publish_available(
     shared: &Shared,
     identity: SessionIdentity,
@@ -2657,6 +2839,75 @@ mod tests {
     use super::*;
 
     static TEST_DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+    struct ZeroReader {
+        bytes: u64,
+        position: u64,
+        maximum_read: usize,
+    }
+
+    impl ZeroReader {
+        const fn new(bytes: u64) -> Self {
+            Self {
+                bytes,
+                position: 0,
+                maximum_read: 0,
+            }
+        }
+    }
+
+    impl Read for ZeroReader {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            let read = usize::try_from((self.bytes - self.position).min(buffer.len() as u64))
+                .map_err(|_| io::Error::other("test read length"))?;
+            buffer[..read].fill(0);
+            self.position += read as u64;
+            self.maximum_read = self.maximum_read.max(read);
+            Ok(read)
+        }
+    }
+
+    impl Seek for ZeroReader {
+        fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+            let SeekFrom::Start(position) = position else {
+                return Err(io::Error::other("test reader supports absolute seek only"));
+            };
+            if position > self.bytes {
+                return Err(io::Error::other("test seek beyond input"));
+            }
+            self.position = position;
+            Ok(position)
+        }
+    }
+
+    fn zero_digest(bytes: u64) -> [u8; 32] {
+        let chunk = [0_u8; LOCAL_DIGEST_CHUNK_BYTES];
+        let mut remaining = bytes;
+        let mut hasher = blake3::Hasher::new();
+        while remaining > 0 {
+            let length = remaining.min(chunk.len() as u64) as usize;
+            hasher.update(&chunk[..length]);
+            remaining -= length as u64;
+        }
+        *hasher.finalize().as_bytes()
+    }
+
+    #[test]
+    fn imported_local_digest_streams_one_byte_and_maximum_input_in_fixed_chunks() {
+        for input_bytes in [1, MAX_COMPUTE_INPUT_BYTES] {
+            let mut reader = ZeroReader::new(input_bytes);
+            let execution = local_execution_reader(
+                &mut reader,
+                input_bytes,
+                AutoUseReason::Off,
+                ExecutionSource::LocalFallbackAfterRemoteUnavailable,
+            )
+            .expect("bounded local digest");
+            assert_eq!(execution.digest(), zero_digest(input_bytes));
+            assert_eq!(reader.position, input_bytes);
+            assert!(reader.maximum_read <= LOCAL_DIGEST_CHUNK_BYTES);
+        }
+    }
 
     fn capacity_fixture() -> (NodeStatus, PeerId, LeaseContext, InitiatorSessionSnapshot) {
         let peer_id = PeerId::from_sha256_digest([0x31; 32]);
@@ -3970,6 +4221,14 @@ mod tests {
             assert_eq!(result.source(), ExecutionSource::RemoteSuccess);
             assert_eq!(result.reason(), AutoUseReason::Ready);
         }
+        let imported_input = b"streamed private import";
+        let mut imported_reader = io::Cursor::new(imported_input.to_vec());
+        let imported = controller
+            .execute_blake3_reader(&mut imported_reader, imported_input.len() as u64)
+            .expect("remote streamed imported BLAKE3");
+        assert_eq!(imported.digest(), *blake3::hash(imported_input).as_bytes());
+        assert_eq!(imported.source(), ExecutionSource::RemoteSuccess);
+        assert_eq!(imported.reason(), AutoUseReason::Ready);
         let deadline = Instant::now() + Duration::from_secs(2);
         while worker.command_count(2) == 0 {
             assert!(Instant::now() < deadline, "automatic renewal not observed");
