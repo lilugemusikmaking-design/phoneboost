@@ -1,0 +1,83 @@
+{
+  "contract": "phoneboost-c12-import-async-wire-v1",
+  "status": "locked_product_owner_approved",
+  "api": 1,
+  "methods": {
+    "imports.create": {
+      "class": "mutating",
+      "params": {},
+      "descriptors": {
+        "kind": "scm_rights",
+        "exact_count": 1,
+        "truncation_allowed": false
+      },
+      "result": {
+        "state": "RECEIVING",
+        "import_handle": "lowercase_hex_64"
+      }
+    },
+    "imports.get": {
+      "class": "read_only",
+      "params": {
+        "import_handle": "lowercase_hex_64"
+      },
+      "descriptors": {
+        "exact_count": 0
+      },
+      "result_states": {
+        "RECEIVING": [],
+        "READY": [
+          "input_bytes"
+        ],
+        "CANCELLED": [],
+        "CONSUMED": [],
+        "EXPIRED": []
+      },
+      "extends_deadline_or_ttl": false,
+      "consumes_import": false
+    },
+    "imports.cancel": {
+      "class": "mutating",
+      "params": {
+        "import_handle": "lowercase_hex_64"
+      },
+      "descriptors": {
+        "exact_count": 0
+      },
+      "result_fields": [
+        "state",
+        "state_changed"
+      ],
+      "result_states": [
+        "CANCELLED",
+        "CONSUMED",
+        "EXPIRED"
+      ],
+      "success_requires_confirmed_cleanup": true,
+      "acknowledgement_deadline_ms": 5000
+    }
+  },
+  "errors": [
+    "LOCAL_BAD_REQUEST",
+    "IMPORT_NOT_FOUND",
+    "IMPORT_LIMIT_REACHED",
+    "IMPORT_SOURCE_REJECTED",
+    "IMPORT_RECEIVING_TIMEOUT",
+    "IMPORT_CLEANUP_UNCONFIRMED",
+    "IMPORT_UNAVAILABLE"
+  ],
+  "authority": {
+    "handle_binding": [
+      "authenticated_local_connection",
+      "peer_uid",
+      "daemon_incarnation"
+    ],
+    "cross_authority_indistinguishable_from_unknown": true,
+    "public_read_or_download_method": false,
+    "public_consume_method": false,
+    "generic_execution_method": false,
+    "bypasses_c11": false,
+    "bypasses_resource_guard": false,
+    "mcp_present": false
+  }
+}

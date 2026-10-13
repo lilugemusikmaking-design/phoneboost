@@ -1,10 +1,14 @@
 use std::fmt;
+use std::io::IoSliceMut;
+use std::mem::MaybeUninit;
 use std::os::fd::OwnedFd;
 use std::time::Duration;
 
 use rustix::io::Errno;
 use rustix::net::sockopt::{Timeout, set_socket_timeout};
-use rustix::net::{RecvFlags, SendFlags, recv, send};
+use rustix::net::{
+    RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendFlags, recvmsg, send,
+};
 
 use super::validation::{LocalValidationError, ValidatedLocalRequest, validate_local_request};
 use super::{
@@ -17,11 +21,36 @@ const FRAMING_MEMORY_BOUND_BYTES: usize =
     LocalClientLimits::CANONICAL.max_line_bytes() + READ_CHUNK_BYTES;
 
 /// A bounded byte-framing result. No UTF-8 or JSON interpretation occurs.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum LocalFrameOutcome {
-    Line(Vec<u8>),
+    Line(LocalRequestFrame),
     CleanEof,
     IdleTimeout,
+}
+
+/// One bounded request line and the descriptors delivered with its bytes.
+///
+/// Descriptor numbers are deliberately absent from `Debug`; dropping a frame
+/// closes every descriptor that the request handler did not consume.
+pub struct LocalRequestFrame {
+    bytes: Vec<u8>,
+    descriptors: Vec<OwnedFd>,
+}
+
+impl fmt::Debug for LocalRequestFrame {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("LocalRequestFrame")
+            .field("bytes", &self.bytes.len())
+            .field("descriptors", &self.descriptors.len())
+            .finish()
+    }
+}
+
+impl LocalRequestFrame {
+    pub fn into_parts(self) -> (Vec<u8>, Vec<OwnedFd>) {
+        (self.bytes, self.descriptors)
+    }
 }
 
 /// Framing failures. `LocalBadRequest` is the canonical framing rejection;
@@ -78,9 +107,11 @@ impl std::error::Error for LocalFramingError {}
 pub struct FramedLocalClient {
     connection: Option<OwnedFd>,
     peer_uid: u32,
+    connection_id: u64,
     limits: LocalClientLimits,
     slot: Option<ClientSlotPermit>,
     line: Vec<u8>,
+    line_descriptors: Vec<OwnedFd>,
     carry: [u8; READ_CHUNK_BYTES],
     carry_start: usize,
     carry_end: usize,
@@ -132,6 +163,7 @@ impl FramedLocalClient {
         let AuthenticatedLocalClient {
             _connection: connection,
             peer_uid,
+            connection_id,
             limits,
             _slot: slot,
         } = client;
@@ -140,9 +172,11 @@ impl FramedLocalClient {
         Ok(Self {
             connection: Some(connection),
             peer_uid,
+            connection_id,
             limits,
             slot: Some(slot),
             line: Vec::with_capacity(limits.max_line_bytes()),
+            line_descriptors: Vec::new(),
             carry: [0; READ_CHUNK_BYTES],
             carry_start: 0,
             carry_end: 0,
@@ -157,6 +191,10 @@ impl FramedLocalClient {
 
     pub const fn peer_uid(&self) -> u32 {
         self.peer_uid
+    }
+
+    pub const fn connection_id(&self) -> u64 {
+        self.connection_id
     }
 
     pub const fn limits(&self) -> LocalClientLimits {
@@ -239,16 +277,33 @@ impl FramedLocalClient {
                 return Ok(outcome);
             }
 
-            let received = {
+            let (received, descriptors, invalid_ancillary) = {
                 let Some(connection) = self.connection.as_ref() else {
                     return Ok(LocalFrameOutcome::CleanEof);
                 };
-                match recv(
+                let mut ancillary_space =
+                    [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+                let mut ancillary = RecvAncillaryBuffer::new(&mut ancillary_space);
+                let mut slices = [IoSliceMut::new(&mut self.carry[..self.read_chunk_limit])];
+                match recvmsg(
                     connection,
-                    &mut self.carry[..self.read_chunk_limit],
-                    RecvFlags::empty(),
+                    &mut slices,
+                    &mut ancillary,
+                    RecvFlags::CMSG_CLOEXEC,
                 ) {
-                    Ok((initialized, _reported)) => initialized,
+                    Ok(message) => {
+                        let mut descriptors = Vec::new();
+                        let mut invalid = message.flags.contains(ReturnFlags::CTRUNC);
+                        for control in ancillary.drain() {
+                            match control {
+                                RecvAncillaryMessage::ScmRights(received) => {
+                                    descriptors.extend(received);
+                                }
+                                _ => invalid = true,
+                            }
+                        }
+                        (message.bytes, descriptors, invalid)
+                    }
                     Err(Errno::INTR) => continue,
                     Err(Errno::AGAIN) => {
                         self.close();
@@ -260,6 +315,12 @@ impl FramedLocalClient {
                     }
                 }
             };
+
+            self.line_descriptors.extend(descriptors);
+            if invalid_ancillary || self.line_descriptors.len() > 2 {
+                self.close();
+                return Err(local_bad_request());
+            }
 
             if received == 0 {
                 let had_partial = !self.line.is_empty();
@@ -303,8 +364,11 @@ impl FramedLocalClient {
                 self.carry_start = 0;
                 self.carry_end = 0;
             }
-            let line = std::mem::take(&mut self.line);
-            return Ok(Some(LocalFrameOutcome::Line(line)));
+            let frame = LocalRequestFrame {
+                bytes: std::mem::take(&mut self.line),
+                descriptors: std::mem::take(&mut self.line_descriptors),
+            };
+            return Ok(Some(LocalFrameOutcome::Line(frame)));
         }
 
         self.carry_start = 0;
@@ -320,6 +384,7 @@ impl FramedLocalClient {
         self.connection.take();
         self.slot.take();
         self.line.clear();
+        self.line_descriptors.clear();
         self.carry_start = 0;
         self.carry_end = 0;
     }
@@ -359,8 +424,9 @@ fn transport_failure() -> LocalFramingError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::io::Write;
+    use std::fs::{self, File};
+    use std::io::{IoSlice, Write};
+    use std::mem::MaybeUninit;
     use std::net::Shutdown;
     use std::os::fd::{AsFd, OwnedFd};
     use std::os::unix::fs::PermissionsExt;
@@ -371,7 +437,8 @@ mod tests {
 
     use rustix::net::sockopt::socket_timeout;
     use rustix::net::{
-        AddressFamily, SocketAddrUnix, SocketFlags, SocketType, bind, listen, socket_with,
+        AddressFamily, SendAncillaryBuffer, SendAncillaryMessage, SocketAddrUnix, SocketFlags,
+        SocketType, bind, listen, sendmsg, socket_with,
     };
 
     use crate::admission::{LocalAdmissionGate, admit_local_client};
@@ -455,9 +522,28 @@ mod tests {
 
     fn line(outcome: LocalFrameOutcome) -> Vec<u8> {
         match outcome {
-            LocalFrameOutcome::Line(bytes) => bytes,
+            LocalFrameOutcome::Line(frame) => {
+                let (bytes, descriptors) = frame.into_parts();
+                assert!(descriptors.is_empty(), "ordinary line carried descriptors");
+                bytes
+            }
             other => panic!("expected byte line, got {other:?}"),
         }
+    }
+
+    fn send_with_descriptors(peer: &UnixStream, bytes: &[u8], files: &[File]) {
+        let borrowed = files.iter().map(File::as_fd).collect::<Vec<_>>();
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+        let mut ancillary = SendAncillaryBuffer::new(&mut space);
+        assert!(ancillary.push(SendAncillaryMessage::ScmRights(&borrowed)));
+        let sent = sendmsg(
+            peer,
+            &[IoSlice::new(bytes)],
+            &mut ancillary,
+            SendFlags::NOSIGNAL,
+        )
+        .expect("send request with descriptors");
+        assert_eq!(sent, bytes.len());
     }
 
     fn assert_bad_request(result: Result<LocalFrameOutcome, LocalFramingError>) {
@@ -520,6 +606,72 @@ mod tests {
             line(framed.next_line_bytes().expect("completed retained line")),
             b"partial-done"
         );
+    }
+
+    #[test]
+    fn fr_t05_scm_rights_are_bound_to_their_request_frame() {
+        let harness = FramingHarness::new("scm-rights");
+        let peer = harness.connect();
+        let source = File::open("/dev/null").expect("open descriptor fixture");
+        send_with_descriptors(&peer, b"import\n", &[source]);
+        let mut framed = harness.admit(&peer);
+        let frame = match framed.next_line_bytes().expect("receive descriptor frame") {
+            LocalFrameOutcome::Line(frame) => frame,
+            other => panic!("expected descriptor frame, got {other:?}"),
+        };
+        let (bytes, descriptors) = frame.into_parts();
+        assert_eq!(bytes, b"import");
+        assert_eq!(descriptors.len(), 1);
+    }
+
+    #[test]
+    fn fr_scm_rights_stay_on_first_line_when_one_recv_contains_two_lines() {
+        let harness = FramingHarness::new("scm-rights-two-lines");
+        let peer = harness.connect();
+        let source = File::open("/dev/null").expect("open descriptor fixture");
+        send_with_descriptors(&peer, b"first\nsecond\n", &[source]);
+        let mut framed = harness.admit(&peer);
+
+        let first = match framed.next_line_bytes().expect("first descriptor frame") {
+            LocalFrameOutcome::Line(frame) => frame,
+            other => panic!("expected first frame, got {other:?}"),
+        };
+        let (bytes, descriptors) = first.into_parts();
+        assert_eq!(bytes, b"first");
+        assert_eq!(descriptors.len(), 1);
+        assert_eq!(
+            line(framed.next_line_bytes().expect("ordinary second frame")),
+            b"second"
+        );
+    }
+
+    #[test]
+    fn fr_scm_rights_two_descriptors_are_preserved_for_request_rejection() {
+        let harness = FramingHarness::new("scm-rights-two");
+        let peer = harness.connect();
+        let first = File::open("/dev/null").expect("open first descriptor fixture");
+        let second = File::open("/dev/zero").expect("open second descriptor fixture");
+        send_with_descriptors(&peer, b"import\n", &[first, second]);
+        let mut framed = harness.admit(&peer);
+        let frame = match framed.next_line_bytes().expect("receive two descriptors") {
+            LocalFrameOutcome::Line(frame) => frame,
+            other => panic!("expected descriptor frame, got {other:?}"),
+        };
+        let (_, descriptors) = frame.into_parts();
+        assert_eq!(descriptors.len(), 2);
+    }
+
+    #[test]
+    fn fr_scm_rights_truncation_fails_closed() {
+        let harness = FramingHarness::new("scm-rights-truncated");
+        let peer = harness.connect();
+        let first = File::open("/dev/null").expect("open first descriptor fixture");
+        let second = File::open("/dev/zero").expect("open second descriptor fixture");
+        let third = File::open("/dev/null").expect("open third descriptor fixture");
+        send_with_descriptors(&peer, b"import\n", &[first, second, third]);
+        let mut framed = harness.admit(&peer);
+        assert_bad_request(framed.next_line_bytes());
+        assert_eq!(framed.state(), LocalConnectionState::Closed);
     }
 
     #[test]
@@ -630,10 +782,10 @@ mod tests {
         peer.shutdown(Shutdown::Write)
             .expect("half-close empty peer");
         let mut framed = harness.admit(&peer);
-        assert_eq!(
+        assert!(matches!(
             framed.next_line_bytes().expect("clean EOF"),
             LocalFrameOutcome::CleanEof
-        );
+        ));
         assert_eq!(framed.state(), LocalConnectionState::Closed);
         assert_eq!(harness.active(), 0);
     }
@@ -709,10 +861,10 @@ mod tests {
         let mut peer = harness.connect();
         peer.write_all(b"partial").expect("start partial line");
         let mut framed = harness.admit_with_config(&peer, TEST_IDLE_TIMEOUT, READ_CHUNK_BYTES);
-        assert_eq!(
+        assert!(matches!(
             framed.next_line_bytes().expect("idle is lifecycle outcome"),
             LocalFrameOutcome::IdleTimeout
-        );
+        ));
         assert_eq!(framed.state(), LocalConnectionState::Closed);
         assert_eq!(harness.active(), 0);
     }
@@ -722,10 +874,10 @@ mod tests {
         let harness = FramingHarness::new("after-idle");
         let first_peer = harness.connect();
         let mut first = harness.admit_with_config(&first_peer, TEST_IDLE_TIMEOUT, READ_CHUNK_BYTES);
-        assert_eq!(
+        assert!(matches!(
             first.next_line_bytes().expect("first client times out"),
             LocalFrameOutcome::IdleTimeout
-        );
+        ));
         assert_eq!(harness.active(), 0);
 
         let mut second_peer = harness.connect();

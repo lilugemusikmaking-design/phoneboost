@@ -6,9 +6,9 @@ use std::time::{Duration, Instant};
 
 use pb_host::{
     AutoUseController, AutoUseReason, AutoUseState, AvahiDiscovery, FixedDeviceDiscovery,
-    LocalApiContext, ReadyRuntime, StartupOutcome, TransportCandidate, TransportManager,
-    TransportState, host_startup, initialize_remote_secure, os_jitter_sample, retry_delay_ms,
-    serve_local_client,
+    ImportStore, LocalApiContext, ReadyRuntime, StartupOutcome, TransportCandidate,
+    TransportManager, TransportState, host_startup, initialize_remote_secure, os_jitter_sample,
+    retry_delay_ms, serve_local_client,
 };
 use pb_runtime_secure::{SecureRuntime, run_initiator_session};
 
@@ -34,6 +34,13 @@ fn main() {
                         "C05_SECURE state=UNAVAILABLE reason={}",
                         error.reason_code()
                     );
+                    std::process::exit(1);
+                }
+            };
+            let import_store = match ImportStore::from_environment() {
+                Ok(store) => Arc::new(store),
+                Err(_) => {
+                    eprintln!("C12_IMPORT state=UNAVAILABLE reason=PRIVATE_STORE_INIT_FAILED");
                     std::process::exit(1);
                 }
             };
@@ -82,7 +89,8 @@ fn main() {
                 println!("READY");
                 let _flush_result = io::stdout().flush();
             }
-            let local_api_context = Arc::new(LocalApiContext::new(auto_use));
+            let local_api_context =
+                Arc::new(LocalApiContext::with_import_store(auto_use, import_store));
             run_local_loop(ready, local_api_context);
         }
         Ok(outcome @ StartupOutcome::AlreadyRunning(_)) => {
