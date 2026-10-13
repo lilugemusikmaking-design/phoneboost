@@ -1,0 +1,74 @@
+{
+  "contract_version": 1,
+  "transport_signature": {
+    "prefix": "pb-link-v1:",
+    "classes": [
+      "wifi_lan",
+      "usb_network",
+      "ethernet_ip",
+      "local_ip_unknown"
+    ],
+    "exact_equality_required": true,
+    "grants_trust": false,
+    "creates_fixed_priority": false,
+    "persisted_identifiers_forbidden": [
+      "ip_address",
+      "port",
+      "interface_name",
+      "interface_index",
+      "mac",
+      "ssid",
+      "bssid",
+      "usb_serial",
+      "android_serial"
+    ]
+  },
+  "live_metrics": {
+    "contract": "pb-link-metrics-v1",
+    "freshness_max_age_ms_exclusive": 6000,
+    "rtt_source": "authenticated_request_response",
+    "rtt_minimum_samples": 3,
+    "goodput_source": "completed_authenticated_payload",
+    "goodput_minimum_active_window_ms": 1000,
+    "clock": "monotonic",
+    "missing_speed_behavior": "fail_closed",
+    "invalidated_by": [
+      "peer_change",
+      "secure_session_generation_change",
+      "transport_signature_change",
+      "reconnect",
+      "daemon_restart",
+      "clock_anomaly",
+      "ambiguous_result",
+      "failed_transfer"
+    ]
+  },
+  "performance_profile": {
+    "schema": "../schemas/phoneboost-perf-profile-v1.schema.json",
+    "ttl_ms": 86400000,
+    "maximum_file_bytes": 65536,
+    "parent_mode_octal": "0700",
+    "file_mode_octal": "0600",
+    "atomic_replace_required": true,
+    "unknown_fields_rejected": true,
+    "wall_clock_rollback_behavior": "invalidate",
+    "expiry_boundary": "now_greater_than_or_equal_expires"
+  },
+  "bulk_ingress": {
+    "approved_direction": "scm_rights_then_private_import",
+    "implementation_status": "deferred_pending_exact_resource_contract",
+    "caller_path_allowed": false,
+    "shell_allowed": false,
+    "generic_rpc_allowed": false,
+    "arbitrary_code_allowed": false,
+    "remote_buffer_authority": false
+  },
+  "mcp": {
+    "implementation_status": "blocked_until_d1_d2_c13_and_c12_contract_green",
+    "topology": "mcp_to_c12_to_c11_to_c08_c09_c10",
+    "placement_authority": false,
+    "pairing_authority": false,
+    "lease_authority": false,
+    "admission_authority": false
+  }
+}

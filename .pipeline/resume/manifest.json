@@ -1,9 +1,9 @@
 {
-  "next_action": "Request an explicit decision before any C12, C13, or agentic-integration change; preserve the non-normative agentic preparation stop conditions",
+  "next_action": "Create a separate D1/D2 implementation increment; keep C12 ingress and MCP blocked",
   "writer": "Codex",
-  "parent_head": "5b31b89f26694ff04402591aa22dd045d44cf117",
-  "date": "2026-10-11T17:31:29.907678+00:00",
-  "branch": "feat/p6-c11-runtime-capacity",
+  "parent_head": "ee8ab9c82c99edada3686d029009cd7bc8eecf9d",
+  "date": "2026-10-11T18:27:34.768519+00:00",
+  "branch": "docs/agentic-integration-decision-v0-1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }
