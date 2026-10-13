@@ -1,7 +1,7 @@
 use std::ffi::OsString;
+use std::os::fd::AsFd;
 
-const USAGE: &str =
-    "usage: phoneboostctl <status|pair|pair-confirm|pair-cancel|compute blake3 c10-abc-v1>";
+const USAGE: &str = "usage: phoneboostctl <status|pair|pair-confirm|pair-cancel|compute blake3 c10-abc-v1|compute blake3 --stdin>\n--stdin requires a readable regular file redirected to stdin (1..128 MiB); pipes and terminals are rejected";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Command {
@@ -10,6 +10,7 @@ enum Command {
     PairConfirm,
     PairCancel,
     ComputeBlake3,
+    ComputeBlake3Import,
 }
 
 fn main() {
@@ -36,6 +37,11 @@ fn parse_command(args: impl IntoIterator<Item = OsString>) -> Option<Command> {
         [command] if command == "pair-confirm" => Some(Command::PairConfirm),
         [command] if command == "pair-cancel" => Some(Command::PairCancel),
         [compute, operation, fixture]
+            if compute == "compute" && operation == "blake3" && fixture == "--stdin" =>
+        {
+            Some(Command::ComputeBlake3Import)
+        }
+        [compute, operation, fixture]
             if compute == "compute" && operation == "blake3" && fixture == "c10-abc-v1" =>
         {
             Some(Command::ComputeBlake3)
@@ -54,6 +60,11 @@ fn execute(command: Command) -> Result<(String, i32), pb_cli::CliError> {
             let exit_code = view.exit_code();
             (view.to_string(), exit_code)
         }),
+        Command::ComputeBlake3Import => pb_cli::compute_blake3_import(std::io::stdin().as_fd())
+            .map(|view| {
+                let exit_code = view.exit_code();
+                (view.to_string(), exit_code)
+            }),
     }
 }
 
@@ -82,6 +93,10 @@ mod tests {
             ]),
             Some(Command::ComputeBlake3)
         );
+        assert_eq!(
+            parse_command(["compute", "blake3", "--stdin"].map(OsString::from)),
+            Some(Command::ComputeBlake3Import)
+        );
         for invalid in [
             Vec::new(),
             vec![OsString::from("compute")],
@@ -97,6 +112,12 @@ mod tests {
                 OsString::from("c10-abc-v1"),
             ],
             vec![OsString::from("status"), OsString::from("extra")],
+            ["compute", "blake3", "/tmp/input"]
+                .map(OsString::from)
+                .to_vec(),
+            ["compute", "blake3", "--stdin", "extra"]
+                .map(OsString::from)
+                .to_vec(),
         ] {
             assert_eq!(parse_command(invalid), None);
         }
@@ -107,6 +128,7 @@ mod tests {
         assert_eq!(result_exit_code(&Ok(("remote".to_owned(), 0))), 0);
         assert_eq!(result_exit_code(&Ok(("fallback".to_owned(), 3))), 3);
         assert_eq!(result_exit_code(&Err(pb_cli::CliError::IoFailed)), 1);
+        assert_eq!(result_exit_code(&Err(pb_cli::CliError::OutcomeUnknown)), 1);
         assert_eq!(
             parse_command([OsString::from("invalid")])
                 .map(|_| 0)

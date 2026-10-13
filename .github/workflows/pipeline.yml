@@ -42,6 +42,10 @@ jobs:
       - run: scripts/pipeline-with-sccache cargo nextest run --locked --workspace --profile ci
       - name: Existing cargo test proof
         run: scripts/pipeline-with-sccache cargo test --locked --workspace
+      - name: Native C12 import client real-process proof
+        run: |
+          scripts/pipeline-with-sccache cargo build --locked -p pb-host --bin phoneboostd -p pb-cli --bin phoneboostctl
+          python3 scripts/test_c12_import_cli.py
       - if: always()
         run: .tooling/p1/bin/sccache --show-stats || true
   frontend:
