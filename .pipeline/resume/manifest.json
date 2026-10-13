@@ -1,9 +1,9 @@
 {
-  "next_action": "Propose and separately approve the first typed C12 import consumer without generic execution or MCP",
+  "next_action": "Obtain explicit product-owner approval of the exact compute.submit_import proposal before any implementation",
   "writer": "Codex",
-  "parent_head": "de53224b11d9548e053fee6ed057aea1f69820f0",
-  "date": "2026-10-13T05:37:22.575316+00:00",
-  "branch": "feat/p9-c12-import-ingress-v1",
+  "parent_head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6",
+  "date": "2026-10-13T06:00:47.245689+00:00",
+  "branch": "docs/c12-imported-blake3-consumer-v0-1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }
