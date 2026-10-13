@@ -355,7 +355,7 @@ mod tests {
             core_protocol_version: 1,
             provider_protocol_version: 1,
             transport_signature: "pb-link-v1:wifi_lan".to_owned(),
-            workload_signature: "blake3/64mib".to_owned(),
+            workload_signature: "pb-workload-v1:blake3:64mib".to_owned(),
             thermal_class: ThermalClass::Nominal,
             battery_policy: BatteryPolicy::ExternalPower,
         }

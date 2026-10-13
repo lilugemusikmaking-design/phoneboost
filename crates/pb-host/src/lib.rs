@@ -8,6 +8,7 @@ mod auto_use;
 mod discovery;
 mod local_api;
 mod planner;
+mod profile_store;
 mod remote_secure;
 mod startup;
 mod transport;
@@ -33,6 +34,11 @@ pub use planner::{
     BatteryPolicy, CostInput, PERFORMANCE_PROFILE_TTL, PerformanceEvidence, PerformanceProfile,
     PerformanceProfileKey, PlacementDecision, PlacementMode, PlacementReason, PlacementTarget,
     PlannerInput, ProfileInvalidationReason, ProfileStatus, RemoteGates, ThermalClass,
+};
+pub use profile_store::{
+    C13BenchmarkProvenanceV1, C13PerformanceEvidenceV1, C13PerformanceProfileV1, C13ProfileKeyV1,
+    C13RequesterPath, PerformanceProfileLoadOutcome, PerformanceProfileStore,
+    PerformanceProfileStoreError, ProfileStoreInvalidationReason,
 };
 pub use remote_secure::{
     initialize_remote_secure, remote_pairing_begin, remote_pairing_cancel, remote_pairing_confirm,

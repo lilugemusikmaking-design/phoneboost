@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p7-d1-d2-link-metrics",
-  "head": "73a3538f6d0d793cdf28bb5a74b5eab734192209",
-  "task": "P7 D1/D2 normalized link identity and authenticated live-metric foundations",
+  "branch": "feat/p8-c13-performance-profile",
+  "head": "3d81ec56a875659e8d597ae616a1392069fab548",
+  "task": "P8 C13 private atomic performance-profile persistence",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -73,7 +73,11 @@
     "fix(host): use safe route interface enumeration",
     "P7 corrected exact-head Project pipeline 38166504245 PASS 7/7 and CodeQL 38166509049 PASS",
     "P7 CI follow-up: make local confirmation duplicate classification scheduling-independent",
-    "fix(runtime): retain duplicate pairing confirmation"
+    "fix(runtime): retain duplicate pairing confirmation",
+    "P8 C13: exact typed private atomic performance-profile persistence implemented",
+    "P8 C13: complete-key, expiry, filesystem and malformed-input negative oracles PASS",
+    "P8 C13: full pb-host 195/195 including authenticated 64 MiB proof PASS",
+    "feat(host): persist private C13 performance profiles"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -159,7 +163,10 @@
     "P7 first exact-head Project pipeline run 38165468466 PASS 7/7; aggregate CodeQL found one high-severity raw getifaddrs pointer alert despite all language analysis jobs completing",
     "P7 security correction: direct libc pointer traversal removed; pinned nix 0.31.3 safe interface API, targeted tests and Clippy PASS, cargo-deny advisories/bans/licenses/sources PASS",
     "P7 corrected exact-head Project pipeline run 38166504245 PASS 7/7 at 73a3538f6d0d793cdf28bb5a74b5eab734192209; CodeQL run 38166509049 PASS with all four language jobs and no pointer alert",
-    "P7 pairing race correction: formerly failing exact test PASS 1/1 and complete pb-runtime-secure PASS 24/24"
+    "P7 pairing race correction: formerly failing exact test PASS 1/1 and complete pb-runtime-secure PASS 24/24",
+    "P8 C13 targeted PASS: persistence 8/8, planner 14/14, complete pb-host 195/195 including authenticated 64 MiB proof",
+    "P8 C13 static/security PASS: offline check, targeted Clippy with no changed-code warning, cargo-deny advisories/bans/licenses/sources, agentic boundary checker and diff check",
+    "P8 C13 native check-fast PASS: diff check, 12 pipeline tests, actionlint and cargo fmt"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -171,7 +178,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Require final PR 14 exact-head Project pipeline and CodeQL green; continue separate C13 persistence increment",
+  "next_action": "Require PR exact-head Project pipeline and CodeQL green; keep SPEED/BALANCED, C12 ingress and MCP blocked",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -185,8 +192,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:04:21.585583+00:00",
-      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
+      "date": "2026-10-11T19:47:21.634436+00:00",
+      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
     },
     {
       "command": [
@@ -199,16 +206,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:04:21.671238+00:00",
-      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
+      "date": "2026-10-11T19:47:21.697052+00:00",
+      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:04:26.029790+00:00",
-      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
+      "date": "2026-10-11T19:47:24.768229+00:00",
+      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
     },
     {
       "command": [
@@ -219,13 +226,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-11T19:04:26.188335+00:00",
-      "head": "044a1a1209dc96dac6f3b8b11c161dc183054cd9"
+      "date": "2026-10-11T19:47:24.923344+00:00",
+      "head": "3d81ec56a875659e8d597ae616a1392069fab548"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-11T19:35:02.303371+00:00",
-    "commit": "73a3538f6d0d793cdf28bb5a74b5eab734192209",
+    "date": "2026-10-11T19:48:20.834377+00:00",
+    "commit": "3d81ec56a875659e8d597ae616a1392069fab548",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -409,6 +416,20 @@
     "physical_test": "NOT RUN; no speed placement or Android behavior enabled",
     "first_ci": "Project pipeline PASS 7/7 in run 38165468466 at 044a1a1209dc96dac6f3b8b11c161dc183054cd9; aggregate CodeQL FAIL on direct getifaddrs pointer traversal",
     "security_correction": "Removed direct libc traversal and used pinned nix 0.31.3 safe interface enumeration; targeted tests, Clippy and cargo-deny PASS",
-    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_SECURITY_CORRECTION_CI_PENDING"
+    "pairing_race_correction": "Confirmation acceptance retained for the session with one-shot dispatch; exact test and pb-runtime-secure 24/24 PASS",
+    "final_ci": "Project pipeline runs 38168686010 and 38168689445 PASS 7/7 at 4cc3a2c907595ac574bf494857ea1fad8849c5f9; CodeQL 38168689421 and CodeRabbit PASS; PR 14 CLEAN",
+    "status": "COMPLETE_CI_PASS"
+  },
+  "p8_c13_performance_profile": {
+    "baseline": "73a3538f6d0d793cdf28bb5a74b5eab734192209",
+    "coverage_evidence": "docs/evidence/p8-c13-performance-profile.md",
+    "scope": "D3 typed private atomic C13 persistence only; no benchmark producer, SPEED/BALANCED activation, C12 ingress or MCP",
+    "persistence": "Exact v1 schema, complete-key BLAKE3 filename, 24-hour expiry, owner-only 0700/0600 descriptor-based storage, atomic replace and directory durability sync",
+    "targeted_result": "PASS: C13 8/8, planner 14/14, complete pb-host 195/195 including authenticated 64 MiB proof",
+    "contract_check": "PASS: valid fixture, eleven negative profiles and unchanged C12/MCP stop conditions",
+    "check_fast": "PASS",
+    "dependency_security": "PASS: cargo-deny advisories, bans, licenses and sources",
+    "physical_test": "NOT RUN; no performance placement or Android runtime behavior enabled",
+    "status": "IMPLEMENTED_LOCAL_VALIDATION_PASS_CI_PENDING"
   }
 }
