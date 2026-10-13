@@ -1,0 +1,79 @@
+{
+  "contract": "phoneboost-c12-imported-blake3-consumer-v1",
+  "status": "locked_product_owner_approved",
+  "api": 1,
+  "method": {
+    "name": "compute.submit_import",
+    "class": "mutating",
+    "params": {
+      "op_id": "pb.native.blake3/1",
+      "import_handle": "lowercase_hex_64"
+    },
+    "descriptors": {
+      "exact_count": 0
+    },
+    "result_fields": [
+      "state",
+      "op_id",
+      "input_kind",
+      "input_bytes",
+      "digest_blake3_hex",
+      "execution_source",
+      "auto_use_reason"
+    ],
+    "result_constants": {
+      "state": "COMPLETED",
+      "op_id": "pb.native.blake3/1",
+      "input_kind": "PRIVATE_IMPORT_V1"
+    },
+    "echoes_import_handle": false,
+    "c12_job_identifier": false
+  },
+  "lifecycle": {
+    "required_state": "READY",
+    "minimum_input_bytes": 1,
+    "maximum_input_bytes": 134217728,
+    "consumption": "atomic_single_use_before_execution",
+    "receiving_is_not_consumed": true,
+    "empty_ready_is_not_consumed": true,
+    "terminal_or_cross_authority_is_not_found": true,
+    "replay_after_consume": "IMPORT_NOT_FOUND",
+    "resurrection_allowed": false
+  },
+  "execution": {
+    "operation": "BLAKE3",
+    "whole_payload_allocation": false,
+    "local_digest_chunk_bytes": 65536,
+    "remote_upload_chunk": "existing_MAX_PUT_BODY",
+    "passes_c11": true,
+    "passes_c07_c08_c09_c10": true,
+    "passes_resource_guard": true,
+    "execution_source_strings_unchanged": true,
+    "auto_use_reason_strings_unchanged": true,
+    "synchronous_terminal_c12_response": true,
+    "c12_retry_or_replay": false
+  },
+  "errors": [
+    "LOCAL_BAD_REQUEST",
+    "LOCAL_UNSUPPORTED_METHOD",
+    "IMPORT_NOT_FOUND",
+    "IMPORT_NOT_READY",
+    "IMPORT_INPUT_REJECTED",
+    "IMPORT_UNAVAILABLE"
+  ],
+  "authority": {
+    "handle_binding": [
+      "authenticated_local_connection",
+      "peer_uid",
+      "daemon_incarnation"
+    ],
+    "caller_path_allowed": false,
+    "public_read_or_download_method": false,
+    "generic_execution_method": false,
+    "mcp_present": false
+  },
+  "change_control": {
+    "implementation_authorized": true,
+    "product_owner_approval_required": false
+  }
+}

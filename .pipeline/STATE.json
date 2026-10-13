@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p9-c12-import-ingress-v1",
-  "head": "de53224b11d9548e053fee6ed057aea1f69820f0",
-  "task": "P10 locked C12 descriptor ingress and private import lifecycle",
+  "branch": "docs/c12-imported-blake3-consumer-v0-1",
+  "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
+  "task": "P11 exact typed C12 imported BLAKE3 consumer proposal",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -90,7 +90,10 @@
     "P10 C12 async runtime: exact create/get/cancel dispatch, bounded receiver cancellation and connection cleanup implemented",
     "feat(host): activate bounded C12 async imports",
     "P10 C12 async runtime exact-head CI, CodeQL and CodeRabbit passed; PR 17 CLEAN",
-    "docs(p10): record async import runtime closure"
+    "docs(p10): record async import runtime closure",
+    "P11 C12 imported BLAKE3 consumer exact proposal and deterministic negative contract prepared without implementation",
+    "docs: propose typed C12 imported BLAKE3 consumer",
+    "docs: lock typed C12 imported BLAKE3 consumer"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -188,7 +191,8 @@
     "P10 async wire contract checker PASS: exact 3/3 methods, authority/cancellation boundary, 12/12 negative mutations and MCP absent",
     "P10 async targeted PASS: admission 37/37, import lifecycle 18/18, local API 18/18, complete pb-host 219/219 including authenticated 64 MiB proof",
     "P10 async corrected full software aggregate PASS 14/14: nextest 415/415, workspace, frontend 331/331, Playwright 10/10, Android, security and Maestro syntax",
-    "P10 async exact-head de53224 PASS: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN"
+    "P10 async exact-head de53224 PASS: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN",
+    "P11 imported BLAKE3 consumer proposal PASS: exact 1/1 typed candidate, lifecycle/streaming/authority boundary and 16/16 negative oracles; implementation unauthorized and MCP absent"
   ],
   "do_not_revalidate_if_unchanged": [
     "PhoneBoost general audit",
@@ -199,10 +203,8 @@
     "P2 Galaxy A15 remote success/loss/fallback/reconnect proof",
     "Android durable worker one-hour physical screen-off proof"
   ],
-  "blockers": [
-    "A separately reviewed and locked typed C12 consumer is required before a READY import may feed compute; MCP implementation remains unauthorized"
-  ],
-  "next_action": "Propose and separately approve the first typed C12 import consumer without generic execution or MCP",
+  "blockers": [],
+  "next_action": "Implement the locked compute.submit_import consumer without MCP",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -216,8 +218,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T05:37:12.598100+00:00",
-      "head": "de53224b11d9548e053fee6ed057aea1f69820f0"
+      "date": "2026-10-13T15:34:44.681192+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
@@ -230,16 +232,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T05:37:12.610622+00:00",
-      "head": "de53224b11d9548e053fee6ed057aea1f69820f0"
+      "date": "2026-10-13T15:34:44.698449+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T05:37:13.130758+00:00",
-      "head": "de53224b11d9548e053fee6ed057aea1f69820f0"
+      "date": "2026-10-13T15:34:45.728195+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
@@ -250,13 +252,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T05:37:13.138814+00:00",
-      "head": "de53224b11d9548e053fee6ed057aea1f69820f0"
+      "date": "2026-10-13T15:34:45.802737+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T05:37:22.571816+00:00",
-    "commit": "de53224b11d9548e053fee6ed057aea1f69820f0",
+    "date": "2026-10-13T15:34:55.444219+00:00",
+    "commit": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -489,5 +491,16 @@
     "ci_result": "PASS at de53224b11d9548e053fee6ed057aea1f69820f0: Project pipeline runs 38351651368 and 38351647529 7/7, CodeQL 38351651370, CodeRabbit, PR 17 CLEAN",
     "mcp": "NOT STARTED",
     "status": "COMPLETE_CI_PASS_BLOCKED_ON_TYPED_CONSUMER_DECISION"
+  },
+  "p11_c12_imported_blake3_consumer_proposal": {
+    "baseline": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6",
+    "proposal": "docs/agentic-integration/PHONEBOOST_C12_IMPORTED_BLAKE3_CONSUMER_PROPOSAL_V0_1.md",
+    "machine_contract": "docs/agentic-integration/contracts/phoneboost-c12-imported-blake3-consumer-v1.json",
+    "checker": "scripts/check_c12_imported_blake3_consumer_v0_1.py",
+    "scope": "Exact compute.submit_import BLAKE3 candidate over one READY private import; no product implementation, generic execution, public payload access or MCP",
+    "contract_check": "PASS: exact typed method 1/1, lifecycle/streaming/authority boundary and 16/16 negative mutations",
+    "existing_async_contract": "PASS unchanged: exact imports.create/get/cancel 3/3 and 12/12 negative mutations",
+    "approval": "PRODUCT_OWNER_APPROVED_2026_10_13",
+    "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
   }
 }
