@@ -9,6 +9,9 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
+mod import;
+pub use import::{ImportedComputeView, compute_blake3_import};
+
 const MAX_NDJSON_LINE_BYTES: usize = 65_536;
 const IO_TIMEOUT: Duration = Duration::from_secs(60);
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -27,6 +30,9 @@ pub enum CliError {
     IoFailed,
     ResponseTooLarge,
     MalformedResponse,
+    ImportNotReady,
+    ImportTimedOut,
+    OutcomeUnknown,
     Remote { code: String, message_safe: String },
 }
 
@@ -38,6 +44,11 @@ impl fmt::Display for CliError {
             Self::IoFailed => formatter.write_str("local API I/O failed"),
             Self::ResponseTooLarge => formatter.write_str("local API response exceeds 64 KiB"),
             Self::MalformedResponse => formatter.write_str("malformed local API response"),
+            Self::ImportNotReady => formatter.write_str("import is not a nonempty ready input"),
+            Self::ImportTimedOut => formatter.write_str("import readiness deadline exceeded"),
+            Self::OutcomeUnknown => formatter.write_str(
+                "compute outcome unknown: no valid terminal response; request was not retried",
+            ),
             Self::Remote { code, message_safe } => write!(formatter, "{code}: {message_safe}"),
         }
     }

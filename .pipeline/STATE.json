@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "branch": "feat/p11-c12-imported-blake3-consumer-v1",
-  "head": "0201a9310639202440ff6779a31c244a71fd6aae",
-  "task": "P11 locked typed C12 imported BLAKE3 consumer implementation",
+  "branch": "feat/p12-c12-import-cli-v1",
+  "head": "aba2cf157b9b55f7006feda994fe3f4926adacf9",
+  "task": "P12 native CLI client for locked C12 import and BLAKE3 contracts",
   "completed": [
     "A: clean clone and checkpoint verified",
     "pipeline: checkpoint B operational memory and safe resume",
@@ -97,7 +97,10 @@
     "P11 C12 imported BLAKE3 consumer: exact single-use streaming implementation and targeted evidence complete",
     "feat(host): consume private imports for BLAKE3",
     "P11 exact-head Project pipeline, CodeQL and CodeRabbit passed; PR 19 CLEAN",
-    "docs(p11): record imported BLAKE3 consumer closure"
+    "docs(p11): record imported BLAKE3 consumer closure",
+    "Integration: PRs 12 through 19 merged sequentially; master aba2cf1 Project pipeline 7/7 and CodeQL 4/4 PASS",
+    "P12: native same-connection imported BLAKE3 CLI implemented, strict failure tests and isolated real-process proof PASS",
+    "feat(cli): compute BLAKE3 over private C12 imports"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -212,7 +215,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Keep PR 19 stacked on PR 18; do not merge protected branches or start MCP without explicit approval",
+  "next_action": "Verify P12 checkpoint CI and CodeRabbit; close when green. No master merge or MCP without separate authorization.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -226,8 +229,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:55:55.533360+00:00",
-      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
+      "date": "2026-10-13T16:46:52.714245+00:00",
+      "head": "aba2cf157b9b55f7006feda994fe3f4926adacf9"
     },
     {
       "command": [
@@ -240,16 +243,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:55:55.546302+00:00",
-      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
+      "date": "2026-10-13T16:46:52.771853+00:00",
+      "head": "aba2cf157b9b55f7006feda994fe3f4926adacf9"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:55:56.219766+00:00",
-      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
+      "date": "2026-10-13T16:46:55.748413+00:00",
+      "head": "aba2cf157b9b55f7006feda994fe3f4926adacf9"
     },
     {
       "command": [
@@ -260,13 +263,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T15:55:56.234681+00:00",
-      "head": "0201a9310639202440ff6779a31c244a71fd6aae"
+      "date": "2026-10-13T16:46:55.786800+00:00",
+      "head": "aba2cf157b9b55f7006feda994fe3f4926adacf9"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T15:56:02.418657+00:00",
-    "commit": "0201a9310639202440ff6779a31c244a71fd6aae",
+    "date": "2026-10-13T16:48:52.369404+00:00",
+    "commit": "aba2cf157b9b55f7006feda994fe3f4926adacf9",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -510,6 +513,20 @@
     "existing_async_contract": "PASS unchanged: exact imports.create/get/cancel 3/3 and 12/12 negative mutations",
     "approval": "PRODUCT_OWNER_APPROVED_2026_10_13",
     "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
+  },
+  "p12_c12_native_import_client": {
+    "baseline": "aba2cf157b9b55f7006feda994fe3f4926adacf9",
+    "evidence": "docs/evidence/p12-c12-native-import-client.md",
+    "scope": "Native client of approved imports.create/get and compute.submit_import; no daemon schema or authority change",
+    "command": "phoneboostctl compute blake3 --stdin < input.bin",
+    "component_tests": "PASS 43/43: pb-cli library 23, CLI 2, pb-web-bridge 18",
+    "clippy": "PASS pb-cli and pb-web-bridge all targets, no-deps, deny warnings",
+    "check_fast": "PASS",
+    "contract_checks": "PASS unchanged resource, async wire and consumer contracts",
+    "real_process_test": "PASS exact digest/local fallback, multi-chunk input, empty/oversized/pipe/path rejection and private spool cleanup",
+    "ci_result": "Consult containing checkpoint's GitHub checks; not yet run at checkpoint creation",
+    "physical_test": "NOT RUN; no Android/runtime behavior changed; no physical evidence promoted",
+    "status": "IMPLEMENTED_LOCAL_PASS_VERIFY_CONTAINING_COMMIT_CI"
   },
   "p11_c12_imported_blake3_consumer": {
     "baseline": "25772796dc2a8dfd0a49087d63c958b7993e6370",

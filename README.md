@@ -77,6 +77,30 @@ object, not Linux-addressable memory.
 - Produce evidence-backed performance and capacity measurements before making
   any such claim.
 
+### Hash a real input through the native client
+
+With the daemon running, redirect a regular file you own into the client:
+
+```sh
+phoneboostctl compute blake3 --stdin < input.bin
+```
+
+The client passes the already-open descriptor through the approved private C12
+import mechanism, waits for readiness, then requests BLAKE3 on the same
+connection. Inputs must contain 1 byte to 128 MiB. Pipes, terminals and path
+arguments are rejected; there is no caller-selected remote destination.
+The daemon validates ownership and descriptor type and makes the placement
+decision through the existing authority path.
+
+The result reports the digest and execution source. Exit 0 means proven remote
+success; exit 3 means a completed local fallback (the digest is still valid);
+exit 1 means failure or an unknown outcome; exit 2 means invalid command syntax.
+A missing terminal response is reported as unknown and is never automatically
+retried. The client has separate 60-second readiness and response bounds. The
+existing `compute blake3 c10-abc-v1` demonstration remains available unchanged.
+
+This provides a typed real-input compute path, not a measured speedup claim.
+
 ## Build and test
 
 Rust 1.98 is pinned by `rust-toolchain.toml`:
