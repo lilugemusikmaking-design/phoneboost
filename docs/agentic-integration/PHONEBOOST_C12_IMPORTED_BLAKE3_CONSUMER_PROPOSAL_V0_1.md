@@ -1,6 +1,6 @@
 # PHONEBOOST — C12 IMPORTED BLAKE3 CONSUMER PROPOSAL V0.1
 
-**Status:** PROPOSAL — PRODUCT OWNER APPROVAL REQUIRED
+**Status:** LOCKED — PRODUCT OWNER APPROVED
 
 **Date:** 2026-10-13
 
@@ -8,8 +8,9 @@
 
 ## 0. Purpose and stop condition
 
-This document proposes the first typed consumer for a `READY` C12 v1 import.
-It does not authorize product implementation, change an existing locked method,
+This document locks the first typed consumer for a `READY` C12 v1 import.
+It authorizes only the bounded product implementation described here and does
+not authorize changing an existing locked method,
 add generic execution, add payload read/download, add MCP, or weaken C11 and the
 existing C07-C10/ResourceGuard authority path.
 
@@ -17,9 +18,12 @@ The proposal is intentionally a new method rather than a second parameter shape
 for `compute.submit`: the existing `compute.submit` BLAKE3 fixture profile is
 locked to exactly `{"op_id":"pb.native.blake3/1","fixture":"c10-abc-v1"}`.
 
-The exact candidate contract is
-`contracts/phoneboost-c12-imported-blake3-consumer-v1.json`. Approval must name
-this proposal or its exact method before implementation may start.
+The exact locked contract is
+`contracts/phoneboost-c12-imported-blake3-consumer-v1.json`.
+
+On 2026-10-13, the product owner explicitly approved it with: “J’approuve le
+schéma exact `compute.submit_import` de la PR #18.” Implementation may proceed
+within this document's boundaries.
 
 ## 1. Exact request
 
@@ -163,8 +167,8 @@ reverse a possibly completed remote computation.
 
 ## 8. Approval effect
 
-Approval of this exact proposal would authorize a separate bounded product
-increment plus the negative tests above. It would not authorize MCP, another
+Approval of this exact proposal authorizes a separate bounded product increment
+plus the negative tests above. It does not authorize MCP, another
 provider, arbitrary operation identifiers, batching, paths, reconnectable
 handles, C12 jobs, public payload access, or a default-branch merge.
 

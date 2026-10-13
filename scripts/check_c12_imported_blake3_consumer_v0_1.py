@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the proposed first typed C12 import consumer and stop conditions."""
+"""Validate the locked first typed C12 import consumer and stop conditions."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ def validate(candidate: dict[str, Any]) -> None:
     )
     if candidate["contract"] != "phoneboost-c12-imported-blake3-consumer-v1":
         raise ValueError("contract identifier")
-    if candidate["status"] != "proposal_product_owner_approval_required" or candidate["api"] != 1:
-        raise ValueError("proposal status or API")
+    if candidate["status"] != "locked_product_owner_approved" or candidate["api"] != 1:
+        raise ValueError("locked status or API")
 
     method = candidate["method"]
     exact_keys(
@@ -108,8 +108,8 @@ def validate(candidate: dict[str, Any]) -> None:
     }:
         raise ValueError("authority boundary")
     if candidate["change_control"] != {
-        "implementation_authorized": False,
-        "product_owner_approval_required": True,
+        "implementation_authorized": True,
+        "product_owner_approval_required": False,
     }:
         raise ValueError("stop condition")
 
@@ -131,7 +131,7 @@ def negative_oracles(candidate: dict[str, Any]) -> None:
         ("generic execution", lambda item: item["authority"].update(generic_execution_method=True)),
         ("public read", lambda item: item["authority"].update(public_read_or_download_method=True)),
         ("MCP", lambda item: item["authority"].update(mcp_present=True)),
-        ("implementation", lambda item: item["change_control"].update(implementation_authorized=True)),
+        ("approval revoked", lambda item: item["change_control"].update(implementation_authorized=False)),
     ]
     for label, mutate in mutations:
         changed = copy.deepcopy(candidate)
@@ -157,11 +157,11 @@ def main() -> None:
     validate(candidate)
     negative_oracles(candidate)
     validate_existing_boundary()
-    print("C12 IMPORTED BLAKE3 consumer proposal PASS")
-    print("METHOD exact typed candidate 1/1 PASS")
+    print("C12 IMPORTED BLAKE3 consumer locked contract PASS")
+    print("METHOD exact typed contract 1/1 PASS")
     print("LIFECYCLE/streaming/authority boundary PASS")
     print("NEGATIVE oracles 16/16 PASS")
-    print("IMPLEMENTATION unauthorized and MCP absent PASS")
+    print("IMPLEMENTATION authorized and MCP absent PASS")
 
 
 if __name__ == "__main__":

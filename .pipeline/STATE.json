@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "branch": "docs/c12-imported-blake3-consumer-v0-1",
-  "head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6",
+  "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
   "task": "P11 exact typed C12 imported BLAKE3 consumer proposal",
   "completed": [
     "A: clean clone and checkpoint verified",
@@ -92,7 +92,8 @@
     "P10 C12 async runtime exact-head CI, CodeQL and CodeRabbit passed; PR 17 CLEAN",
     "docs(p10): record async import runtime closure",
     "P11 C12 imported BLAKE3 consumer exact proposal and deterministic negative contract prepared without implementation",
-    "docs: propose typed C12 imported BLAKE3 consumer"
+    "docs: propose typed C12 imported BLAKE3 consumer",
+    "docs: lock typed C12 imported BLAKE3 consumer"
   ],
   "verified": [
     "Official checkpoint HEAD exact match",
@@ -202,10 +203,8 @@
     "P2 Galaxy A15 remote success/loss/fallback/reconnect proof",
     "Android durable worker one-hour physical screen-off proof"
   ],
-  "blockers": [
-    "A separately reviewed and locked typed C12 consumer is required before a READY import may feed compute; MCP implementation remains unauthorized"
-  ],
-  "next_action": "Obtain explicit product-owner approval of the exact compute.submit_import proposal before any implementation",
+  "blockers": [],
+  "next_action": "Implement the locked compute.submit_import consumer without MCP",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -219,8 +218,8 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T06:00:29.217264+00:00",
-      "head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6"
+      "date": "2026-10-13T15:34:44.681192+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
@@ -233,16 +232,16 @@
         "-v"
       ],
       "returncode": 0,
-      "date": "2026-10-13T06:00:29.229347+00:00",
-      "head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6"
+      "date": "2026-10-13T15:34:44.698449+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
         "actionlint"
       ],
       "returncode": 0,
-      "date": "2026-10-13T06:00:30.260063+00:00",
-      "head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6"
+      "date": "2026-10-13T15:34:45.728195+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     },
     {
       "command": [
@@ -253,13 +252,13 @@
         "--check"
       ],
       "returncode": 0,
-      "date": "2026-10-13T06:00:30.272480+00:00",
-      "head": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6"
+      "date": "2026-10-13T15:34:45.802737+00:00",
+      "head": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af"
     }
   ],
   "checkpoint": {
-    "date": "2026-10-13T06:00:47.242943+00:00",
-    "commit": "848efccbcbc68aca1824e1ffcda5f7df2fc4cae6",
+    "date": "2026-10-13T15:34:55.444219+00:00",
+    "commit": "56549ddfae3ac6ed5c8b82628ab0584c3710a8af",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",
@@ -501,7 +500,7 @@
     "scope": "Exact compute.submit_import BLAKE3 candidate over one READY private import; no product implementation, generic execution, public payload access or MCP",
     "contract_check": "PASS: exact typed method 1/1, lifecycle/streaming/authority boundary and 16/16 negative mutations",
     "existing_async_contract": "PASS unchanged: exact imports.create/get/cancel 3/3 and 12/12 negative mutations",
-    "approval": "REQUIRED_BEFORE_IMPLEMENTATION",
-    "status": "PROPOSAL_GREEN_AWAITING_PRODUCT_OWNER_APPROVAL"
+    "approval": "PRODUCT_OWNER_APPROVED_2026_10_13",
+    "status": "LOCKED_IMPLEMENTATION_AUTHORIZED"
   }
 }

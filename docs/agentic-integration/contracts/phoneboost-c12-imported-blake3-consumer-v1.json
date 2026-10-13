@@ -1,6 +1,6 @@
 {
   "contract": "phoneboost-c12-imported-blake3-consumer-v1",
-  "status": "proposal_product_owner_approval_required",
+  "status": "locked_product_owner_approved",
   "api": 1,
   "method": {
     "name": "compute.submit_import",
@@ -73,7 +73,7 @@
     "mcp_present": false
   },
   "change_control": {
-    "implementation_authorized": false,
-    "product_owner_approval_required": true
+    "implementation_authorized": true,
+    "product_owner_approval_required": false
   }
 }
