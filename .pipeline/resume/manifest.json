@@ -1,9 +1,9 @@
 {
-  "next_action": "Require PR exact-head Project pipeline and CodeQL green; keep SPEED/BALANCED, C12 ingress and MCP blocked",
+  "next_action": "Create separate C12 ingress implementation branch; implement locked contract and required negative tests; do not add MCP",
   "writer": "Codex",
-  "parent_head": "3d81ec56a875659e8d597ae616a1392069fab548",
-  "date": "2026-10-11T19:48:20.842758+00:00",
-  "branch": "feat/p8-c13-performance-profile",
+  "parent_head": "67e92524d684456e9eda2f6e67c26a55749c11d9",
+  "date": "2026-10-12T19:15:42.017897+00:00",
+  "branch": "docs/c12-import-resource-contract-v0-1",
   "push": "verify remote on resume",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }

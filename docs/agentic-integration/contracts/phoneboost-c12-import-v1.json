@@ -1,0 +1,80 @@
+{
+  "contract": "phoneboost-c12-import-v1",
+  "status": "locked_product_owner_approved",
+  "transport": {
+    "control": "private_same_uid_af_unix",
+    "descriptor_transfer": "scm_rights",
+    "descriptors_per_request": 1,
+    "caller_path_allowed": false
+  },
+  "source": {
+    "allowed_types": [
+      "owned_regular_file",
+      "sealed_memfd"
+    ],
+    "required_memfd_seals": [
+      "seal",
+      "shrink",
+      "grow",
+      "write"
+    ],
+    "copy_from_offset": 0,
+    "copy_chunk_bytes": 65536
+  },
+  "limits": {
+    "maximum_object_bytes": 134217728,
+    "maximum_objects_per_requester": 4,
+    "maximum_objects_per_uid": 8,
+    "maximum_aggregate_bytes_per_uid": 268435456,
+    "maximum_receiving_per_requester": 1,
+    "maximum_receiving_per_uid": 2,
+    "receiving_timeout_ms": 60000,
+    "ready_ttl_ms": 300000,
+    "cancellation_ack_deadline_ms": 5000,
+    "terminal_tombstone_ttl_ms": 300000,
+    "maximum_tombstones_per_uid": 256
+  },
+  "handle": {
+    "entropy_bits": 256,
+    "encoding": "lowercase_hex",
+    "bound_to": [
+      "authenticated_local_connection",
+      "peer_uid",
+      "daemon_incarnation"
+    ],
+    "logged": false,
+    "reused": false
+  },
+  "lifecycle": {
+    "states": [
+      "receiving",
+      "ready",
+      "consumed",
+      "cancelled",
+      "expired"
+    ],
+    "ready_expiry_extended_by_use": false,
+    "disconnect_receiving": "cancel_and_delete",
+    "disconnect_ready": "cancel_and_delete",
+    "daemon_restart": "delete_all_receiving_and_ready",
+    "terminal_resurrection_allowed": false,
+    "cancellation_success_requires_cleanup": true,
+    "ambiguous_cleanup_releases_quota": false
+  },
+  "storage": {
+    "class": "daemon_owned_disk_backed_volatile_import",
+    "root": "xdg_cache_home_phoneboost_import_v1",
+    "directory_mode_octal": "0700",
+    "object_mode_octal": "0600",
+    "symlinks_allowed": false,
+    "payload_logged": false,
+    "payload_digest_logged": false
+  },
+  "authority": {
+    "is_remote_buffer": false,
+    "grants_remote_admission": false,
+    "bypasses_c11": false,
+    "bypasses_resource_guard": false,
+    "adapter_is_requester_only": true
+  }
+}
