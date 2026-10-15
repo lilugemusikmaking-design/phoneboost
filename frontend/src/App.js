@@ -3,6 +3,8 @@ import axios from "axios";
 import "@/App.css";
 import Dashboard from "@/pages/Dashboard";
 import useAutoUsePreference from "@/useAutoUsePreference";
+import useFileCompute from "@/useFileCompute";
+import FileComputePanel from "@/FileComputePanel";
 import { safeRecordedPayloads } from "@/recordedApi";
 import {
   consumeBridgeToken,
@@ -42,6 +44,7 @@ export default function App() {
   const [arch, setArch] = useState(RECORDED_ARCHITECTURE);
   const [fixtures, setFixtures] = useState(RECORDED_FIXTURES);
   const [compute, setCompute] = useState({ running: false, result: null, error: null });
+  const fileCompute = useFileCompute(BRIDGE_CAPABILITY, preference, compute.running);
 
   useEffect(() => {
     if (!recordedApiBase) return undefined;
@@ -126,7 +129,7 @@ export default function App() {
   }, [language]);
 
   const runCompute = useCallback(async () => {
-    if (!BRIDGE_CAPABILITY || !preference.fresh || preference.pending || preference.enabled !== true) return;
+    if (!BRIDGE_CAPABILITY || fileCompute.running || compute.running || !preference.fresh || preference.pending || preference.enabled !== true) return;
     setCompute({ running: true, result: null, error: null });
     try {
       const response = await axios.post(
@@ -143,7 +146,7 @@ export default function App() {
     } catch {
       setCompute({ running: false, result: null, error: COMPUTE_ACTION_UNAVAILABLE });
     }
-  }, [preference]);
+  }, [preference, fileCompute.running, compute.running]);
 
   const api = useMemo(() => ({ base: recordedApiBase }), [recordedApiBase]);
 
@@ -167,6 +170,8 @@ export default function App() {
       arch={arch}
       fixtures={fixtures}
       compute={compute}
+      fileBusy={fileCompute.running}
+      fileControl={BRIDGE_CAPABILITY ? <FileComputePanel task={fileCompute} preference={preference} otherRunning={compute.running} language={language} /> : null}
       preference={preference}
       onAutoUse={changeAutoUse}
       onCompute={runCompute}

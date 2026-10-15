@@ -5,6 +5,8 @@ Date: 2026-09-05 Europe/Paris.
 
 P13 extension approved 2026-10-13: exact durable preference/control behavior is
 locked by `docs/protocol/PHONEBOOST_DESKTOP_AUTO_USE_CONTROL_PROPOSAL_V0_1.md`.
+P14 extension approved 2026-10-15: bounded selected-file ingress is locked by
+`docs/protocol/PHONEBOOST_DESKTOP_FILE_COMPUTE_PROPOSAL_V0_1.md`.
 
 ## Authority and scope
 
@@ -14,6 +16,8 @@ typed `pb-cli` client for C12 `system.status` and the locked synchronous
 `compute.submit` profile for `pb.native.blake3/1` with fixture `c10-abc-v1`.
 P13 additionally consumes only typed C12 `auto_use.get/set` for the daemon-owned
 local scheduling preference. It does not reinterpret Android lease methods.
+P14 also consumes the existing typed private-import BLAKE3 client on one
+connection; it adds no C12 method or provider.
 
 The bridge itself does not change Noise, PBMUX, C07, C08, C09, C10, Android,
 JNI, `ResourceGuard`, or worker state. The separate locked P2 C12 profile adds
@@ -42,19 +46,29 @@ The only native-facing routes are:
 ```text
 GET  /bridge/v1/snapshot
 POST /bridge/v1/compute/blake3
+POST /bridge/v1/compute/blake3-file
 GET  /bridge/v1/auto-use
 POST /bridge/v1/auto-use
 ```
 
-The compute POST body is exactly:
+The demonstration compute POST body is exactly:
 
 ```json
 {"fixture":"c10-abc-v1"}
 ```
 
 Missing, extra, mistyped, unknown, or non-object values are rejected before any
-native call. No browser-supplied C12 method, operation identifier, path, input
-bytes, provider, endpoint, lease, resource parameter, or command is accepted.
+native call. No browser-supplied C12 method, operation identifier, path, provider,
+endpoint, lease, resource parameter, or command is accepted. Input bytes are
+accepted only by the separate approved P14 route, never the demonstration body.
+
+The file route accepts raw application/octet-stream bytes with one Content-Length
+from 1 to 134217728. Headers/authentication and the compute lane are checked before
+bulk receive. Constant-size buffers stream into one private sealed memfd, passed
+to the existing typed import client. No filename/path/upload handle is exposed.
+The exact seven-field imported result preserves native source and reason; it
+does not overwrite the fixture-specific snapshot history. See P14 for errors,
+temporary-memory tradeoffs and ambiguous-outcome semantics.
 
 The preference GET has an empty body; its POST accepts exactly
 `{"enabled":boolean}` with no duplicate keys. The result has exactly `enabled`
@@ -67,13 +81,19 @@ the closed HTTP error map and loss-of-response reconciliation.
   control/status call. No request queue; saturation returns 503 `{"error":"BUSY"}`.
   Each handler owns its native client; OFF does not wait for compute to finish.
 - HTTP headers are bounded to 8 KiB and 32 fields.
-- API request bodies are bounded to 1 KiB.
+- API request bodies are bounded to 1 KiB, except the authenticated P14 file route
+  whose payload is streamed with a 128 MiB ceiling, never buffered into a Vec.
 - Native responses and API responses are bounded to 64 KiB.
 - Static assets are restricted to the resolved frontend build root and 8 MiB.
 - The build root is fixed to `frontend/build`; there is no caller-selected path.
   Static responses are limited to the explicit HTML, CSS, JavaScript, JSON,
   SVG, PNG, ICO, WOFF, and WOFF2 asset types used by the production bundle.
-- Header/body reads and writes have five-second socket timeouts.
+- Header/body reads and writes have five-second idle bounds. Absolute phase
+  deadlines prevent slow trickles: five seconds for headers, small bodies and
+  response writes, 30 seconds for P14 payload receive. P14 native import readiness
+  and terminal reply each retain their separate 60-second deadlines.
+- Native connections use nonblocking AF_UNIX connect: full backlog fails
+  unavailable instead of waiting before I/O deadlines. No automatic replay.
 - Native status has a two-second I/O timeout; the locked compute action has the
   existing bounded 60-second I/O timeout.
 - Native preference control uses a fresh connection with an absolute five-second

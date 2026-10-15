@@ -149,6 +149,56 @@ def main():
                 assert http('POST', {'enabled': 1}) == (400, dict(error='BAD_REQUEST'))
                 assert http('POST', {'enabled': True}, authorized=False)[0] == 401
                 assert http('GET') == (200, dict(enabled=False, persistence='SAVED'))
+                # P14 real file path: raw HTTP bytes -> sealed memfd -> existing
+                # C12 private import -> truthful native fallback. OFF is held
+                # explicitly so no physical phone evidence is implied.
+                def file_http(payload, authorized=True, content_type='application/octet-stream'):
+                    headers = {'Origin': origin, 'Content-Type': content_type}
+                    if authorized:
+                        headers['X-PhoneBoost-Bridge-Token'] = token
+                    request = Request(origin + '/bridge/v1/compute/blake3-file',
+                                      method='POST', headers=headers, data=payload)
+                    try:
+                        response = urlopen(request, timeout=15)
+                    except HTTPError as error:
+                        response = error
+                    with response:
+                        return response.status, json.loads(response.read(65537))
+
+                before_history = None
+                snapshot_request = Request(origin + '/bridge/v1/snapshot',
+                                           headers={'X-PhoneBoost-Bridge-Token': token})
+                with urlopen(snapshot_request, timeout=5) as response:
+                    before_history = json.load(response)['last_execution']
+                for payload in (b'abc', bytes(range(256)) * 4097):
+                    reference = root / 'p14-reference.bin'
+                    reference.write_bytes(payload)
+                    with reference.open('rb') as source:
+                        native = subprocess.run([client_bin, 'compute', 'blake3', '--stdin'],
+                                                stdin=source, env=env, text=True, capture_output=True,
+                                                timeout=15, check=False)
+                    assert native.returncode == 3
+                    digest = next(line.split(': ', 1)[1] for line in native.stdout.splitlines()
+                                  if line.startswith('BLAKE3 digest: '))
+                    status, result = file_http(payload)
+                    assert status == 200
+                    assert result == dict(state='COMPLETED', op_id='pb.native.blake3/1',
+                                          input_kind='PRIVATE_IMPORT_V1', input_bytes=len(payload),
+                                          digest_blake3_hex=digest,
+                                          execution_source='LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE',
+                                          auto_use_reason='OFF')
+                    spool = root / 'cache/phoneboost/import/v1'
+                    deadline = time.monotonic() + 5
+                    while list(spool.iterdir()):
+                        assert time.monotonic() < deadline, 'P14 private import cleanup not confirmed'
+                        time.sleep(0.025)
+                assert file_http(b'', content_type='application/octet-stream') == (400, dict(error='BAD_REQUEST'))
+                assert file_http(b'abc', authorized=False)[0] == 401
+                assert file_http(b'abc', content_type='application/json')[0] == 415
+                with urlopen(snapshot_request, timeout=5) as response:
+                    assert json.load(response)['last_execution'] == before_history
+                assert http('GET') == (200, dict(enabled=False, persistence='SAVED'))
+                print('PASS P14 real HTTP file -> sealed import -> exact native digest and local fallback; fixture history unchanged')
                 assert http('POST', {'enabled': True}) == (200, dict(enabled=True, persistence='SAVED'))
                 print('PASS real authenticated HTTP ON/OFF controls daemon; malformed/unauthorized requests do not mutate')
             finally:
