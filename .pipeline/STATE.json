@@ -1,10 +1,26 @@
 {
   "schema_version": 1,
-  "branch": "feat/p14-desktop-file-compute",
-  "head": "b9b6c30da420ac5cb0d02516f98c91450f23d01e",
-  "task": "P14 implemented and locally validated; publish exact tree for CI, no master merge authorized",
+  "branch": "fix/linux-install-cargo-target-dir",
+  "head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c",
+  "task": "Fix installer artifact selection with shared Cargo target; P14 PR23 merged",
+  "linux_install_target_fix": {
+    "status": "LOCAL_VALIDATION_PASS_PUBLICATION_REQUIRES_EXPLICIT_EXPORT_APPROVAL",
+    "publication_blocker": "Auto-review rejected native checkpoint because it implicitly pushes new installer payload; no checkpoint command executed. Local-only checkpoint retains native lock and staged secret scan. Do not export via another tool without explicit approval.",
+    "current_check_results": ".pipeline/resume/check-results.json (last_tests below remains historical P14 record)",
+    "baseline_remote": "125f5417326b28947e1b925f758d991679632fa1",
+    "baseline_local": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c",
+    "baseline_content": "P14 local/remote tree identical; connector comparison of P14 remote head to merge has zero changed files. Local fetch unavailable, history preserved.",
+    "scope": "Installer build and copy use one explicit Cargo target directory; no runtime/protocol/installed-layout changes",
+    "regression": "Before fix: default test passed, 3/4 regression tests failed, including stale binary false success. After fix: 4/4 pass.",
+    "validation": "PASS shell syntax, git diff --check, native check-fast (16 tests, actionlint, fmt), pre-commit-fast. Fresh locked/offline release build of all 3 production binaries PASS (1m27s). Existing real-artifact install/update/failure-rollback/uninstall test PASS with shared CARGO_TARGET_DIR and previously validated production frontend.",
+    "limits": "Packaging fixtures do not claim runtime/phone proof. No actual user installation updated. No master-specific CI claimed. Remote CI for this fix pending publication.",
+    "physical": "NOT RUN; isolated packaging scope"
+  },
   "p14_desktop_file_compute": {
-    "status": "IMPLEMENTED_LOCAL_PASS_REMOTE_CI_PENDING",
+    "status": "MERGED_PR23_PR_CI_PASS",
+    "merge_sha": "125f5417326b28947e1b925f758d991679632fa1",
+    "merge_approval": "User explicitly granted authority in response to PR23 merge request; merged with exact head guard",
+    "remote_ci": "PASS exact remote head 98a169b7bbbfc5cfe5f8a35faf272499eae2457f: Project pipeline 38760049831 7/7; CodeQL 38760049789 4/4",
     "approval": "2026-10-15 user: vas y oui enchaines",
     "baseline": "800070285fc939016fcf4af766aab60fd2284e36",
     "proposal": "docs/protocol/PHONEBOOST_DESKTOP_FILE_COMPUTE_PROPOSAL_V0_1.md",
@@ -13,8 +29,8 @@
     "implementation_validation": "PASS: pb-cli 29 library + 2 binary tests; bridge 33 tests; frontend 347 tests in 8 suites; production frontend build; Playwright 13/13 single-worker; targeted Clippy deny warnings; pre-commit-fast",
     "real_process_proof": "PASS scripts/test_auto_use_control_cli.py extended P14 raw HTTP -> sealed memfd -> isolated daemon -> native digest/local fallback + confirmed private spool cleanup; original C12 import regression PASS",
     "production_browser_proof": "PASS headless Chromium on production bundle + real bridge + isolated daemon: abc file exact digest and truthful unpaired local fallback; actual CSS and screenshots verified at 1440 and 390 px. Not Android proof.",
-    "limits": "Physical remote-file phone proof NOT RUN; no speedup claim; Git HTTPS and API unreachable from terminal, connector alternative under evaluation; no CI claimed on this implementation yet",
-    "next_action": "Publish validated tree for exact-head CI; only after CI green request merge approval; do not repeat schema approval",
+    "limits": "Physical remote-file phone proof NOT RUN; no speedup claim; terminal Git unavailable, connector publication succeeded. Master-specific CI NOT RUN (pipeline does not trigger on master push); no code diff from validated PR head.",
+    "next_action": "Validate installed P14 real-file user journey when device and operator available; do not repeat unchanged local or PR tests",
     "physical_test": "NOT RUN"
   },
   "p13_auto_use_control": {
@@ -246,7 +262,7 @@
     "Android durable worker one-hour physical screen-off proof"
   ],
   "blockers": [],
-  "next_action": "Publish identical validated tree through GitHub connector if terminal network remains unavailable; verify remote CI, then request merge approval. P14 contract already approved.",
+  "next_action": "Ask explicit authorization to publish installer fix source/tests/checkpoint to lilugemusikmaking-design/phoneboost. Do not bypass export rejection. After approval publish exact tree on separate review branch with parent 125f5417326b28947e1b925f758d991679632fa1 and verify CI before merge. No physical proof claimed.",
   "writer": "Codex",
   "reviewers": [
     "CodeRabbit advisory when available",
@@ -299,8 +315,8 @@
     }
   ],
   "checkpoint": {
-    "date": "2026-10-15T15:12:21.840030+00:00",
-    "commit": "b9b6c30da420ac5cb0d02516f98c91450f23d01e",
+    "date": "2026-10-15T15:40:32Z",
+    "commit": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "software_proof": "P6 software PASS: final corrected check-full PASS 14/14 including nextest 377/377 and mandatory workspace tests; exact-head GitHub Actions run 38152665185 PASS 7/7 at 5b31b89f26694ff04402591aa22dd045d44cf117.",

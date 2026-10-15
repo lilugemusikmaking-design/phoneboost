@@ -165,6 +165,12 @@ desktop-menu entry for the current Linux user with:
 scripts/install_phoneboost_control_center_user.sh
 ```
 
+The installer builds and copies from `CARGO_TARGET_DIR` when set (relative paths
+are resolved from the checkout), otherwise from `target`. The same selection
+applies to `--no-build` and the installation test; a missing selected binary is
+an error, never a fallback to another cache. `--no-build` trusts existing local
+artifacts and does not establish their freshness.
+
 This user-local installation does not configure autostart or a background
 service. The menu entry opens a terminal and prints a fresh one-time loopback
 URL. Remove only the installed application payload with
