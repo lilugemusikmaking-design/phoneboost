@@ -8,6 +8,7 @@ fail() {
 
 repository_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)"
 cd "$repository_root"
+release_dir="$(realpath -m -- "${CARGO_TARGET_DIR:-target}")/release"
 
 temporary_root="$(mktemp -d)"
 trap 'rm -rf -- "$temporary_root"' EXIT
@@ -34,9 +35,9 @@ for relative in \
     [[ -e "$test_prefix/$relative" ]] || fail "installed file missing: $relative"
 done
 
-cmp target/release/phoneboostctl "$test_prefix/share/phoneboost/libexec/phoneboostctl"
-cmp target/release/phoneboostd "$test_prefix/share/phoneboost/libexec/phoneboostd"
-cmp target/release/phoneboost-web-bridge \
+cmp "$release_dir/phoneboostctl" "$test_prefix/share/phoneboost/libexec/phoneboostctl"
+cmp "$release_dir/phoneboostd" "$test_prefix/share/phoneboost/libexec/phoneboostd"
+cmp "$release_dir/phoneboost-web-bridge" \
     "$test_prefix/share/phoneboost/libexec/phoneboost-web-bridge"
 cmp frontend/build/index.html "$test_prefix/share/phoneboost/frontend/build/index.html"
 

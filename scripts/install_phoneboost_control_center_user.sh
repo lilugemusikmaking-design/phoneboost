@@ -37,6 +37,12 @@ install_prefix="$(realpath -m -- "$install_prefix")" \
 [[ "$install_prefix" != "/" && "$install_prefix" != "$canonical_home" ]] \
     || fail "installation prefix is too broad"
 
+# Resolve once after changing to the checkout. Build and copy must select the
+# same artifacts, never silently fall back to an older target/release payload.
+cargo_target_dir="$(realpath -m -- "${CARGO_TARGET_DIR:-target}")" \
+    || fail "Cargo target directory cannot be resolved"
+release_dir="$cargo_target_dir/release"
+
 rust_198_bin="$HOME/.rustup/toolchains/1.98.0-x86_64-unknown-linux-gnu/bin"
 if [[ "$build" == true ]]; then
     [[ -x "$rust_198_bin/cargo" ]] \
@@ -48,14 +54,14 @@ if [[ "$build" == true ]]; then
 
     printf '%s\n' 'Building the checked-in production frontend and PhoneBoost binaries...'
     REACT_APP_BACKEND_URL= yarn --cwd frontend build
-    cargo build --release \
+    cargo build --release --target-dir "$cargo_target_dir" \
         -p pb-host --bin phoneboostd \
         -p pb-cli --bin phoneboostctl \
         -p pb-web-bridge --bin phoneboost-web-bridge
 fi
 
 for binary in phoneboostctl phoneboostd phoneboost-web-bridge; do
-    [[ -x "target/release/$binary" ]] \
+    [[ -x "$release_dir/$binary" ]] \
         || fail "production binary is unavailable: $binary"
 done
 [[ -f frontend/build/index.html ]] || fail "production frontend build is unavailable"
@@ -125,9 +131,9 @@ mkdir -p -- \
     "$staging_root/libexec" \
     "$staging_root/scripts" \
     "$staging_root/frontend/build"
-install -m 0755 target/release/phoneboostctl "$staging_root/libexec/phoneboostctl"
-install -m 0755 target/release/phoneboostd "$staging_root/libexec/phoneboostd"
-install -m 0755 target/release/phoneboost-web-bridge \
+install -m 0755 "$release_dir/phoneboostctl" "$staging_root/libexec/phoneboostctl"
+install -m 0755 "$release_dir/phoneboostd" "$staging_root/libexec/phoneboostd"
+install -m 0755 "$release_dir/phoneboost-web-bridge" \
     "$staging_root/libexec/phoneboost-web-bridge"
 install -m 0755 scripts/run_phoneboost_control_center.sh \
     "$staging_root/scripts/run_phoneboost_control_center.sh"

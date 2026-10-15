@@ -1,9 +1,9 @@
 {
-  "next_action": "Publish identical validated tree through GitHub connector if terminal network remains unavailable; verify remote CI, then request merge approval. P14 contract already approved.",
+  "next_action": "Obtain explicit export approval for installer fix, then publish exact tree via connector with parent 125f5417326b28947e1b925f758d991679632fa1 and verify CI. Do not retry rejected export without approval.",
   "writer": "Codex",
-  "parent_head": "b9b6c30da420ac5cb0d02516f98c91450f23d01e",
-  "date": "2026-10-15T15:12:21.844417+00:00",
-  "branch": "feat/p14-desktop-file-compute",
-  "push": "verify remote on resume",
+  "parent_head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c",
+  "date": "2026-10-15T15:40:32Z",
+  "branch": "fix/linux-install-cargo-target-dir",
+  "push": "NOT RUN: new payload export rejected; local-only checkpoint",
   "physical_proof": "P6 Galaxy A15 PASS on 5b31b89f26694ff04402591aa22dd045d44cf117: fresh authenticated capacity metrics produced REMOTE_SUCCESS; after 6.59 seconds of bounded process suspension the live authenticated/active-lease path produced LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE with WORKER_UNHEALTHY; resumed metrics restored REMOTE_SUCCESS. No ADB forward/reverse tunnel was present."
 }
