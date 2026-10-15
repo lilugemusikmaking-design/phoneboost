@@ -4,7 +4,6 @@ use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::time::{Duration, Instant};
 
-use rustix::net::{AddressFamily, SocketAddrUnix, SocketFlags, SocketType, connect, socket_with};
 use serde_json::{Value, json};
 
 use crate::{
@@ -101,19 +100,7 @@ fn call(enabled: Option<bool>) -> Result<AutoUseView, AutoUseError> {
         .map_err(|_| AutoUseError::Unavailable)?;
     // Nonblocking AF_UNIX connect cannot stall indefinitely on a full backlog.
     // A full queue is unavailable, not a reason to retry a mutation.
-    let fd = socket_with(
-        AddressFamily::UNIX,
-        SocketType::STREAM,
-        SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
-        None,
-    )
-    .map_err(|_| AutoUseError::Unavailable)?;
-    let address = SocketAddrUnix::new(&path).map_err(|_| AutoUseError::Unavailable)?;
-    connect(&fd, &address).map_err(|_| AutoUseError::Unavailable)?;
-    let mut stream = UnixStream::from(fd);
-    stream
-        .set_nonblocking(false)
-        .map_err(|_| AutoUseError::Unavailable)?;
+    let mut stream = crate::connect_nonblocking(&path).map_err(|_| AutoUseError::Unavailable)?;
     exchange(&mut stream, enabled, deadline)
 }
 

@@ -163,3 +163,17 @@ export function normalizeComputeResult(value, now = Date.now()) {
     now - observed <= 3000;
   return valid ? value : null;
 }
+
+export const FILE_INPUT_LIMIT = 134217728;
+export function normalizeFileResult(value, expectedBytes) {
+  const keys = ["state", "op_id", "input_kind", "input_bytes", "digest_blake3_hex", "execution_source", "auto_use_reason"];
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).length !== keys.length || !keys.every((key) => Object.prototype.hasOwnProperty.call(value, key)) ||
+      value.state !== "COMPLETED" || value.op_id !== "pb.native.blake3/1" || value.input_kind !== "PRIVATE_IMPORT_V1" ||
+      !Number.isSafeInteger(expectedBytes) || expectedBytes < 1 || expectedBytes > FILE_INPUT_LIMIT ||
+      value.input_bytes !== expectedBytes || typeof value.digest_blake3_hex !== "string" ||
+      !/^[0-9a-f]{64}$/.test(value.digest_blake3_hex) || !EXECUTION_SOURCES.has(value.execution_source) ||
+      !AUTO_USE_REASONS.has(value.auto_use_reason) ||
+      (value.execution_source === "REMOTE_SUCCESS" && value.auto_use_reason !== "READY")) return null;
+  return value;
+}

@@ -43,6 +43,42 @@ test("opens the Control Center without page errors", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "PhoneBoost Control Center" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
   expect(errors).toEqual([]);
+  await expect(page.getByTestId("file-compute-panel")).toHaveCount(0);
+});
+
+test("selected file sends raw bytes without filename and shows native fallback", async ({ page }, testInfo) => {
+  let calls = 0;
+  await page.route("**/bridge/v1/compute/blake3-file", async (route) => {
+    calls += 1;
+    expect(route.request().postDataBuffer().equals(Buffer.from("abc"))).toBe(true);
+    expect(route.request().headers()["content-type"]).toBe("application/octet-stream");
+    expect(route.request().headers()["x-phoneboost-bridge-token"]).toBe(TOKEN);
+    await route.fulfill({ json: { state: "COMPLETED", op_id: "pb.native.blake3/1", input_kind: "PRIVATE_IMPORT_V1",
+      input_bytes: 3, digest_blake3_hex: "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85",
+      execution_source: "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE", auto_use_reason: "NO_DEVICE" } });
+  });
+  await openWithRuntime(page, runtime());
+  await page.getByTestId("file-compute-input").setInputFiles({ name: "private-name.txt", mimeType: "text/plain", buffer: Buffer.from("abc") });
+  await page.getByTestId("run-file-compute").click();
+  await expect(page.getByTestId("file-compute-result")).toContainText("Fallback local confirmé");
+  await expect(page.getByTestId("file-compute-result")).not.toContainText("REMOTE_SUCCESS");
+  await page.getByTestId("file-compute-panel").screenshot({ path: testInfo.outputPath("file-compute-panel.png") });
+  await page.getByTestId("file-compute-input").setInputFiles({ name: "other.txt", mimeType: "text/plain", buffer: Buffer.from("other") });
+  await expect(page.getByTestId("file-compute-result")).toHaveCount(0);
+  expect(calls).toBe(1);
+});
+
+test("file loss of reply stays unknown and reload never resubmits", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/bridge/v1/compute/blake3-file", async (route) => { calls += 1; await route.abort("failed"); });
+  await openWithRuntime(page, runtime());
+  await page.getByTestId("file-compute-input").setInputFiles({ name: "input.bin", mimeType: "application/octet-stream", buffer: Buffer.from("abc") });
+  await page.getByTestId("run-file-compute").click();
+  await expect(page.getByTestId("file-compute-error")).toContainText("OUTCOME_UNKNOWN");
+  await expect(page.getByTestId("file-compute-result")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("file-compute-panel")).toHaveCount(0);
+  expect(calls).toBe(1);
 });
 
 test("daemon-confirmed ON does not imply READY and OFF needs a real command", async ({ page }) => {

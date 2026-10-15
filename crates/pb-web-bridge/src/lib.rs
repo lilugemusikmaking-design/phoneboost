@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+use std::os::fd::BorrowedFd;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
+
+mod file_compute;
 
 const HEADER_LIMIT: usize = 8 * 1024;
 const HEADER_FIELD_LIMIT: usize = 32;
@@ -101,6 +104,12 @@ struct NativeCompute {
 struct NativeUnavailable;
 
 trait NativeBackend {
+    fn compute_file(
+        &mut self,
+        _source: BorrowedFd<'_>,
+    ) -> Result<file_compute::FileResult, pb_cli::CliError> {
+        Err(pb_cli::CliError::RuntimeUnavailable)
+    }
     fn status(&mut self) -> Result<NativeStatus, NativeUnavailable>;
     fn compute_blake3(&mut self) -> Result<NativeCompute, NativeUnavailable>;
     fn auto_use(&mut self, enabled: Option<bool>)
@@ -150,6 +159,20 @@ fn control_error(status: u16, code: &str) -> Response {
 struct ProductionNative;
 
 impl NativeBackend for ProductionNative {
+    fn compute_file(
+        &mut self,
+        source: BorrowedFd<'_>,
+    ) -> Result<file_compute::FileResult, pb_cli::CliError> {
+        let view = pb_cli::compute_blake3_import(source)?;
+        Ok(file_compute::FileResult {
+            input_bytes: view.input_bytes(),
+            compute: NativeCompute {
+                digest_blake3_hex: view.digest_blake3_hex().to_owned(),
+                execution_source: view.execution_source().to_owned(),
+                auto_use_reason: view.auto_use_reason().to_owned(),
+            },
+        })
+    }
     fn auto_use(
         &mut self,
         enabled: Option<bool>,
@@ -686,7 +709,7 @@ fn now_unix_ms() -> u64 {
         .unwrap_or(u64::MAX)
 }
 
-fn read_request(stream: &mut impl Read) -> Result<Request, Response> {
+fn read_head(stream: &mut impl Read) -> Result<(Request, usize), Response> {
     let mut bytes = Vec::with_capacity(1024);
     let header_end = loop {
         if let Some(position) = bytes.windows(4).position(|window| window == b"\r\n\r\n") {
@@ -771,17 +794,34 @@ fn read_request(stream: &mut impl Read) -> Result<Request, Response> {
         Some(_) => return Err(Response::error(400, "INVALID_CONTENT_LENGTH")),
         None => 0,
     };
-    if body_length > BODY_LIMIT {
-        return Err(Response::error(413, "REQUEST_BODY_TOO_LARGE"));
-    }
     if method == "POST" && !headers.contains_key("content-length") {
         return Err(Response::error(411, "CONTENT_LENGTH_REQUIRED"));
     }
 
-    let mut body = bytes[header_end..].to_vec();
+    let body = bytes[header_end..].to_vec();
     if body.len() > body_length {
         return Err(Response::error(400, "REQUEST_PIPELINING_UNSUPPORTED"));
     }
+    Ok((
+        Request {
+            method: method.to_owned(),
+            path: path.to_owned(),
+            headers,
+            body,
+        },
+        body_length,
+    ))
+}
+
+fn read_small_body(
+    stream: &mut impl Read,
+    mut request: Request,
+    body_length: usize,
+) -> Result<Request, Response> {
+    if body_length > BODY_LIMIT {
+        return Err(Response::error(413, "REQUEST_BODY_TOO_LARGE"));
+    }
+    let body = &mut request.body;
     while body.len() < body_length {
         let remaining = body_length - body.len();
         let mut chunk = [0_u8; 1024];
@@ -794,18 +834,19 @@ fn read_request(stream: &mut impl Read) -> Result<Request, Response> {
         }
         body.extend_from_slice(&chunk[..count]);
     }
-    if method != "POST" && !body.is_empty() {
-        if path == "/bridge/v1/auto-use" {
+    if request.method != "POST" && !body.is_empty() {
+        if request.path == "/bridge/v1/auto-use" {
             return Err(control_error(400, "BAD_REQUEST"));
         }
         return Err(Response::error(400, "INVALID_REQUEST"));
     }
-    Ok(Request {
-        method: method.to_owned(),
-        path: path.to_owned(),
-        headers,
-        body,
-    })
+    Ok(request)
+}
+
+#[cfg(test)]
+fn read_request(stream: &mut impl Read) -> Result<Request, Response> {
+    let (request, length) = read_head(stream)?;
+    read_small_body(stream, request, length)
 }
 
 fn write_response(stream: &mut impl Write, response: &Response) -> std::io::Result<()> {
@@ -816,6 +857,7 @@ fn write_response(stream: &mut impl Write, response: &Response) -> std::io::Resu
         403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
+        408 => "Request Timeout",
         411 => "Length Required",
         413 => "Content Too Large",
         415 => "Unsupported Media Type",
@@ -844,11 +886,26 @@ fn handle_connection<N: NativeBackend>(
 ) -> std::io::Result<()> {
     stream.set_read_timeout(Some(SOCKET_TIMEOUT))?;
     stream.set_write_timeout(Some(SOCKET_TIMEOUT))?;
-    let response = match read_request(stream) {
-        Ok(request) => bridge.handle(request),
+    let response = match read_head(&mut file_compute::DeadlineIo::new(stream, SOCKET_TIMEOUT)) {
+        Ok((request, length)) if request.path == file_compute::PATH => bridge.file_request(
+            &mut file_compute::DeadlineIo::new(stream, file_compute::UPLOAD_TIMEOUT),
+            request,
+            length,
+        ),
+        Ok((request, length)) => match read_small_body(
+            &mut file_compute::DeadlineIo::new(stream, SOCKET_TIMEOUT),
+            request,
+            length,
+        ) {
+            Ok(request) => bridge.handle(request),
+            Err(response) => response,
+        },
         Err(response) => response,
     };
-    write_response(stream, &response)
+    write_response(
+        &mut file_compute::DeadlineIo::new(stream, SOCKET_TIMEOUT),
+        &response,
+    )
 }
 
 fn bind_loopback() -> std::io::Result<TcpListener> {
@@ -950,7 +1007,7 @@ mod tests {
     use std::cell::Cell;
     use std::io::Cursor;
 
-    struct FakeNative {
+    pub(super) struct FakeNative {
         status: Result<NativeStatus, NativeUnavailable>,
         compute: Result<NativeCompute, NativeUnavailable>,
         status_calls: Cell<usize>,
@@ -1010,7 +1067,7 @@ mod tests {
         }
     }
 
-    fn fake_native() -> FakeNative {
+    pub(super) fn fake_native() -> FakeNative {
         FakeNative {
             status: Ok(ready_status()),
             compute: Ok(remote_compute("REMOTE_SUCCESS", "READY")),
@@ -1021,7 +1078,7 @@ mod tests {
         }
     }
 
-    fn bridge(native: FakeNative) -> Bridge<FakeNative> {
+    pub(super) fn bridge(native: FakeNative) -> Bridge<FakeNative> {
         Bridge {
             expected_host: "127.0.0.1:32123".to_owned(),
             token: "a".repeat(TOKEN_HEX_LEN),
@@ -1032,7 +1089,12 @@ mod tests {
         }
     }
 
-    fn request(method: &str, path: &str, headers: &[(&str, &str)], body: &[u8]) -> Request {
+    pub(super) fn request(
+        method: &str,
+        path: &str,
+        headers: &[(&str, &str)],
+        body: &[u8],
+    ) -> Request {
         let mut map = BTreeMap::new();
         map.insert("host".to_owned(), "127.0.0.1:32123".to_owned());
         map.insert(

@@ -264,13 +264,31 @@ pub fn compute_blake3_with_timeout(timeout: Duration) -> Result<ComputeView, Cli
 
 fn connect_local_api(timeout: Duration) -> Result<UnixStream, CliError> {
     let socket_path = canonical_control_socket(env::var_os("XDG_RUNTIME_DIR"))?;
-    let stream = UnixStream::connect(socket_path).map_err(|_| CliError::ConnectFailed)?;
+    let stream = connect_nonblocking(&socket_path).map_err(|_| CliError::ConnectFailed)?;
     stream
         .set_read_timeout(Some(timeout))
         .map_err(|_| CliError::IoFailed)?;
     stream
         .set_write_timeout(Some(timeout))
         .map_err(|_| CliError::IoFailed)?;
+    Ok(stream)
+}
+
+// AF_UNIX connects immediately or fails unavailable (including a full backlog).
+// Never wait in connect before applying I/O deadlines, and never replay a call.
+fn connect_nonblocking(path: &std::path::Path) -> std::io::Result<UnixStream> {
+    use rustix::net::{
+        AddressFamily, SocketAddrUnix, SocketFlags, SocketType, connect, socket_with,
+    };
+    let fd = socket_with(
+        AddressFamily::UNIX,
+        SocketType::STREAM,
+        SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
+        None,
+    )?;
+    connect(&fd, &SocketAddrUnix::new(path)?)?;
+    let stream = UnixStream::from(fd);
+    stream.set_nonblocking(false)?;
     Ok(stream)
 }
 
@@ -578,6 +596,35 @@ fn required_string(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn connect_is_bounded_when_unix_backlog_is_full() {
+        use rustix::net::{
+            AddressFamily, SocketAddrUnix, SocketFlags, SocketType, bind, listen, socket_with,
+        };
+        let path = std::env::temp_dir().join(format!(
+            "pb-cli-backlog-{}-{}",
+            std::process::id(),
+            super::next_request_id()
+        ));
+        let listener = socket_with(
+            AddressFamily::UNIX,
+            SocketType::STREAM,
+            SocketFlags::CLOEXEC,
+            None,
+        )
+        .unwrap();
+        bind(&listener, &SocketAddrUnix::new(&path).unwrap()).unwrap();
+        listen(&listener, 0).unwrap();
+        let start = std::time::Instant::now();
+        let first = super::connect_nonblocking(&path).unwrap();
+        let rejected = super::connect_nonblocking(&path);
+        let elapsed = start.elapsed();
+        drop(first);
+        drop(listener);
+        std::fs::remove_file(&path).unwrap();
+        assert!(rejected.is_err());
+        assert!(elapsed < std::time::Duration::from_secs(1));
+    }
     use super::*;
     use std::thread;
 

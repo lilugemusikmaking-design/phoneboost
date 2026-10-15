@@ -43,7 +43,8 @@ object, not Linux-addressable memory.
   `phoneboostctl`, including explicit local fallback sources.
 - A separate `phoneboost-web-bridge` presentation adapter. It serves the
   production frontend from literal IPv4 loopback, calls only typed `pb-cli`
-  operations, and exposes only current status plus the locked BLAKE3 action.
+  operations, and exposes status, durable auto-use control, the locked BLAKE3
+  demonstration and the approved bounded real-file BLAKE3 input.
 
 ### Physically recorded
 
@@ -100,6 +101,23 @@ retried. The client has separate 60-second readiness and response bounds. The
 existing `compute blake3 c10-abc-v1` demonstration remains available unchanged.
 
 This provides a typed real-input compute path, not a measured speedup claim.
+
+### Select a real file in the local Control Center
+
+The local live Control Center accepts one explicitly selected file, from 1 byte
+to 128 MiB, with a fresh confirmed ON preference. Select the file and choose
+**Calculer BLAKE3**. The result shows the digest, byte count and actual execution
+source; a local fallback is a valid digest, not remote success or a speedup.
+The hosted evidence page has no file picker.
+
+Only file bytes enter the authenticated loopback bridge; no filename or path
+is sent as an API parameter. A sealed anonymous memfd temporarily uses up to
+128 MiB in addition to the daemon's existing private import copy. The browser
+does not encode the file as base64 or persist its result. OFF remains independent
+of upload/compute. A missing terminal response means outcome unknown, never an
+automatic retry; closing the page does not promise native cancellation.
+The approved profile is
+`docs/protocol/PHONEBOOST_DESKTOP_FILE_COMPUTE_PROPOSAL_V0_1.md`.
 
 ### Native automatic remote use control
 

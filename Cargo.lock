@@ -475,6 +475,7 @@ name = "pb-web-bridge"
 version = "0.1.0"
 dependencies = [
  "pb-cli",
+ "rustix",
  "serde",
  "serde_json",
 ]
