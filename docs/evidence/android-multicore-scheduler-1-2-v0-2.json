@@ -370,7 +370,7 @@
   "instrumentation": {
     "duration_ms": 55000,
     "previous_duration_ms": 40000,
-    "user_authorization": "Oui, dur\u00e9e de 55 s uniquement",
+    "user_authorization": "Oui, durée de 55 s uniquement",
     "reason": "First exact profile1 command took43.200s and compute ended46.921s aftertrace start;40s trace missed it.55s gives8.079s measured headroom.",
     "buffer_kib": 65536,
     "events_changed": false,
@@ -467,5 +467,7 @@
       "host_daemon_absent": true
     }
   },
-  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite."
+  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.",
+  "record_scope": "Historical first scheduler proof and its then-current NEXT_ACTION; superseded for current performance/state by the comparison evidence.",
+  "superseded_by": "docs/evidence/android-multicore-comparison-1-2-v0-2.json"
 }

@@ -4,64 +4,97 @@ Base : `master` à `edad4ffc90c6143d1a4f43dfa6096be21cb97cfa`, après fusion de 
 Branche : `spike/android-multicore-v0-2`.
 Le SHA contenant ce rapport se retrouve par `git log -1 --format=%H -- docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md`.
 
-## État actuel : preuve scheduler profils 1 et 2
+## État actuel : comparaison physique reproductible 1 vs 2
 
-Verdict intermédiaire : **MULTICORE_EXECUTION_CONFIRMED**. Le profil 2 a réellement
-exécuté deux threads simultanément sur des CPU logiques distincts. Cette preuve
-ne qualifie ni la reproductibilité, ni un gain de performance, ni un avantage produit.
-Les [preuves détaillées](../evidence/android-multicore-scheduler-1-2-v0-2.json)
-supplantent le refus historique conservé plus bas. Le profil 4 n'a pas été lancé.
+Verdict : **MULTICORE_CONFIRMED_BENEFICIAL**, limité au calcul CPU BLAKE3
+expérimental sur ce Samsung et cette entrée 64 MiB. Six paires équilibrées donnent
+une accélération native médiane appariée de **1,754×** ;
+les six dépassent 1,05×, avec une plage de 1,647× à 1,932×. Cela satisfait le critère
+annoncé avant mesure. Aucun avantage produit PhoneBoost ni gain de bout en bout
+n'est établi. Les [preuves complètes](../evidence/android-multicore-comparison-1-2-v0-2.json)
+supplantent l'étape scheduler seule et ses indications de reprise.
 
-Même APK `org.phoneboost.app.multicore`, entrée 64 MiB, oracle BLAKE3 indépendant
-et transport USB/ADB authentifié. Battery Saver a été désactivé manuellement par l’utilisateur pour
-les essais. Chaque préflight vérifie le HAL Ready sans override, USB branché,
-Health fraîche, bande nominale, budget suffisant et récupération naturelle
-896 MiB/10 s. Une seconde lecture avant import refuse la soumission si l'état
-n'est plus admissible. Aucune politique ni source Health n'est modifiée.
+Même APK `org.phoneboost.app.multicore`, même entrée et oracle, même transport
+authentifié. Un warmup par profil avec Perfetto, puis six paires sans Perfetto,
+dans l'ordre 1/2, 2/1, 1/2, 2/1, 1/2, 2/1. Les 14 jobs sont REMOTE_SUCCESS et exacts.
+Chaque préflight vérifie USB, APK exact, HAL Ready sans override, Battery Saver OFF,
+Health fraîche et nominale, récupération naturelle ≥896 MiB pendant ≥10 s et budget
+suffisant. La lecture avant import et ResourceGuard restent les autorités existantes.
 
-| Mesure physique | Profil 1 | Profil 2 |
+| Capture scheduler complète (warmup) | Profil 1 | Profil 2 |
 | --- | --- | --- |
-| Mémoire / budget au préflight (MiB) | 1076,6 / 128 | 1044,0 / 128 |
-| Âge effectif au préflight (ms) | 235 | 799 |
-| TID compute | 30849 | 30968, 30969 |
-| CPU logiques utilisés | 3, 6 | 5, 6, 7 |
+| TID compute | 26988 | 27554, 27555 |
+| CPU logiques | 7 | 6, 7 |
 | Maximum Running simultané | 1 | 2 |
-| Temps avec >=2 Running (ms) | 0 | 49,913692 |
-| Temps CPU scheduler (ms) | 102,436693 | 102,609692 |
-| Wall-clock PhoneBoost (ms) | 102,739154 | 58,836385 |
-| Temps CPU natif PhoneBoost (ms) | 101,719151 | 101,757769 |
-| Migrations sched réelles | 1 (3→6) | 1 (5→6) |
-| Résultat distant exact | oui | oui |
-| Trace complète, sans erreur/perte détectée | oui | oui |
-| ResourceGuard pendant le job | nominal | nominal |
+| Temps avec ≥2 Running | 0 ms | 50,782463 ms |
+| Temps avec ≥3 / ≥4 Running | 0 / 0 ms | 0 / 0 ms |
+| CPU time scheduler | 93,492231 ms | 108,283155 ms |
+| Wall-clock PhoneBoost | 93,515385 ms | 58,496616 ms |
+| CPU time natif | 92,305768 ms | 106,361308 ms |
+| Migrations entre slices successives du même TID | 0 | 0 |
+| Résultat / trace / Health | exact / complète / nominale | exact / complète / nominale |
 
-Le profil 1 utilise deux CPU successivement : il reste mono-thread. Pour le
-profil 2, le TID30968 court sur CPU7 pendant que TID30969 court sur CPU5 puis6.
-L'intersection des véritables slices Running vaut49,913692ms ; une pause de82,231µs
-entre les slices du second TID est exclue. Le calcul est borné aux fenêtres
-BOOTTIME/TID natives et vérifié indépendamment des agrégats SQL. Les wall-clock et
-digests viennent de PhoneBoost. Aucune comparaison statistique n'est déduite de
-ces deux essais isolés ni de leurs durées de transfert variables.
+L'overlap provient de l'intersection réelle des slices `sched_switch` sur deux CPU,
+bornée aux TID et fenêtres BOOTTIME de calcul ; les logs natifs seuls ne le prouvent
+pas. Le contrôle reste mono-thread. Aucun placement CPU n'est imposé.
 
-Une tentative a été arrêtée avant soumission par un problème du contrôleur ADB
-qui héritait de l'entrée stdin ; les probes utilisent maintenant DEVNULL sans
-consommer le fichier de calcul. Un autre contrôle distant exact a terminé après
-la trace40s : il est conservé comme non qualifié. L'utilisateur a ensuite autorisé
-**uniquement la durée40→55s**, sur la mesure46,921s jusqu'à la fin compute. Buffer
-65536KiB, événements, SQL et protections PhoneBoost restent inchangés. Les deux
-captures55s finissent naturellement ; aucun refus mémoire n'est survenu.
+| Six mesures par profil, warmups exclus | Profil 1 | Profil 2 |
+| --- | --- | --- |
+| Wall-clock natif médian | 93,020 ms | 54,065 ms |
+| Plage native | 92,084–105,529 ms | 51,809–63,781 ms |
+| CPU time natif médian (somme des feuilles) | 92,031 ms | 102,450 ms |
+| Débit natif médian | 688,028 MiB/s | 1183,885 MiB/s |
+| End-to-end CLI médian | 27,882 s | 28,322 s |
+| Mémoire Health minimale pendant les jobs | 955,199 MiB | 927,844 MiB |
+| Budget minimal pendant les jobs | 110,800 MiB | 103,961 MiB |
+| Âge source maximal à la fin compute | 2111,028 ms | 928,327 ms |
 
-Nettoyage vérifié : Battery Saver remis manuellement sur ON par l’utilisateur,
-confirmé dans la Health officielle fraîche (power_save=true, safety=Throttle)
-et dans le service Android. Profil expérimental remis à 1, application de test
-arrêtée, auto-use OFF, daemon et tunnel privés absents. Les SHA-256 des deux APK
-sont inchangés. Aucun nouveau workload n’a été lancé pour cette vérification.
-La commande native antérieure avait renvoyé 0 sans restaurer le mode : cet échec
-reste conservé séparément et n’est pas transformé en succès.
+Les six profils 2 exécutent deux threads sur au moins deux CPU échantillonnés,
+avec CPU/wall >1,10. La Health reste nominale, lowMemory=false, charging=true,
+powerSave=false et thermique officiel NONE pendant tous les jobs. HAL batterie
+24,1–25,7 °C et skin 24,9–26,9 °C aux préflights des paires. La mémoire minimale
+du warmup 2 est 879,293 MiB : au-dessus du refus 768 MiB, après récupération initiale.
+L'âge maximal à la fin compute sur les paires reste sous 6 s. Scratch 8 MiB libéré
+après chaque job ; seuils et plafonds inchangés.
 
-La PR32 reste draft et non fusionnée. **NEXT_ACTION : effectuer la comparaison
-physique reproductible 1 vs 2 ; profil 4 seulement ensuite.** RAM/GPU/NPU et toute
-extension C13 restent fermés.
+Le ratio end-to-end médian apparié est 0,987× ; aucune paire ne dépasse 1,05×.
+Un essai profil 2 à 33,662 s est conservé. Le temps hors compute domine largement.
+La latence est mesurée autour du vrai `phoneboostctl`, hors probes opérateur ;
+la durée englobant ces probes est aussi conservée. Le gain natif ne mesure pas
+l'énergie, et le CPU time natif ne représente pas tout le CPU du processus.
+
+Le premier warmup 2 avec buffer 64 MiB a été refusé avant C10 : mémoire d'environ
+938 MiB au préflight, 922 MiB avant import, puis 697 MiB. Une autre application au
+premier plan confond cette tentative ; on ne l'attribue pas à Perfetto seul.
+Après confirmation du téléphone au repos, **seul le buffer passe de 64 à 16 MiB**,
+avec la durée 55 s, les événements et le SQL inchangés. La plus grosse trace
+antérieure occupait 12 247 742 octets ; les deux nouvelles font 2 644 188 et
+5 093 620 octets. Le RSS des processus Perfetto est enregistré séparément, sans
+l'assimiler à une allocation privée totale. Aucune protection PhoneBoost n'est réduite.
+
+Les pertes du buffer, écrasements, pertes writer/ftrace et erreurs de parsing sont
+nuls. Le compteur global `traced_chunks_discarded=3` était déjà présent et reste
+inchangé dans quatre traces : le [code Perfetto v51.2](https://github.com/google/perfetto/blob/v51.2/src/tracing/service/tracing_service_impl.cc#L3345)
+le copie depuis le service entier, séparément des statistiques de session.
+Un contrôle opérateur trop large l'a d'abord rejeté ; la comparaison a été mise
+en pause pendant la vérification officielle. Le job déjà engagé a fini normalement,
+sans résultat écarté ou remplacé ; les deux calculs de la première paire sont espacés
+de 34,525 s. Les pertes de session restent contrôlées, et tout nouvel incrément
+global est refusé par l'audit. Aucun filtre de trace n'a été retiré.
+
+Battery Saver a été réactivé manuellement et vérifié dans Android et une Health
+fraîche après les essais. Profil 1 rétabli, auto-use OFF, daemon et tunnel privés
+absents, APK expérimental arrêté. Les deux APK sont inchangés. Les copies de traces
+sur le téléphone ont été supprimées après récupération et vérification SHA-256.
+Lors du nettoyage après réactivation, Health indique un refus mémoire ; aucun
+workload n'a été lancé dans cet état.
+
+La [première preuve scheduler](../evidence/android-multicore-scheduler-1-2-v0-2.json)
+et les refus antérieurs restent historiques. Traces, observations et scripts
+opérateur sont archivés en privé avec hashes ; les résultats vérifiables sont dans
+les preuves Git. La PR32 reste draft et non fusionnée. Le profil 4 n'a pas été
+exécuté dans cette campagne. **NEXT_ACTION : tester le profil 4 sous les mêmes
+garde-fous.** RAM/GPU/NPU/C13 restent fermés.
 
 ## Périmètre et exception explicite
 
@@ -174,10 +207,10 @@ simultanéité maximale, temps avec ≥2/≥3/≥4 Running, CPU time et migratio
 deux slices successives du même TID. Les erreurs de trace, sa couverture et
 l'alignement BOOTTIME sont contrôlés avant qualification.
 
-La campagne comparative prévue impose HAL thermique Ready sans override, même
-entrée et digest exact, un warmup puis six répétitions par profil admissible en
-ordre équilibré. La mission présente se limite à une capture qualifiée par
-profil 1/2 ; elle ne satisfait pas encore ces critères de reproductibilité.
+La campagne comparative impose HAL thermique Ready sans override, même entrée
+et digest exact, un warmup puis six répétitions par profil admissible en ordre
+équilibré. La campagne 1/2 décrite en tête satisfait maintenant ces critères ;
+le profil 4 reste à qualifier.
 Un refus arrête les tentatives de ce profil, sans réglage destiné à le forcer.
 Pour qualifier le multicœur reproductible : Perfetto doit démontrer un overlap Running réel
 sur plusieurs CPU dans une trace complète sans perte détectée. Les compteurs

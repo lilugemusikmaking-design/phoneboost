@@ -544,20 +544,26 @@
     "bench_zip_sha256": "3d04c95f0e744cbda02c5b5bb97895d11a5acc8c4ff26beb5c6be92949a12596",
     "scope": "supplied bench reused; launch bound to C12; SQL extraction clipped to PhoneBoost TID/BOOTTIME intervals"
   },
-  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.",
+  "next_action": "Tester le profil 4 sous les mêmes garde-fous.",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "publication": {
     "state": "Consult live GitHub PR/checks for this branch; no CI success inferred from local tests",
-    "merge_gate": "Keep PR32 draft/unmerged until the requested reproducible performance verdict is established and Actions/CodeQL validate the published HEAD."
+    "merge_gate": "PR32 remains draft/unmerged at this checkpoint; profile4 unqualified. No product-value claim; consult live checks for published HEAD."
   },
   "date_utc": "2026-11-14T14:09:58.590436+00:00",
-  "current_verdict": "MULTICORE_EXECUTION_CONFIRMED",
+  "current_verdict": "MULTICORE_CONFIRMED_BENEFICIAL",
   "scheduler_qualification": {
     "path": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
     "verdict": "MULTICORE_EXECUTION_CONFIRMED",
     "performance_qualified": false,
+    "profile4_run": false
+  },
+  "performance_qualification": {
+    "path": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
+    "verdict": "MULTICORE_CONFIRMED_BENEFICIAL",
+    "native_benefit_only": true,
     "profile4_run": false
   }
 }

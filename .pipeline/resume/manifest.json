@@ -1,9 +1,9 @@
 {
-  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.",
+  "next_action": "Tester le profil 4 sous les m\u00eames garde-fous.",
   "writer": "Codex",
-  "parent_head": "98dac6b8b5427ab6b3d0343ac620257f7b03df19",
-  "date": "2026-11-14T20:28:24.662704+00:00",
+  "parent_head": "94f0717872e7cead328639df57d8e274dd6907b5",
+  "date": "2026-11-14T21:32:46.897447+00:00",
   "branch": "spike/android-multicore-v0-2",
   "push": "verify remote on resume",
-  "physical_proof": "One complete exact64MiB scheduler-qualified capture each1and2. Profile2:2TIDs,CPUs5/6/7,peak2,49.913692ms actualRunningoverlap, nominalHealth; no performance qualification."
+  "physical_proof": "Two qualified16MiB-buffer scheduler captures, then six balanced1vs2 pairs:14exact remote64MiB jobs, profile2 median paired native speedup1.753576x,6of6>1.05. No end-to-end benefit; no4."
 }

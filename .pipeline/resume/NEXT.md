@@ -1,26 +1,29 @@
-# Reprise CPU Android : multicœur réel confirmé, performance à qualifier
+# Reprise CPU Android : profil 2 bénéfique sur BLAKE3 natif
 
-Verdict intermédiaire : **MULTICORE_EXECUTION_CONFIRMED**. Lire le
+État autoritaire courant : **MULTICORE_CONFIRMED_BENEFICIAL**, limité au workload
+CPU expérimental BLAKE3 64 MiB sur le Samsung SM-A155F. Lire le
 [rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md) et les
-[preuves scheduler](../../docs/evidence/android-multicore-scheduler-1-2-v0-2.json).
-Le code APK testé reste93f1de187838163729c476da2c327f5a612cf8a9 ; cette publication
-ne change que les preuves et la durée Perfetto40→55s explicitement autorisée.
+[preuves de comparaison](../../docs/evidence/android-multicore-comparison-1-2-v0-2.json).
+L'APK testé reste issu de93f1de187838163729c476da2c327f5a612cf8a9 ; aucun code produit
+n'a changé. Ce checkpoint ajoute les preuves et réduit uniquement le buffer
+Perfetto64→16MiB, avec durée55s/événements/SQL inchangés.
 
-Une capture complète exacte64MiB par profil1/2. Le profil2 montre deux TID sur
-CPU5/6/7, maximum2Running simultanément, overlap49,913692ms. Health nominale,
-HAL Ready sans override, Battery Saver désactivé manuellement pour les essais.
-Aucun seuil, C13, affinité ou comportement produit modifié. Le profil4 n'est pas lancé.
+Deux warmups avec captures scheduler complètes, puis six paires équilibrées,
+14résultats distants exacts. Le profil2 montre2TID surCPU6/7 et50,782463ms de vrai
+Running simultané. Accélération native médiane appariée1,753576×,6/6paires>1,05×.
+Aucun gain end-to-end ni avantage produit qualifié. Les refus et premières traces
+restent historiques, leurs anciens NEXT_ACTION sont remplacés par celui-ci.
 
-NEXT_ACTION : effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.
+NEXT_ACTION : tester le profil 4 sous les mêmes garde-fous.
 
-Ne pas fusionner #32 : aucun verdict de performance reproductible/avantage produit
-n'est établi. Les anciens refus et la trace40s incomplète sont conservés, mais ne
-sont ni une baseline qualifiée ni une preuve multicœur. Les traces brutes privées
-et leurs hashes sont référencés par les preuves. Ne pas relancer la campagne1/2/4
-en bloc, ni ouvrir RAM/GPU/NPU/C13. Produit et worktrees historiques intacts.
+Avant tout prochain job : APK expérimental exact, ADB/USB stable, HAL Ready sans
+override, Battery Saver OFF pour la campagne puis restauré, Health fraîche et
+nominale, récupération naturelle896MiB/10s et budget suffisant. Ne modifier ni
+ResourceGuard, C03/C08/C10/C13, plafonds mémoire, affinité ni politique de threads.
+RAM/GPU/NPU restent fermés. Profil4 non exécuté dans cette campagne ; PR32 draft
+et non fusionnée. Vérifier les Actions/CodeQL du HEAD publié, sans inférer leur
+succès des tests locaux.
 
-Nettoyage terminé : Battery Saver réactivé manuellement par l’utilisateur et
-vérifié dans Health et le service Android ; profil expérimental 1, APK de test
-arrêté, auto-use OFF, daemon et tunnel privés absents. Les deux APK sont inchangés.
-Aucun nouveau run effectué. L’échec antérieur de la commande native reste
-historique ; il n’est pas la preuve de cette restauration manuelle.
+Nettoyage terminé : Battery SaverON vérifié dans Android et Health, profil1,
+auto-useOFF, APK de test arrêté, daemon/tunnel privés absents. APK produit et
+expérimental inchangés. Aucun worktree historique supprimé ni modifié.

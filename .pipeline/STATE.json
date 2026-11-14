@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "branch": "spike/android-multicore-v0-2",
-  "head": "98dac6b8b5427ab6b3d0343ac620257f7b03df19",
+  "head": "94f0717872e7cead328639df57d8e274dd6907b5",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Explicit experimental Android CPU profiles1/2/4 under unchanged ResourceGuard ceilings",
-  "status": "MULTICORE_EXECUTION_CONFIRMED",
+  "status": "MULTICORE_CONFIRMED_BENEFICIAL",
   "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md",
   "evidence": "docs/evidence/android-multicore-v0-2.json",
   "previous_checkpoint": {
@@ -30,67 +30,95 @@
     "Experimental processes stopped; product APK hash unchanged",
     "docs(cpu): record physical guard refusal and Perfetto evidence",
     "docs(cpu): confirm profile 2 scheduler overlap and bound capture duration",
-    "docs(cpu): verify Battery Saver restoration and close cleanup"
+    "docs(cpu): verify Battery Saver restoration and close cleanup",
+    "docs(cpu): qualify paired physical 1 vs 2 benefit"
   ],
   "last_tests": [
     {
-      "name": "worker-feature-final",
-      "status": "PASS",
-      "log_sha256": "c6ea9cb5fa200c4047af12e02c54378e7edaf054a344eed514c42d781bd64a70",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "scope": "evidence/instrumentation only",
+      "date": "2026-11-14T21:31:39.554535+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "jni-feature",
-      "status": "PASS",
-      "log_sha256": "83835a20f1332e7803e35cf54c3c0e00ec65f48eaa2122559bc65f8b6994c31f",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "bash",
+        "-n",
+        "phoneboost_perfetto_bench/run_campaign.sh"
+      ],
+      "returncode": 0,
+      "scope": "evidence/instrumentation only",
+      "date": "2026-11-14T21:31:39.554555+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "host-feature-initial",
-      "status": "FAILED_ONE_FIXTURE_THEN_FIXED",
-      "log_sha256": "f6bd2bc40f9873c9c38a7eb3271b4b011088c31c66a1c00ddb6af9f54b1dffa9",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "python3",
+        "scripts/test_measure_android_multicore.py"
+      ],
+      "returncode": 0,
+      "tests": 6,
+      "log_sha256": "d2c61d2f42aae5e46926f21402e4caa225ecca5f3a04a0958059bf13404f4cd6",
+      "date": "2026-11-14T21:31:39.554559+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "host-targeted-retest",
-      "status": "PASS",
-      "log_sha256": "b7340f679450a12cc07e3eacea37ecd814171679598ce5508a179c4cdd989455",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "python3",
+        "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/qualify.py",
+        "1"
+      ],
+      "returncode": 0,
+      "scope": "Actual scheduler traces, zero session errors/loss, unchanged global counter",
+      "date": "2026-11-14T21:31:39.554562+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "product-android",
-      "status": "PASS",
-      "log_sha256": "eec9e76e9de6d8ef347af66decc0c2d99a1ac6de9716e7628b6dd86ac88907f3",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "python3",
+        "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/qualify.py",
+        "2"
+      ],
+      "returncode": 0,
+      "scope": "Actual scheduler traces, zero session errors/loss, unchanged global counter",
+      "date": "2026-11-14T21:31:39.554562+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "spike-android-final",
-      "status": "PASS",
-      "log_sha256": "9a73c202bc764122c193c2f9d338e532c6109c612484ec131e48d340e2ecd25d",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "python3",
+        "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/summarize.py"
+      ],
+      "returncode": 0,
+      "scope": "Actual14jobs exact; preflight, freshness and Health bracketing; existing verdict classifier",
+      "date": "2026-11-14T21:31:39.554564+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
     },
     {
-      "name": "pipeline",
-      "status": "PASS",
-      "log_sha256": "4cb16ab6316d382d513a0b10ddc674ecb73bb70c6251882ab799aeba5fcdc83b",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
-    },
-    {
-      "name": "python-evidence",
-      "status": "PASS",
-      "log_sha256": "844451f8766e6e061667070e7743d1e7643b1900cc24d6e650dac13f558e4cf1",
-      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+      "command": [
+        "python3",
+        "-"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T21:31:39.554569+00:00",
+      "source_head": "94f0717872e7cead328639df57d8e274dd6907b5",
+      "scope": "Inline evidence JSON/input SHA/scope audit in task tool log"
     }
   ],
-  "physical_proof": "One complete exact64MiB scheduler-qualified capture each1and2. Profile2:2TIDs,CPUs5/6/7,peak2,49.913692ms actualRunningoverlap, nominalHealth; no performance qualification.",
-  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.",
+  "physical_proof": "Two qualified16MiB-buffer scheduler captures, then six balanced1vs2 pairs:14exact remote64MiB jobs, profile2 median paired native speedup1.753576x,6of6>1.05. No end-to-end benefit; no4.",
+  "next_action": "Tester le profil 4 sous les m\u00eames garde-fous.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-14T20:28:24.659277+00:00",
-    "commit": "98dac6b8b5427ab6b3d0343ac620257f7b03df19",
+    "date": "2026-11-14T21:32:46.895934+00:00",
+    "commit": "94f0717872e7cead328639df57d8e274dd6907b5",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -167,14 +195,14 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json#cleanup",
-    "verified_utc": "2026-11-14T20:27:09.453434+00:00",
+    "evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json#cleanup",
+    "verified_utc": "2026-11-14T21:27:35.275131+00:00",
     "battery_saver_restored": true,
     "experimental_profile": 1,
     "experimental_app_stopped": true,
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "apks_unchanged": true,
-    "new_workload_run": false
-  }
+    "apks_unchanged": true
+  },
+  "comparison_evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json"
 }
