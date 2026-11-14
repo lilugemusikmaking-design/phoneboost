@@ -1,0 +1,621 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "status": "CONVERGED_POST_P14_MASTER_HEALTH_QUALIFICATION_NEXT",
+  "baseline": "1312cb1e7ddc40e71a9512d85663264eb63b30c6",
+  "source": {
+    "branch": "spike/guarded-cpu-allocation-v0-1",
+    "head": "9daae7fb496da2f903212d7c811357901f4b2aee",
+    "parent": "f5db094128f55ff79fc8038ef9d1a233ca4139cd",
+    "ahead": 31,
+    "behind": 0,
+    "published": false,
+    "preserved": true,
+    "divergence_relative_to": "1312cb1e7ddc40e71a9512d85663264eb63b30c6"
+  },
+  "publication_branches": [
+    {
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "f7d29a32021393e46f058782908718ec62387763",
+      "base": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
+      "files": [
+        "android/core-jni/src/lib.rs",
+        "crates/pb-host/src/auto_use.rs",
+        "crates/pb-runtime-secure/src/runtime.rs",
+        "crates/pb-worker-core/src/lib.rs"
+      ],
+      "tree": "ee098aa4808ba96c3fb391c912acc7093339f6db",
+      "pr": 27,
+      "merged_into_master": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f"
+    },
+    {
+      "branch": "sync/post-p14-usb-guidance-v0-1",
+      "head": "e03949e8d01aa4e5b59fdfee90f0ace2ae51c153",
+      "base": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
+      "files": [
+        "frontend/src/pages/Dashboard.js",
+        "frontend/src/pages/Dashboard.test.js"
+      ],
+      "tree": "ca9a09e0d029dbcb082c8705569da5b932eae4bc",
+      "pr": 28,
+      "merged_into_master": "d29f78825c0444c11042e2b0279674f9a693a39f"
+    }
+  ],
+  "documentation_branch": {
+    "branch": "sync/post-p14-evidence-convergence-v0-1",
+    "base": "d29f78825c0444c11042e2b0279674f9a693a39f",
+    "head_resolution": "git log -1 --format=%H -- docs/evidence/post-p14-consolidation-v0-1.json",
+    "pr": 29
+  },
+  "product_dependency_audit": "No experimental dependency required. Product portions extracted, no whole historical commit cherry-picked. Split prefix/body writes already exist in baseline. Transport/phase traces excluded. OFF production behavior unchanged; corrected in-flight test retained.",
+  "software_validation": [
+    {
+      "name": "rust-workspace",
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--release",
+        "--workspace",
+        "--",
+        "--test-threads=1"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T07:49:44.824749+00:00",
+      "elapsed_seconds": 610.51,
+      "log_sha256": "5ab4c395a5a28bcea9371b82cbb1566d015babb8f3d812674326f36a67607ef7",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "aggregate_including_doctests": {
+        "passed": 492,
+        "failed": 0,
+        "ignored": 0
+      },
+      "suite_results": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+        "test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+        "test result: ok. 237 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 326.95s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.63s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 118.48s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "fast-checks",
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "scripts/pre-commit-fast"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T07:50:20.280777+00:00",
+      "elapsed_seconds": 3.03,
+      "log_sha256": "e16ba5d9c0b2bc961fe89927ca27121b840bb07e8a8c16191a22e5f759a663bc",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "clippy",
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--release",
+        "--workspace",
+        "--all-targets"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T07:59:57.119809+00:00",
+      "elapsed_seconds": 30.72,
+      "log_sha256": "8b40bd5786486bf78e695d34a9f6cbccb3fffc292cb50516007282a9dd402a7c",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "warnings": [
+        "warning: this OR pattern can be rewritten using a range",
+        "warning: derefed type is same as origin",
+        "warning: this function has too many arguments (9/7)",
+        "warning: derefed type is same as origin",
+        "warning: this function has too many arguments (11/7)",
+        "warning: this `if` statement can be collapsed",
+        "warning: variable does not need to be mutable",
+        "warning: variable does not need to be mutable"
+      ],
+      "warning_policy": "Repository CI command semantics: exit 0 with warnings, no -D warnings. No unrelated lint cleanup added.",
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "android",
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "scripts/pipeline-android"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T08:11:23.209931+00:00",
+      "elapsed_seconds": 102.06,
+      "log_sha256": "de101d71ac08561e58e56a55b5f89203f235717c77ea2fc2e94c81bf3ec0849b",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "resource_limits": "Existing SDK/NDK/Gradle cache, offline, Cargo jobs=1, Gradle max-workers=1 and heap=1024 MiB. Exact pinned aapt2 9.3.0-15703166 obtained directly from Google, publisher digest verified, selected by command-line android.aapt2FromMavenOverride; no repository/tool version change. No device installation.",
+      "pinned_aapt2": {
+        "version": "9.3.0-15703166",
+        "source": "https://dl.google.com/dl/android/maven2/com/android/tools/build/aapt2/9.3.0-15703166/aapt2-9.3.0-15703166-linux.jar",
+        "publisher_sha1_verified": "5287feac13566b9165cdf02c77565e68aec3aad0",
+        "archive_sha256": "e772a3dae8354764f1b0793903218427f483982445207f2e4ffc8c2026755bd4",
+        "binary_sha256": "baf6784be1b4284da49c78ea2f6961b0c525d56ecf57f1f1d879ca264dc96197"
+      },
+      "standalone_checks": {
+        "ControllerLeaseStateNameTest": "5/5 PASS",
+        "PairingSasDisplayTest": "4/4 PASS",
+        "assembleDebug": "PASS",
+        "lintDebug": "PASS"
+      },
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "frontend-tests",
+      "branch": "sync/post-p14-usb-guidance-v0-1",
+      "head": "be988c700584cc0b9113866dfae25b2030783be0",
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "test",
+        "--watchAll=false",
+        "--runInBand"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T08:13:06.768658+00:00",
+      "elapsed_seconds": 8.11,
+      "log_sha256": "28cd82aa142bcb3ba41c0f2d5af241455ec8afc5dbb61062d5df6f5a982742d7",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "tests": {
+        "passed": 358,
+        "total": 358
+      },
+      "suites": {
+        "passed": 8,
+        "total": 8
+      },
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "frontend-build",
+      "branch": "sync/post-p14-usb-guidance-v0-1",
+      "head": "be988c700584cc0b9113866dfae25b2030783be0",
+      "command": [
+        "yarn",
+        "--cwd",
+        "frontend",
+        "build"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14T08:13:14.942748+00:00",
+      "elapsed_seconds": 20.81,
+      "log_sha256": "c047070eb5605ff1b270709fa7d062cfb34cea7dfb6f2a7ee948c3ee94125aba",
+      "scope": "Historical reconstructed extraction tree; local software only. Raw log retained locally, not published.",
+      "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+    },
+    {
+      "name": "android-offline-first-attempt",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "scripts/pipeline-android"
+      ],
+      "returncode": 1,
+      "date": "2026-11-14T08:00:27.888043+00:00",
+      "elapsed_seconds": 102.01,
+      "log_sha256": "ed57709970af9415a2b4784fd8d6c7bf197edd68e448264dd165b7ad3862b282",
+      "scope": "Preserved infrastructure failure: aapt2-9.3.0-15703166-linux.jar not in Gradle cache. ARM64 JNI compilation had passed. Subsequent validation is a separate result, not a relabeling of this attempt."
+    },
+    {
+      "name": "android-online-stalled-attempt",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "scripts/pipeline-android"
+      ],
+      "returncode": 1,
+      "date": "2026-11-14T08:03:15.473777+00:00",
+      "elapsed_seconds": 436.63,
+      "log_sha256": "dabc82efb40536b80a5e5ca0e14a3a46c96e411cbcf13e1967023748bc0718e5",
+      "scope": "Stopped by operator after SDK manifest retrieval made no progress. Only this validation daemon was terminated. No product test failure inferred; this attempt is not PASS. Final offline attempt used the exact pinned artifact fetched and verified separately."
+    },
+    {
+      "name": "check_c07_wire_addendum_002.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c07_wire_addendum_002.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    },
+    {
+      "name": "check_c08_c09_wire_addendum_001.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c08_c09_wire_addendum_001.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    },
+    {
+      "name": "check_c10_wire_addendum_001.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c10_wire_addendum_001.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    },
+    {
+      "name": "check_c12_import_contract_v0_1.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c12_import_contract_v0_1.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    },
+    {
+      "name": "check_c12_import_async_wire_v0_1.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c12_import_async_wire_v0_1.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    },
+    {
+      "name": "check_c12_imported_blake3_consumer_v0_1.py",
+      "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+      "command": [
+        "python3",
+        "scripts/check_c12_imported_blake3_consumer_v0_1.py"
+      ],
+      "returncode": 0,
+      "date": "2026-11-14",
+      "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+      "scope": "Historical unchanged contracts and fixtures; shared local log for the six sequential validators."
+    }
+  ],
+  "physical_validation_current": "NOT RUN: no phone, installation, physical campaign, or benchmark in this consolidation.",
+  "historical_evidence": [
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/p14-installed-physical-2026-10-15.json",
+      "sha256": "61c396483032ef32df3d8007391f72651d6020e89942bef500c59264694bc26a",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/discovery-reconnect-2026-10-24.json",
+      "sha256": "8e98f0023e3e66c997998dfae9b704412b00b4e8f3de9d17be9a1553de719e1f",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/compute-transport-polling-usb-2026-10-25.json",
+      "sha256": "3ac0f13da420caf819354d9d3421fdfb54b7d51d404f57e90d9b5d1955b77494",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/compute-lease-renewal-usb-2026-10-25.json",
+      "sha256": "b740a75d4c147828657ec492e49613f4994c27e419aaeb510db758a193a4424b",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/compute-lease-installed-smoke-2026-10-25.json",
+      "sha256": "bbb9f23d476830499a44947fd1d5816c0da38d7160df6d85560504e603e7bb24",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/closure-capacity-findings-2026-10-30.json",
+      "sha256": "b69efb66d030c05e2e9f1df814529adb567ef851a1f830180214bd9d84c3c68d",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/closure-throughput-findings-2026-10-30.json",
+      "sha256": "67e29826845a6eb8770865471332219ec91b5a57fc53a054194f23959c531968",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/guarded-cpu-health-source-findings-2026-10-30.json",
+      "sha256": "7e17e4a8875892fe096caecccac06de960a4cc21de0b60780d6f335af48dc934",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    },
+    {
+      "archive_commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "archive_path": "docs/evidence/guarded-cpu-health-quarantine-android-2026-10-30.json",
+      "sha256": "8d069a04af39e3d9d0b6428ee14ab4178556470da9ede6b0c0778632a264cde2",
+      "availability": "Local historical archive only; raw artifact deliberately not included in this public branch.",
+      "scope": "Historical evidence, not rerun or promoted to validation of reconstructed commits."
+    }
+  ],
+  "historical_validation_limit": "Original host suite at lease closure: 236 PASS / 1 FAIL; corrected OFF test passed separately. Original suite was not rerun or relabeled. The 2026-11-14 reconstructed-branch results are not a new master test run.",
+  "historical_verdicts": {
+    "SPEED": "NO_QUALIFIED_PRODUCT_BENEFIT",
+    "CAPACITY": "INCONCLUSIVE_PHYSICAL_TEST",
+    "THROUGHPUT": "THROUGHPUT_SCREEN_NOT_CONFIRMED",
+    "CPU": "NATIVE_SPIKE_QUARANTINED_HEALTH_SOURCE_NOT_EQUIVALENT",
+    "below_os": "OPTIMIZE_USERSPACE_FIRST"
+  },
+  "historical_commit_disposition": [
+    {
+      "commit": "1e0922edcd825fa42e368483a28082ded4864e66",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Audit Compute Fabric et propositions de frontières",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "38a68a4558bbad608a0d69eea7c4e0bbb19f6ec8",
+      "category": "INSTRUMENTATION",
+      "scope": "Banc de référence local, exemple natif et résultats",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "4720fc758038dd6765acd3a19e6b3f0ad2b5e840",
+      "category": "PRODUCT",
+      "scope": "Horloge santé JNI, tests et preuves physiques P14",
+      "disposition": "Original commit stays local. Only minimal product code/tests extracted into the corresponding clean branch; mixed diagnostics/raw evidence excluded."
+    },
+    {
+      "commit": "10276ccc23ef5b2e2d8f7ffef51ba07202d70863",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Préflight UI P14 et prérequis navigateur",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "340908f2c6976ac54cc0533e6e4bd6ece94eafd4",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Preuves découverte et écran éteint",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "50a19081d4a308cf9aecfa3f25bfb1493c8bb9a1",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Oracle du résultat de fichier manuel",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "3836192ec30f15bff4ebb1c8d4a727154fdaedc9",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Parcours UI manuel et remise à zéro de sélection",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "beb578e7dcbabca8ced33f101230502688d91b57",
+      "category": "PRODUCT",
+      "scope": "Aide UI réseau USB absent, tests et preuve de reconnexion",
+      "disposition": "Original commit stays local. Only minimal product code/tests extracted into the corresponding clean branch; mixed diagnostics/raw evidence excluded."
+    },
+    {
+      "commit": "2ebe10daf181ed33665540968fb1e2d29b386065",
+      "category": "INSTRUMENTATION",
+      "scope": "Banc de coûts USB/Wi-Fi et résultats",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "1b3f0b5e055f38dbc2c425ff49b76780fd556c02",
+      "category": "PRODUCT",
+      "scope": "Polling uniquement en absence de trame disponible",
+      "disposition": "Original commit stays local. Only minimal product code/tests extracted into the corresponding clean branch; mixed diagnostics/raw evidence excluded."
+    },
+    {
+      "commit": "bdca879a8659200af8f728dce710cde11d0d8a80",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Comparaison USB après déploiement du polling",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "4ca6840a8c02dbf3cdd6e6509c119bb80eb4c2e5",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Verdict below-OS sans implémentation produit",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "eef5515176a1b33dd76c3da63df6b14cf4250cf5",
+      "category": "INSTRUMENTATION",
+      "scope": "Traces de phases opt-in dans host/CLI/bridge et banc",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "6dc4a307664f91603d202b4fe50a517cb0a257a7",
+      "category": "INSTRUMENTATION",
+      "scope": "Conservation des résultats du banc et préflight USB",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "e6bc3148fcd4c6dcda1c2d2e65ac88e686646eed",
+      "category": "EXPERIMENTAL",
+      "scope": "Coalescing chiffré non accepté et preuves associées",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "e24e979023c7842aa4bb376521bd3941dc1e04a5",
+      "category": "PRODUCT",
+      "scope": "Baux courts, diagnostics transport opt-in et preuves",
+      "disposition": "Original commit stays local. Only minimal product code/tests extracted into the corresponding clean branch; mixed diagnostics/raw evidence excluded."
+    },
+    {
+      "commit": "39d097b05e0f6808c4027d912b1323d954bfd721",
+      "category": "PRODUCT",
+      "scope": "État final du correctif de bail, écritures séparées restaurées, preuve installée",
+      "disposition": "Original commit stays local. Only minimal product code/tests extracted into the corresponding clean branch; mixed diagnostics/raw evidence excluded."
+    },
+    {
+      "commit": "a264185f0762e4f67780f79baedb623d8ffd2d5c",
+      "category": "EXPERIMENTAL",
+      "scope": "Screening images résidentes/WebP",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "87b53eee2f4e395f867718be2b569cf63156f6d3",
+      "category": "EXPERIMENTAL",
+      "scope": "Sonde WebP Android et banc USB apparié",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "5e3b3b9bda25994038c5c2533140d1760ef279b1",
+      "category": "EXPERIMENTAL",
+      "scope": "Refus de ressources et diagnostic WebP",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "ee3c180f7de7ae7c31822fd7197f9fc70bca509e",
+      "category": "EXPERIMENTAL",
+      "scope": "Diagnostic espace virtuel Android",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "818d5fa5b36f3dacf09bc71cf18e288404918a1b",
+      "category": "EXPERIMENTAL",
+      "scope": "Campagne WebP et confinement mémoire corrigé",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "c0c6b04bc512b403ed347d2d43315ad6bdec5c7c",
+      "category": "EXPERIMENTAL",
+      "scope": "Banc CAPACITY et contrôle local basse priorité",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "73623d7af42797429c5fad513353ded039e60b43",
+      "category": "EXPERIMENTAL",
+      "scope": "Bancs et verdicts CAPACITY/THROUGHPUT",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "98f26769d744dd850f3598553c1ff46efdf9e18f",
+      "category": "EXPERIMENTAL",
+      "scope": "Feature CPU, profils et runner sous ResourceGuard",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "a2c52b70f633e586df0029bcf50bc364b78e171e",
+      "category": "EXPERIMENTAL",
+      "scope": "Qualification expérimentale et refus enregistrés",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "673f806497765d82382b118d19b4693642ea2542",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Calibration CPU et diagnostic du budget",
+      "disposition": "Original commit stays local. Selected conclusions summarized here; original documents, raw artifacts and obsolete resume instructions not imported."
+    },
+    {
+      "commit": "1ee8f098e3254b5871a69e0ff11e3bd59a8135f1",
+      "category": "EXPERIMENTAL",
+      "scope": "Allocations déjà admises et bornes du navigateur",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "bed00bce60b5c6f6403476bec6824170f4d3e63b",
+      "category": "EXPERIMENTAL",
+      "scope": "Validation du navigateur sous charge et traces d’admission",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "f5db094128f55ff79fc8038ef9d1a233ca4139cd",
+      "category": "EXPERIMENTAL",
+      "scope": "Quarantaine du collecteur de santé non équivalent",
+      "disposition": "Original commit stays local. Excluded from product and public consolidation; instrumentation/experiment requires separate review."
+    },
+    {
+      "commit": "9daae7fb496da2f903212d7c811357901f4b2aee",
+      "category": "PROOFS_DOCUMENTATION",
+      "scope": "Approved local convergence checkpoint",
+      "disposition": "Preserved locally. Public summary reconstructed without private paths; original checkpoint not pushed."
+    }
+  ],
+  "remote_ci": "Project pipeline and CodeQL succeeded on the exact PR #30, #27 and #28 heads in integrated_pull_requests. Resolve PR #29 and final master Actions live; do not infer their result from this record.",
+  "next_action": "Qualifier une source Android health correcte et réellement exploitable par ResourceGuard, avant de reprendre le spike CPU multicœur et RAM distante.",
+  "baseline_meaning": "Historical GitHub baseline before PR #30; not the current master HEAD.",
+  "master_before_documentation": "d29f78825c0444c11042e2b0279674f9a693a39f",
+  "master_head_resolution": "git rev-parse master after PR #29 merge",
+  "integrated_pull_requests": [
+    {
+      "pr": 30,
+      "branch": "fix/ci-dependency-android-pin-v0-1",
+      "head": "59fc5c693a3521d4759648b3449f36015d806829",
+      "base": "1312cb1e7ddc40e71a9512d85663264eb63b30c6",
+      "master_commit": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
+      "pipeline_run": 43581182828,
+      "codeql_run": 43581182831,
+      "status": "MERGED_CI_SUCCESS"
+    },
+    {
+      "pr": 27,
+      "branch": "sync/post-p14-product-fixes-v0-1",
+      "head": "f7d29a32021393e46f058782908718ec62387763",
+      "base": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
+      "master_commit": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
+      "pipeline_run": 43582373599,
+      "codeql_run": 43582373614,
+      "status": "MERGED_CI_SUCCESS"
+    },
+    {
+      "pr": 28,
+      "branch": "sync/post-p14-usb-guidance-v0-1",
+      "head": "e03949e8d01aa4e5b59fdfee90f0ace2ae51c153",
+      "base": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
+      "master_commit": "d29f78825c0444c11042e2b0279674f9a693a39f",
+      "pipeline_run": 43582970305,
+      "codeql_run": 43582970291,
+      "status": "MERGED_CI_SUCCESS"
+    }
+  ],
+  "software_validation_meaning": "Historical local software results on pre-integration extraction heads; see integrated_pull_requests for the verified PR Actions."
+}
