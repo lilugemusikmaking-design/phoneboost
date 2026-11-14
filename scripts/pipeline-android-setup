@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
@@ -31,6 +32,16 @@ for item in LOCK['assets']:
                 raise SystemExit('Checksum mismatch: ' + item['name'])
         pending.replace(archive)
     destination = BASE / item['name']
+    if item['format'] == 'binary':
+        # The command-line-tools launcher downloads an unpinned second stage
+        # from /latest/. Execute the versioned, verified CLI payload directly.
+        binary = destination / 'bin/android'
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        if not binary.exists() or digest(binary) != item['sha256']:
+            shutil.copyfile(archive, binary)
+        binary.chmod(binary.stat().st_mode | 0o111)
+        print(item['name'] + ': payload checksum verified', flush=True)
+        continue
     stamp = destination / '.verified-sha256'
     if not stamp.exists() or stamp.read_text() != item['sha256']:
         destination.mkdir(exist_ok=True)
@@ -48,7 +59,7 @@ for item in LOCK['assets']:
 
 jdk = BASE / 'jdk' / LOCK['jdk_directory']
 gradle = BASE / 'gradle' / ('gradle-' + LOCK['gradle_version'])
-cmdline = BASE / 'cmdline-tools/cmdline-tools'
+cmdline = BASE / 'android-cli'
 for folder in [jdk / 'bin', gradle / 'bin', cmdline / 'bin']:
     for binary in folder.iterdir():
         binary.chmod(binary.stat().st_mode | 0o111)
@@ -57,9 +68,13 @@ sdk.mkdir(exist_ok=True)
 env = {**os.environ, 'JAVA_HOME': str(jdk), 'ANDROID_HOME': str(sdk), 'ANDROID_SDK_ROOT': str(sdk), 'GRADLE_USER_HOME': str(BASE / 'gradle-cache')}
 env['PATH'] = ':'.join(str(x / 'bin') for x in [jdk, gradle, cmdline]) + ':' + os.environ['PATH']
 manager = str(cmdline / 'bin/android')
-version = subprocess.check_output([manager, '--no-metrics', '--version'], env=env, text=True).strip()
-if version != LOCK['android_cli_version']:
-    raise SystemExit('Android CLI version drift: ' + version)
+version_output = subprocess.check_output([manager, '--no-metrics', '--version'], env=env, text=True).strip()
+# Update notices may include another version inside prose. Require one bare
+# version line, exactly matching the pin; missing or ambiguous output is refused.
+versions = [line.strip() for line in version_output.splitlines()
+            if re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', line.strip())]
+if versions != [LOCK['android_cli_version']]:
+    raise SystemExit('Android CLI version drift: ' + version_output)
 packages = [name.replace(';', '/') + '@' + (revision if '.' in revision else revision + '.0.0')
             for name, revision in LOCK['sdk_revisions'].items()]
 with (BASE / 'sdk-install.log').open('w') as log:

@@ -1459,10 +1459,21 @@ mod tests {
         };
         let result = exchange(&mut client);
         client.stream.shutdown(Shutdown::Both).unwrap();
-        assert_eq!(
-            responder.join().unwrap(),
-            pb_runtime_secure::RuntimeError::SessionLost
+        let terminal = responder.join().unwrap();
+        // After our deliberate close, the responder can observe EOF or fail
+        // to write a queued reply/heartbeat. Both revoke the session; crypto,
+        // framing and handler errors must still fail this test helper.
+        assert!(
+            matches!(
+                terminal,
+                pb_runtime_secure::RuntimeError::SessionLost
+                    | pb_runtime_secure::RuntimeError::Wire(pb_runtime_secure::SecureWireError::Io)
+            ),
+            "unexpected error after client shutdown: {terminal:?}"
         );
+        assert_eq!(terminal.reason_code(), "DEVICE_LOST");
+        assert!(!runtime.snapshot().authenticated);
+        assert_eq!(runtime.snapshot().state, RuntimeState::Paired);
         result
     }
 
@@ -1760,6 +1771,41 @@ mod tests {
             .get_or_init(|| Mutex::new(()))
             .lock()
             .expect("JNI test serialization lock")
+    }
+
+    #[test]
+    fn production_client_shutdown_with_queued_pongs_is_fail_closed() {
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        let (_directory, runtime, host_private, android_public) = configured_resilience_runtime();
+        with_production_android_session(
+            Arc::clone(&runtime),
+            &host_private,
+            &android_public,
+            |client| {
+                // Leave authenticated replies in flight when the helper closes
+                // the client. No compute timing or other test is involved.
+                for request_id in 10..42 {
+                    let ping = Frame {
+                        header: Header {
+                            channel: Channel::Control,
+                            flags: FLAG_START | FLAG_END,
+                            message_type: ControlType::Ping as u16,
+                            request_id,
+                            sequence: client.send_sequence,
+                            fragment_index: 0,
+                            payload_len: 0,
+                            logical_message_len: 0,
+                        },
+                        payload: Vec::new(),
+                    };
+                    client.send_sequence += 1;
+                    send_encrypted(&mut client.stream, &mut client.transport, &ping);
+                }
+            },
+        );
+        reset();
     }
 
     fn reset() {
