@@ -887,7 +887,11 @@ mod tests {
         let lease_id = leases.acquire(&session, now_ms).unwrap();
         let proof = leases.validate(&session, lease_id, now_ms).unwrap();
         let mut guard = ResourceGuard::new();
-        for sample_time in [now_ms.saturating_sub(10_000), now_ms] {
+        for sample_time in [
+            now_ms.saturating_sub(10_000),
+            now_ms.saturating_sub(5_000),
+            now_ms,
+        ] {
             guard.record_health(HealthSample {
                 available_memory_bytes: 2 * 1024 * 1024 * 1024,
                 low_memory: false,

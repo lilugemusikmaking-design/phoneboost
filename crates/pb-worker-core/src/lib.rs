@@ -2,6 +2,7 @@
 
 use std::fs::File;
 use std::io::{self, Read};
+#[cfg(not(target_os = "android"))]
 use std::time::Instant;
 
 use pb_pbmux::{
@@ -77,25 +78,50 @@ trait WorkerMonotonicClock: Send + Sync {
 }
 
 struct SystemWorkerClock {
+    #[cfg(not(target_os = "android"))]
     origin: Instant,
+    #[cfg(target_os = "android")]
+    origin_ms: u64,
 }
 
 impl SystemWorkerClock {
     fn start() -> Self {
         Self {
+            #[cfg(not(target_os = "android"))]
             origin: Instant::now(),
+            #[cfg(target_os = "android")]
+            origin_ms: android_boottime_ms(),
         }
     }
 }
 
 impl WorkerMonotonicClock for SystemWorkerClock {
     fn now_ms(&self) -> u64 {
-        self.origin
-            .elapsed()
-            .as_millis()
-            .try_into()
-            .unwrap_or(u64::MAX)
+        #[cfg(target_os = "android")]
+        {
+            android_boottime_ms().saturating_sub(self.origin_ms)
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            self.origin
+                .elapsed()
+                .as_millis()
+                .try_into()
+                .unwrap_or(u64::MAX)
+        }
     }
+}
+
+#[cfg(target_os = "android")]
+fn android_boottime_ms() -> u64 {
+    // Unlike std::time::Instant on Android, BOOTTIME includes deep sleep.
+    // Keep one worker-relative domain for health, admission and lease TTLs.
+    let time = rustix::time::clock_gettime(rustix::time::ClockId::Boottime);
+    std::time::Duration::try_from(time)
+        .expect("Android BOOTTIME must be nonnegative")
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX)
 }
 
 #[derive(Debug)]
@@ -159,17 +185,33 @@ impl WorkerCore {
         self.incarnation
     }
 
+    /// Capture before reading Android APIs, in the admission clock domain.
+    pub fn health_sample_time_ms(&self) -> u64 {
+        self.clock.now_ms()
+    }
+
     /// Accepts only Android-local observations. It grants no remote authority.
-    pub fn record_local_health(&mut self, mut sample: HealthSample) -> HealthStatus {
-        // Resource authority and provider TTLs share one worker-owned monotonic
-        // domain; JNI-supplied timestamps are observations, not clock authority.
+    /// The timestamp must come from health_sample_time_ms BEFORE collection.
+    pub fn record_local_health(&mut self, sample: HealthSample) -> HealthStatus {
         let now_ms = self.clock.now_ms();
         self.reconcile_expired_controller_lease(now_ms);
-        sample.monotonic_ms = now_ms;
-        let status = self.resource_guard.record_health(sample);
+        if now_ms
+            .checked_sub(sample.monotonic_ms)
+            .is_none_or(|age| age > HEALTH_STALE_AFTER_MS)
+            || sample.battery_percent > 100
+            || sample.thermal == ThermalBand::Unknown
+        {
+            return self.invalidate_local_health();
+        }
+        self.resource_guard.record_health(sample);
         self.resource_guard.tick(now_ms);
         self.remote_buffers.tick(&mut self.resource_guard, now_ms);
-        status
+        self.resource_guard.health_status(now_ms)
+    }
+
+    /// Failed or incomplete local reads must not leave a cached healthy sample.
+    pub fn invalidate_local_health(&mut self) -> HealthStatus {
+        self.resource_guard.invalidate_health()
     }
 
     pub fn health_status(&self, now_ms: u64) -> HealthStatus {
@@ -1018,7 +1060,7 @@ mod tests {
         }
     }
 
-    fn healthy_observation() -> HealthSample {
+    fn healthy_observation(monotonic_ms: u64) -> HealthSample {
         HealthSample {
             available_memory_bytes: 1024 * 1024 * 1024,
             low_memory: false,
@@ -1026,7 +1068,7 @@ mod tests {
             battery_percent: 80,
             charging: true,
             power_save: false,
-            monotonic_ms: u64::MAX,
+            monotonic_ms,
         }
     }
 
@@ -1035,7 +1077,7 @@ mod tests {
         let time = Arc::new(AtomicU64::new(100));
         let mut worker = WorkerCore::cold_start().unwrap();
         worker.clock = Box::new(ManualClock(Arc::clone(&time)));
-        worker.record_local_health(healthy_observation());
+        worker.record_local_health(healthy_observation(time.load(Ordering::Relaxed)));
         time.store(6100, Ordering::Relaxed);
         assert!(worker.current_health_status().fresh);
         assert_eq!(worker.current_health_status().sample_age_ms, Some(6000));
@@ -1051,22 +1093,24 @@ mod tests {
         let time = Arc::new(AtomicU64::new(100));
         let mut worker = WorkerCore::cold_start().unwrap();
         worker.clock = Box::new(ManualClock(Arc::clone(&time)));
-        worker.record_local_health(healthy_observation());
+        worker.record_local_health(healthy_observation(time.load(Ordering::Relaxed)));
         assert_eq!(
             worker.current_health_status().safety,
             SafetyBand::RefusedMemoryPressure
         );
+        time.store(5100, Ordering::Relaxed);
+        worker.record_local_health(healthy_observation(5100));
         time.store(10099, Ordering::Relaxed);
-        worker.record_local_health(healthy_observation());
+        worker.record_local_health(healthy_observation(time.load(Ordering::Relaxed)));
         assert_eq!(worker.current_health_status().budget_bytes, 0);
         time.store(10100, Ordering::Relaxed);
-        worker.record_local_health(healthy_observation());
+        worker.record_local_health(healthy_observation(time.load(Ordering::Relaxed)));
         assert_eq!(worker.current_health_status().safety, SafetyBand::Nominal);
         assert_eq!(
             worker.current_health_status().budget_bytes,
             128 * 1024 * 1024
         );
-        let mut pressure = healthy_observation();
+        let mut pressure = healthy_observation(time.load(Ordering::Relaxed));
         pressure.available_memory_bytes = 768 * 1024 * 1024 - 1;
         worker.record_local_health(pressure);
         assert_eq!(
@@ -1074,6 +1118,65 @@ mod tests {
             SafetyBand::RefusedMemoryPressure
         );
         assert_eq!(worker.current_health_status().budget_bytes, 0);
+    }
+
+    #[test]
+    fn health_collection_delay_and_suspend_age_are_not_restamped() {
+        let time = Arc::new(AtomicU64::new(100));
+        let mut worker = WorkerCore::cold_start().unwrap();
+        worker.clock = Box::new(ManualClock(Arc::clone(&time)));
+        let start = worker.health_sample_time_ms();
+        time.store(2100, Ordering::Relaxed);
+        assert_eq!(
+            worker
+                .record_local_health(healthy_observation(start))
+                .sample_age_ms,
+            Some(2000)
+        );
+        // Simulated BOOTTIME advance while Android callbacks do not run.
+        time.store(6100, Ordering::Relaxed);
+        assert!(worker.current_health_status().fresh);
+        time.store(6101, Ordering::Relaxed);
+        assert_eq!(
+            worker.current_health_status().safety,
+            SafetyBand::RefusedStaleState
+        );
+        assert!(!worker.record_local_health(healthy_observation(start)).fresh);
+        assert_eq!(worker.health_sample_count(), 1);
+        assert_eq!(worker.current_health_status().budget_bytes, 0);
+    }
+
+    #[test]
+    fn future_unknown_and_inconsistent_local_samples_invalidate_cached_health() {
+        let time = Arc::new(AtomicU64::new(10_000));
+        let mut worker = WorkerCore::cold_start().unwrap();
+        worker.clock = Box::new(ManualClock(Arc::clone(&time)));
+        let mut unknown = healthy_observation(10_000);
+        unknown.thermal = ThermalBand::Unknown;
+        let mut bad_battery = healthy_observation(10_000);
+        bad_battery.battery_percent = 101;
+        for invalid in [
+            healthy_observation(10_001),
+            healthy_observation(3_999),
+            unknown,
+            bad_battery,
+        ] {
+            assert!(
+                worker
+                    .record_local_health(healthy_observation(10_000))
+                    .fresh
+            );
+            let count = worker.health_sample_count();
+            let status = worker.record_local_health(invalid);
+            assert_eq!(status.safety, SafetyBand::RefusedStaleState);
+            assert_eq!(status.thermal, ThermalBand::Unknown);
+            assert_eq!(status.battery, BatteryBand::Unknown);
+            assert_eq!(status.sample_age_ms, None);
+            assert_eq!(status.budget_bytes, 0);
+            assert_eq!(worker.health_sample_count(), count);
+        }
+        assert!(worker.record_local_health(healthy_observation(4_000)).fresh);
+        assert_eq!(worker.current_health_status().sample_age_ms, Some(6_000));
     }
 
     #[test]

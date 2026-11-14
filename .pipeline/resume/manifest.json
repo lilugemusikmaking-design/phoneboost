@@ -1,12 +1,12 @@
 {
-  "branch": "master",
-  "parent_head": "d29f78825c0444c11042e2b0279674f9a693a39f",
+  "branch": "fix/android-health-source-v0-1",
+  "parent_head": "251306e825db79173f0bdeb97d1823d08d894ca7",
   "date": "2026-11-14",
   "writer": "Codex",
-  "next_action": "Qualifier une source Android health correcte et réellement exploitable par ResourceGuard, avant de reprendre le spike CPU multicœur et RAM distante.",
-  "push": "Resolve the containing documentation commit on master and verify its live Actions. No branch or worktree cleanup is authorized.",
-  "report": "docs/architecture/PHONEBOOST_GITHUB_CONVERGENCE_V0_1.md",
-  "evidence": "docs/evidence/post-p14-consolidation-v0-1.json",
-  "physical_proof": "NOT RUN: no phone, installation, physical campaign, or benchmark in this consolidation.",
+  "next_action": "Valider sur appareil la provenance thermique et la cohérence des lectures/fraîcheur de la source Android health avant de reprendre le spike CPU multicœur, puis la RAM distante.",
+  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
+  "evidence": "docs/evidence/android-health-source-v0-1.json",
+  "physical_proof": "NOT RUN: phone unavailable by user confirmation. Host fixtures are not Android runtime or physical evidence.",
+  "publication": "Dedicated PR only. Verify Actions/CodeQL for its exact HEAD; no automatic merge while device provenance remains unresolved.",
   "historical_source": "9daae7fb496da2f903212d7c811357901f4b2aee"
 }

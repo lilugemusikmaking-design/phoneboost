@@ -67,3 +67,17 @@ tasks.register<JavaExec>("testPairingSasDisplay") {
         configurations.named("debugUnitTestRuntimeClasspath"),
     )
 }
+
+tasks.register<JavaExec>("testAndroidHealthSource") {
+    group = "verification"
+    description = "Checks health API-value fixtures through the real host JNI and ResourceGuard."
+    dependsOn("compileDebugUnitTestKotlin")
+    mainClass.set("org.phoneboost.app.AndroidHealthSourceTest")
+    systemProperty("java.library.path", providers.gradleProperty("phoneboostHealthJniDir")
+        .orElse(rootProject.layout.projectDirectory.dir("../target/debug").asFile.absolutePath).get())
+    classpath(
+        layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+        layout.buildDirectory.dir("intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+        configurations.named("debugUnitTestRuntimeClasspath"),
+    )
+}

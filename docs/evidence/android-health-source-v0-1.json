@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "base": "251306e825db79173f0bdeb97d1823d08d894ca7",
+  "branch": "fix/android-health-source-v0-1",
+  "proof_scope": "SOFTWARE_ONLY",
+  "physical": {
+    "status": "NOT_RUN",
+    "reason": "User confirmed phone unavailable; no device state changed",
+    "avd": "NOT_RUN: emulator, AVD and system image not installed",
+    "host_jni": "Actual JVM/native linkage with simulated API-value fixtures; not Android runtime evidence"
+  },
+  "canonical_documents": [
+    {
+      "name": "SPEC V0.7",
+      "sha256": "a2bcd508bd2432c1edfa8bbdbf0dfb259e9dce55a6c836541da1f43a0ff327bd",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Contract Set V1.3",
+      "sha256": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Tech Sheet V1.3",
+      "sha256": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Pseudocode V1.1",
+      "sha256": "1c396860ef9f3d1ea7903ac5f131965c692c8d384abfd01e15d375077d4d4df9",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Fixture Generation Spec V1.0",
+      "sha256": "981d3117e1fa2efa8f6d5f796d46b577516a93158cc3f17006ac7e75c3c21d15",
+      "audit_result": "MATCH_RECORDED_HASH"
+    }
+  ],
+  "sources": [
+    {
+      "file": "PowerManager.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "eceed282b2a2c36266b5b180fd1d832a8f6f8dd57f53043f5e8c0f39b5063d1c"
+    },
+    {
+      "file": "ProcessList.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "2faefc787442d6f54c801cf21609d9319d932b39aae8156c0e5c34577b70f62e"
+    },
+    {
+      "file": "ThermalManagerService.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "b9e6e9ba2b3a5a34900824ca44db1c56f5bd7cff0ec6a41cb3510cd47885b634"
+    },
+    {
+      "file": "BatteryService.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "e6dc3579908a2f4f86f54712745ac1ac888ae7c0fbbd0d472f6fe364cbca3fce"
+    }
+  ],
+  "checks": [
+    {
+      "command": "cargo test --offline -p pb-worker-core",
+      "status": "PASS",
+      "exit_code": 0,
+      "unit_passed": 60,
+      "doc_passed": 2,
+      "log_name": "worker-tests.log",
+      "log_sha256": "068f7c1f6d4841b6fbae9a749e1db309d62dcc03ce6134de90776c48f65372ce"
+    },
+    {
+      "command": "cargo test --offline --locked -p phoneboost-core-jni health -- --test-threads=1",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed": 3,
+      "log_name": "jni-health-tests.log",
+      "log_sha256": "bc07fd2a5dd72ac8d98f109f88fb8399ede5c1e62620ff98612f60791991bd7f"
+    },
+    {
+      "command": "scripts/pipeline-android (cached SDK/NDK/Gradle, offline, one worker)",
+      "status": "PASS",
+      "exit_code": 0,
+      "android_arm64_build": "PASS",
+      "host_jni_build": "PASS",
+      "apk_assemble": "PASS",
+      "controller_mapping_cases": 5,
+      "sas_cases": 4,
+      "health_api_fixtures_and_real_host_jni": "PASS",
+      "lintDebug": "PASS",
+      "gradle_tasks_executed": 51,
+      "log_name": "android-local.log",
+      "log_sha256": "2b209b02825738a29b4afc18f75bf90a00faa281923ac40eda8dbccb33610cae"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/pipeline -v (installed Gitleaks on PATH)",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed": 22,
+      "skipped": 0,
+      "log_name": "pipeline-tests-with-scanner.log",
+      "log_sha256": "720c36cbda508041349146130346954467aac1a5ae33ae3ce29437409b6a28ce"
+    },
+    {
+      "command": "cargo test --offline --locked --workspace",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed_including_doctests": 499,
+      "failed": 0,
+      "ignored": 0,
+      "log_name": "workspace-tests.log",
+      "log_sha256": "f1f8c077f849a0fa2a3d4c94ef6050a78149616a2889806cf98887744c982d44"
+    },
+    {
+      "command": "cargo clippy --offline --locked --workspace --all-targets",
+      "status": "PASS",
+      "exit_code": 0,
+      "note": "Warnings in unchanged pb-pbmux and pb-runtime-secure files; no warnings in the changed health code.",
+      "log_name": "clippy.log",
+      "log_sha256": "5b4562a809fd6282ac467c9f24e6ee0958e2f5770183f6675735570aa8fb02e3"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "bash -n scripts/pipeline-android",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "actionlint (installed tool)",
+      "status": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "remaining_checks": [
+    "GitHub Actions / CodeQL after publication: consult exact PR head, not this pre-publication record"
+  ],
+  "limitations": [
+    "No fresh physical evidence for the new APK",
+    "Public thermal NONE does not prove HAL readiness; device provenance needs a short read-only check",
+    "Freshness bounds API collection age, not an unexposed hardware-sensor timestamp",
+    "No hardware thermal/performance/multicore/RAM claims"
+  ],
+  "next_action": "Validate thermal provenance and health value/freshness coherence on the physical device before multicore and remote RAM",
+  "build_artifacts": [
+    {
+      "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "e65dd0ef65b54909f7077e070fd555cb535c4ddc0639203305413d18605693a5",
+      "scope": "LOCAL_BUILD_ONLY; not installed on device"
+    },
+    {
+      "path": ".work/a5/jniLibs/arm64-v8a/libphoneboost_core_jni.so",
+      "sha256": "86dafe778f35f15b8e3d799537ca9a284494ca3329ad944f643a27763f9a79ee",
+      "scope": "LOCAL_BUILD_ONLY; not installed on device"
+    }
+  ],
+  "publication_security": "Native project-pipeline scan_index must pass on staged bytes before commit; local checkpoint log records execution."
+}

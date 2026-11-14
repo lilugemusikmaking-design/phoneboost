@@ -3298,7 +3298,10 @@ mod tests {
         fn healthy() -> Arc<Self> {
             let mut core = WorkerCore::cold_start().expect("worker");
             refresh_health(&mut core);
-            thread::sleep(Duration::from_millis(10_050));
+            for _ in 0..2 {
+                thread::sleep(Duration::from_millis(5_025));
+                refresh_health(&mut core);
+            }
             refresh_health(&mut core);
             Arc::new(Self {
                 core: Mutex::new(core),
@@ -3435,7 +3438,10 @@ mod tests {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             *core = WorkerCore::cold_start().expect("restarted worker");
             refresh_health(&mut core);
-            thread::sleep(Duration::from_millis(10_050));
+            for _ in 0..2 {
+                thread::sleep(Duration::from_millis(5_025));
+                refresh_health(&mut core);
+            }
             refresh_health(&mut core);
             core.incarnation().into_bytes()
         }
@@ -3669,7 +3675,7 @@ mod tests {
             battery_percent: 80,
             charging: false,
             power_save: false,
-            monotonic_ms: 0,
+            monotonic_ms: core.health_sample_time_ms(),
         });
     }
 

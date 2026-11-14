@@ -488,6 +488,7 @@ dependencies = [
  "pb-pbmux",
  "pb-runtime-secure",
  "pb-types",
+ "rustix",
 ]
 
 [[package]]

@@ -469,6 +469,30 @@ fn incarnation_word(high: bool) -> JLong {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn health_sample_time() -> JLong {
+    let Ok(slot) = worker_slot().lock() else {
+        return ERROR_INTERNAL as JLong;
+    };
+    let Some(worker) = slot.as_ref() else {
+        return ERROR_NOT_RUNNING as JLong;
+    };
+    worker
+        .health_sample_time_ms()
+        .try_into()
+        .unwrap_or(ERROR_INTERNAL as JLong)
+}
+
+fn invalidate_health() -> JInt {
+    let Ok(mut slot) = worker_slot().lock() else {
+        return ERROR_INTERNAL;
+    };
+    let Some(worker) = slot.as_mut() else {
+        return ERROR_NOT_RUNNING;
+    };
+    worker.invalidate_local_health();
+    RESULT_OK
+}
+
 fn update_health(
     available_memory_bytes: JLong,
     low_memory: JInt,
@@ -478,14 +502,22 @@ fn update_health(
     power_save: JInt,
     monotonic_ms: JLong,
 ) -> JInt {
+    let Ok(mut slot) = worker_slot().lock() else {
+        return ERROR_INTERNAL;
+    };
+    let Some(worker) = slot.as_mut() else {
+        return ERROR_NOT_RUNNING;
+    };
     let (Ok(available_memory_bytes), Ok(monotonic_ms), Some(thermal)) = (
         u64::try_from(available_memory_bytes),
         u64::try_from(monotonic_ms),
         ThermalBand::from_android_code(thermal_code),
     ) else {
+        worker.invalidate_local_health();
         return ERROR_BAD_LOCAL_SAMPLE;
     };
     let Ok(battery_percent) = u8::try_from(battery_percent) else {
+        worker.invalidate_local_health();
         return ERROR_BAD_LOCAL_SAMPLE;
     };
     if battery_percent > 100
@@ -493,15 +525,10 @@ fn update_health(
         || !matches!(charging, 0 | 1)
         || !matches!(power_save, 0 | 1)
     {
+        worker.invalidate_local_health();
         return ERROR_BAD_LOCAL_SAMPLE;
     }
-    let Ok(mut slot) = worker_slot().lock() else {
-        return ERROR_INTERNAL;
-    };
-    let Some(worker) = slot.as_mut() else {
-        return ERROR_NOT_RUNNING;
-    };
-    worker.record_local_health(HealthSample {
+    let status = worker.record_local_health(HealthSample {
         available_memory_bytes,
         low_memory: low_memory == 1,
         thermal,
@@ -510,7 +537,11 @@ fn update_health(
         power_save: power_save == 1,
         monotonic_ms,
     });
-    RESULT_OK
+    if status.fresh {
+        RESULT_OK
+    } else {
+        ERROR_BAD_LOCAL_SAMPLE
+    }
 }
 
 fn health_field(field: JInt, now_ms: JLong) -> JLong {
@@ -596,6 +627,22 @@ pub extern "system" fn Java_org_phoneboost_app_WorkerNative_workerStop(
     _object: JObject,
 ) -> JInt {
     int_boundary(stop_worker)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_workerHealthSampleTimeMs(
+    _env: JniEnv,
+    _object: JObject,
+) -> JLong {
+    long_boundary(health_sample_time)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_phoneboost_app_WorkerNative_workerInvalidateHealth(
+    _env: JniEnv,
+    _object: JObject,
+) -> JInt {
+    int_boundary(invalidate_health)
 }
 
 #[unsafe(no_mangle)]
@@ -1542,14 +1589,20 @@ mod tests {
     }
 
     fn refresh_health() {
-        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+            RESULT_OK
+        );
     }
 
     fn start_healthy_worker() {
         reset();
         assert_eq!(start_worker(), RESULT_OK);
         refresh_health();
-        std::thread::sleep(std::time::Duration::from_millis(10_050));
+        for _ in 0..2 {
+            std::thread::sleep(std::time::Duration::from_millis(5_025));
+            refresh_health();
+        }
         refresh_health();
     }
 
@@ -2101,7 +2154,7 @@ mod tests {
         assert_eq!(start_worker(), RESULT_OK);
         assert_eq!(update_health(1, 2, 0, 50, 0, 0, 1), ERROR_BAD_LOCAL_SAMPLE);
         assert_eq!(
-            update_health(1_073_741_824, 0, 0, 80, 0, 0, 2_000),
+            update_health(1_073_741_824, 0, 0, 80, 0, 0, health_sample_time()),
             RESULT_OK
         );
         assert_eq!(health_field(0, 2_000), 1);
@@ -2120,7 +2173,7 @@ mod tests {
         assert_eq!(start_worker(), RESULT_OK);
         let android_boot_ms = 569_947_402;
         assert_eq!(
-            update_health(1_073_741_824, 0, 0, 80, 1, 0, android_boot_ms),
+            update_health(1_073_741_824, 0, 0, 80, 1, 0, health_sample_time()),
             RESULT_OK
         );
         // Initial memory hysteresis remains in force. A just-recorded sample
@@ -2134,6 +2187,66 @@ mod tests {
             pb_worker_core::SafetyBand::RefusedMemoryPressure as JLong
         );
         assert_eq!(health_field(4, -1), ERROR_BAD_LOCAL_SAMPLE as JLong);
+        reset();
+    }
+
+    #[test]
+    fn malformed_or_missing_health_invalidates_the_previous_jni_sample() {
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        for (bytes, low, thermal, battery, charging, saver, timestamp) in [
+            (-1, 0, 0, 80, 0, 0, 0),
+            (1024, 2, 0, 80, 0, 0, 0),
+            (1024, 0, 7, 80, 0, 0, 0),
+            (1024, 0, 0, -1, 0, 0, 0),
+            (1024, 0, 0, 101, 0, 0, 0),
+            (1024, 0, 0, 80, -1, 0, 0),
+            (1024, 0, 0, 80, 0, -1, 0),
+            (1024, 0, 0, 80, 0, 0, -1),
+            (1024, 0, 0, 80, 0, 0, JLong::MAX),
+        ] {
+            refresh_health();
+            let count = health_field(0, 0);
+            assert_eq!(
+                update_health(bytes, low, thermal, battery, charging, saver, timestamp),
+                ERROR_BAD_LOCAL_SAMPLE
+            );
+            assert_eq!(health_field(0, 0), count);
+            assert_eq!(
+                health_field(1, 0),
+                pb_worker_core::SafetyBand::RefusedStaleState as JLong
+            );
+            assert_eq!(health_field(2, 0), ThermalBand::Unknown as JLong);
+            assert_eq!(health_field(4, 0), -1);
+            assert_eq!(health_field(5, 0), 0);
+        }
+        let at = Java_org_phoneboost_app_WorkerNative_workerHealthSampleTimeMs(
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        );
+        assert!(at >= 0);
+        assert_eq!(update_health(1_073_741_824, 1, 2, 17, 1, 1, at), RESULT_OK);
+        {
+            let slot = worker_slot().lock().unwrap();
+            let health = slot.as_ref().unwrap().current_health_status();
+            assert_eq!(health.available_memory_bytes, 1_073_741_824);
+            assert!(health.low_memory && health.charging && health.power_save);
+            assert_eq!(health.thermal, ThermalBand::Moderate);
+            assert_eq!(health.battery_percent, 17);
+            assert_eq!(
+                health.safety,
+                pb_worker_core::SafetyBand::RefusedMemoryPressure
+            );
+        }
+        assert_eq!(
+            Java_org_phoneboost_app_WorkerNative_workerInvalidateHealth(
+                std::ptr::null_mut(),
+                std::ptr::null_mut()
+            ),
+            RESULT_OK
+        );
+        assert_eq!(health_field(4, 0), -1);
         reset();
     }
 
@@ -2300,10 +2413,16 @@ mod tests {
         let _test_guard = test_lock();
         reset();
         assert_eq!(start_worker(), RESULT_OK);
-        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
-        std::thread::sleep(std::time::Duration::from_millis(10_050));
         assert_eq!(
-            update_health(2_147_483_648, 0, 0, 80, 0, 0, 10_050),
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+            RESULT_OK
+        );
+        for _ in 0..2 {
+            std::thread::sleep(std::time::Duration::from_millis(5_025));
+            refresh_health();
+        }
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
             RESULT_OK
         );
         let directory = TestDirectory::new();
@@ -2628,10 +2747,16 @@ mod tests {
         let _test_guard = test_lock();
         reset();
         assert_eq!(start_worker(), RESULT_OK);
-        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
-        std::thread::sleep(std::time::Duration::from_millis(10_050));
         assert_eq!(
-            update_health(2_147_483_648, 0, 0, 80, 0, 0, 10_050),
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+            RESULT_OK
+        );
+        for _ in 0..2 {
+            std::thread::sleep(std::time::Duration::from_millis(5_025));
+            refresh_health();
+        }
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
             RESULT_OK
         );
         let directory = TestDirectory::new();
@@ -2649,7 +2774,10 @@ mod tests {
             .map(|index| (index as u8).wrapping_mul(31).wrapping_add(7))
             .collect();
         let oracle = *blake3::hash(&input).as_bytes();
-        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+        assert_eq!(
+            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+            RESULT_OK
+        );
         let oracle_hex: String = oracle.iter().map(|byte| format!("{byte:02x}")).collect();
         eprintln!("E-GEN-04 oracle ready digest={oracle_hex}");
 
@@ -2740,7 +2868,10 @@ mod tests {
                             put.reason
                         );
                         eprintln!("E-GEN-04 uploaded chunk {}", index + 1);
-                        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+                        assert_eq!(
+                            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+                            RESULT_OK
+                        );
                         if (index + 1) % 4 == 0 {
                             let renewed = client.command(
                                 4_000 + renewal_sequence,
@@ -3015,7 +3146,10 @@ mod tests {
                     };
                     assert_eq!(cancel.state, ComputeJobState::Completed);
                     assert_eq!(cancel.reason, ComputeReason::JobNotCancellable);
-                    assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+                    assert_eq!(
+                        update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+                        RESULT_OK
+                    );
 
                     let repeated_started = std::time::Instant::now();
                     for index in 1..10_u64 {
@@ -3031,7 +3165,10 @@ mod tests {
                             completed_digest(client.compute(5_100 + index + 10, submit(scratch)));
                         assert_eq!(digest, oracle, "repeat {index}");
                         eprintln!("E-GEN-04 compute {} complete", index + 1);
-                        assert_eq!(update_health(2_147_483_648, 0, 0, 80, 0, 0, 0), RESULT_OK);
+                        assert_eq!(
+                            update_health(2_147_483_648, 0, 0, 80, 0, 0, health_sample_time()),
+                            RESULT_OK
+                        );
                     }
                     let repeated_elapsed = repeated_started.elapsed();
 
