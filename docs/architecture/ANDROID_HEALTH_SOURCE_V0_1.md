@@ -138,6 +138,18 @@ Le format `HealthSample` et les messages réseau restent inchangés. Le dernier
 argument JNI d'écriture est désormais l'heure retournée par
 `workerHealthSampleTimeMs()` ; APK et bibliothèque doivent provenir du même build.
 
+Pour la qualification physique, le build débogage émet aussi `HEALTH_PRECHECK`
+avant chaque lecture Android. Il expose la décision ResourceGuard, l'âge et le
+budget **avant** qu'une mesure de reprise puisse effacer un état périmé. La ligne
+`HEALTH_SAMPLE` associe ensuite au résultat JNI le tuple Android en octets,
+code thermique et pourcentage batterie, puis les bandes, l'âge et le budget
+relus dans ResourceGuard. Ces champs sont des diagnostics, jamais une source
+d'admission ; aucun nouveau polling, seuil ou message réseau n'en dépend.
+L'horodatage natif du début de collecte et `SystemClock.elapsedRealtime()`
+permettent de comparer les écarts autour d'une interruption. Le snapshot JNI
+est lu champ par champ ; les lectures d'une même ligne ne sont donc pas
+strictement atomiques au passage d'une frontière de péremption.
+
 ## Sources écartées
 
 | Candidat | Décision |
@@ -183,8 +195,12 @@ Avec l'APK correspondant à la PR, sans modifier les réglages système :
 3. Vérifier le service thermique/HAL en lecture seule et la cohérence de la
    bande native avec celle reçue. Un NONE constant seul n'est pas une preuve.
 4. Observer une courte séquence premier plan, arrière-plan et écran éteint ;
-   comparer les écarts d'horloge et la reprise d'échantillonnage. Toute absence
-   connue doit rester refusée ; aucun test de chauffe ou de charge extrême requis.
+   comparer `HEALTH_PRECHECK` (avant lecture) à `HEALTH_SAMPLE` (après lecture).
+   Un écart de plus de 6 s doit produire un pré-contrôle périmé/refusé et le
+   retour d'un échantillon frais doit suivre les règles existantes. Une simple
+   reprise des logs après l'écran éteint ne prouve pas le refus pendant l'écart.
+   Toute absence connue doit rester refusée ; aucun test de chauffe ou de
+   charge extrême requis.
 
 **NEXT_ACTION : valider sur appareil la provenance thermique et la cohérence des
 lectures/fraîcheur de cette source minimale avant de rouvrir le spike CPU

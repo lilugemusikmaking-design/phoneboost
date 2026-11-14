@@ -5,10 +5,38 @@
   "branch": "fix/android-health-source-v0-1",
   "proof_scope": "SOFTWARE_ONLY",
   "physical": {
-    "status": "NOT_RUN",
-    "reason": "User confirmed phone unavailable; no device state changed",
+    "status": "IN_PROGRESS",
+    "reason": "Phone connected and authorized by ADB; app source-to-guard and screen-off checks pending",
     "avd": "NOT_RUN: emulator, AVD and system image not installed",
-    "host_jni": "Actual JVM/native linkage with simulated API-value fixtures; not Android runtime evidence"
+    "host_jni": "Actual JVM/native linkage with simulated API-value fixtures; not Android runtime evidence",
+    "hal_ready": true,
+    "screen_off": "NOT_RUN",
+    "android_to_resource_guard": "NOT_RUN",
+    "preflight": {
+      "observed_utc": "2026-11-14T11:26:21.219903+00:00",
+      "manufacturer": "samsung",
+      "model": "SM-A155F",
+      "android_release": "16",
+      "api_level": 36,
+      "build_id": "BP4A.251205.006",
+      "abi": "arm64-v8a",
+      "existing_phoneboost_install": "2026-10-25; older than PR #31",
+      "thermal_service_present": true,
+      "thermal_hal_ready": true,
+      "thermal_hal_connection": "AIDL 3 connected: yes",
+      "thermal_status": 0,
+      "thermal_override": false,
+      "thermal_skin_celsius_from_hal": 25.3,
+      "battery_level_percent_at_preflight": 21,
+      "battery_status_at_preflight": 2,
+      "battery_usb_powered": true,
+      "battery_saver_enabled_at_preflight": true,
+      "raw_dumps_sha256": {
+        "thermalservice.raw.txt": "3b5a82bfd5d0de24f831f70c2b71677b6435befe5d38795562e68b01074d48dc",
+        "battery.raw.txt": "003eaaeb6d9bd9ca53d58dd6517d0f5981335efca0e32379ea9d9d10e948e216",
+        "power.raw.txt": "eaa8d2490c30a5999594a41c1b1f69f3cf254f0303d03aac5d4c5046bf032d07"
+      }
+    }
   },
   "canonical_documents": [
     {
@@ -133,6 +161,13 @@
       "command": "actionlint (installed tool)",
       "status": "PASS",
       "exit_code": 0
+    },
+    {
+      "command": "gradle --offline --max-workers=1 -p android :app:assembleDebug :app:lintDebug (cached SDK/NDK; diagnostic-only change)",
+      "status": "PASS",
+      "exit_code": 0,
+      "log_name": "physical-diagnostics-build-final.log",
+      "log_sha256": "b35ac03a65ce5d3314ba0c4dac7ecdfc7d7997c3ceadeded53b5d05fd2e695b2"
     }
   ],
   "remaining_checks": [
@@ -148,8 +183,8 @@
   "build_artifacts": [
     {
       "path": "android/app/build/outputs/apk/debug/app-debug.apk",
-      "sha256": "e65dd0ef65b54909f7077e070fd555cb535c4ddc0639203305413d18605693a5",
-      "scope": "LOCAL_BUILD_ONLY; not installed on device"
+      "sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "scope": "CURRENT LOCAL DEBUG BUILD with qualification logs; not installed on device; physical proof pending"
     },
     {
       "path": ".work/a5/jniLibs/arm64-v8a/libphoneboost_core_jni.so",
@@ -157,5 +192,17 @@
       "scope": "LOCAL_BUILD_ONLY; not installed on device"
     }
   ],
-  "publication_security": "Native project-pipeline scan_index must pass on staged bytes before commit; local checkpoint log records execution."
+  "publication_security": "Native project-pipeline scan_index must pass on staged bytes before commit; local checkpoint log records execution.",
+  "previous_local_apk_sha256": "e65dd0ef65b54909f7077e070fd555cb535c4ddc0639203305413d18605693a5",
+  "physical_diagnostics": {
+    "purpose": "DEBUGGABLE app only; observational log, not an admission signal",
+    "source_path": "android/app/src/main/java/org/phoneboost/app/PhoneBoostService.kt",
+    "source_sha256": "b2a641a23c7889680341d84e12dc2af842e690f72285abc83574f22be1c5b116",
+    "local_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+    "embedded_dex": "classes3.dex",
+    "dex_contains_expected_provenance_fields": true,
+    "local_build": "PASS: Android assembleDebug and lintDebug",
+    "build_log_sha256": "b35ac03a65ce5d3314ba0c4dac7ecdfc7d7997c3ceadeded53b5d05fd2e695b2",
+    "physical_state": "NOT_RUN"
+  }
 }
