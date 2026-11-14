@@ -2,8 +2,6 @@
   "platform": "linux-x86_64",
   "jdk_version": "21.0.12.1+1",
   "gradle_version": "9.5.0",
-  "cmdline_tools_version": "23.0",
-  "cmdline_tools_build": "16111833",
   "assets": [
     {
       "name": "jdk",
@@ -18,11 +16,10 @@
       "format": "zip"
     },
     {
-      "name": "cmdline-tools",
-      "url": "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip",
-      "sha1": "e025545c62a8e64c7559119566a569fb1dec5f60",
-      "format": "zip",
-      "sha256": "0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8"
+      "name": "android-cli",
+      "url": "https://dl.google.com/android/cli/1.0.16500706/linux_x86_64/android-cli",
+      "format": "binary",
+      "sha256": "508840c2a9ce8768a9246ec7962834713967b46dd0cf0dad80fcde3d444947c0"
     }
   ],
   "sdk_packages": [
