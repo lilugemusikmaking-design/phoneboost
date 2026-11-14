@@ -17,6 +17,9 @@ const UI_COPY = {
     helper: "Participation autorisée par défaut", runtime: "Statut runtime", unavailable: "Indisponible",
     offline: "Hors ligne", worker: "Worker", connection: "Connexion", provider: "Provider",
     meaning: "Ce que cela signifie", advanced: "Détails avancés",
+    connectionHelpTitle: "Téléphone non détecté sur le réseau",
+    connectionHelpUsb: "En USB, activez « Modem USB » ou « Partage de connexion via USB » dans les réglages Android. Vérifiez ce réglage après un rebranchement : il peut se désactiver au retrait du câble. Le câble seul ne crée pas de liaison réseau.",
+    connectionHelpLan: "En Wi-Fi, vérifiez que le PC et le téléphone sont sur le même réseau local. Dans les deux cas, PhoneBoost doit être activé sur le téléphone. Cette aide ne confirme pas la cause de la déconnexion.",
     advancedHint: "Portes de confiance, ressources distantes, preuves et diagnostics",
     local: "Local · hôte Linux", localHint: "État observé sur cette machine",
     remote: "Remote · worker Android", remoteHint: "Objet distant explicite et gouverné",
@@ -37,6 +40,9 @@ const UI_COPY = {
     helper: "Participation enabled by default", runtime: "Runtime status", unavailable: "Unavailable",
     offline: "Offline", worker: "Worker", connection: "Connection", provider: "Provider",
     meaning: "What this means", advanced: "Advanced details",
+    connectionHelpTitle: "Phone not detected on the network",
+    connectionHelpUsb: "For USB, enable USB tethering in Android settings. Check this setting after reconnecting: unplugging the cable may turn it off. The cable alone does not create a network link.",
+    connectionHelpLan: "For Wi-Fi, check that the PC and phone are on the same local network. In either case, PhoneBoost must be enabled on the phone. This guidance does not confirm the cause of the disconnection.",
     advancedHint: "Trust gates, remote resources, evidence and diagnostics",
     local: "Local · Linux host", localHint: "State observed on this machine",
     remote: "Remote · Android worker", remoteHint: "Explicit, governed remote object",
@@ -68,6 +74,17 @@ export function runtimeSummary(live, enabled) {
 
 export function liveBadgeTone(live) {
   return live.fresh ? "border-primary/30 bg-primary/10 text-primary" : "border-amber-500/30 bg-amber-500/10 text-amber-200";
+}
+
+export function ConnectionHelp({ live, enabled, language }) {
+  if (enabled !== true || live?.provenance !== "LIVE" || !live.fresh ||
+      live.runtime?.auto_use?.reason !== "NO_DEVICE") return null;
+  const ui = UI_COPY[language] || UI_COPY.fr;
+  return <aside role="note" aria-labelledby="connection-help-title" data-testid="connection-help" className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 text-sm text-amber-100">
+    <h2 id="connection-help-title" className="font-semibold">{ui.connectionHelpTitle}</h2>
+    <p className="mt-2 leading-6">{ui.connectionHelpUsb}</p>
+    <p className="mt-2 leading-6">{ui.connectionHelpLan}</p>
+  </aside>;
 }
 
 function StatePill({ state, language, ready = false }) {
@@ -104,6 +121,7 @@ function Hero({ live, enabled, setEnabled, language, ui, t, setLanguage }) {
   const summary = runtimeSummary(live, enabled);
   return <section id="overview" className="pt-5"><div className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><h1 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">PhoneBoost Control Center</h1><p className="mt-1 text-zinc-500">{ui.subtitle}</p></div><div className="flex items-center gap-4"><div className="lg:hidden"><LanguageToggle language={language} setLanguage={setLanguage} t={t} /></div><div data-testid="live-status-badge" className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[.16em] ${liveBadgeTone(live)}`}><Radio size={12} />{live.fresh ? "LIVE" : t.labels.liveUnavailable}</div></div></div>
     <div className="relative overflow-hidden rounded-2xl border border-[#24313b] bg-[#0a1015] p-7 sm:p-9"><div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 opacity-40 [background:linear-gradient(145deg,transparent_25%,#17222a_25%,transparent_48%,#122018_48%,transparent_67%)]" /><div className="relative grid gap-8 xl:grid-cols-[1fr_300px]"><div className="grid gap-8 md:grid-cols-[1fr_300px] md:items-center"><div><p className="font-mono text-[10px] uppercase leading-5 tracking-[.28em] text-zinc-600">{ui.eyebrow}</p><span className="my-5 block h-0.5 w-10 bg-primary" /><h2 className="font-display text-5xl font-semibold leading-[.98] tracking-tight text-white sm:text-6xl">PhoneBoost<br /><span className="text-primary">{enabled ? ui.active : ui.inactive}</span></h2><p className="mt-5 max-w-xl text-lg leading-7 text-zinc-300">{enabled ? ui.enabledBody : ui.disabledBody}</p></div><div className="flex flex-col items-center gap-4"><ParticipationSwitch enabled={enabled} setEnabled={setEnabled} ui={ui} /><StatePill state={summary.state} language={language} ready={summary.ready} /><p className="flex items-center gap-2 text-sm text-zinc-500"><Info size={16} />{ui.helper}</p></div></div><div className="border-t border-[#1d2932] pt-3 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0"><SummaryRow icon={Server} label={ui.runtime}><StatePill state={summary.state} language={language} ready={summary.ready} /></SummaryRow><SummaryRow icon={Smartphone} label={ui.worker}>{runtime?.authenticated_session?.remote_worker_state || ui.unavailable}</SummaryRow><SummaryRow icon={Link2} label={ui.connection}>{runtime?.authenticated_session?.state || ui.offline}</SummaryRow><SummaryRow icon={Cpu} label={ui.provider}>{runtime?.provider_readiness?.state || ui.unavailable}</SummaryRow></div></div></div>
+    <ConnectionHelp live={live} enabled={enabled} language={language} />
   </section>;
 }
 

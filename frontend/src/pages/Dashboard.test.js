@@ -1,7 +1,8 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import axios from "axios";
-import {
+import Dashboard, {
+  ConnectionHelp,
   EvidenceDrawer,
   LiveControl,
   Sidebar,
@@ -48,6 +49,55 @@ const evidenceTwo = {
 afterEach(() => {
   axios.get.mockReset();
   document.body.innerHTML = "";
+});
+
+const missingPhone = {
+  provenance: "LIVE", fresh: true,
+  runtime: { auto_use: { state: "UNAVAILABLE", reason: "NO_DEVICE" } },
+};
+
+test.each([
+  ["fr", "Modem USB", "il peut se désactiver", "ne confirme pas la cause"],
+  ["en", "USB tethering", "may turn it off", "does not confirm the cause"],
+])("missing-phone help is conditional guidance in %s, not a diagnosis or action", (language, usb, warning, caution) => {
+  const view = mount(<ConnectionHelp live={missingPhone} enabled language={language} />);
+  expect(view.container.textContent).toContain(usb);
+  expect(view.container.textContent).toContain(warning);
+  expect(view.container.textContent).toContain(caution);
+  expect(view.container.textContent).toContain("Wi-Fi");
+  expect(view.container.querySelector('[role="note"]')).not.toBeNull();
+  expect(view.container.querySelector("button")).toBeNull();
+  expect(axios.get).not.toHaveBeenCalled();
+  view.unmount();
+});
+
+test.each([
+  ["OFF", missingPhone, false],
+  ["unconfirmed preference", missingPhone, null],
+  ["stale snapshot", { ...missingPhone, fresh: false }, true],
+  ["recorded snapshot", { ...missingPhone, provenance: "RECORDED" }, true],
+  ["absent snapshot", null, true],
+  ["missing runtime", { ...missingPhone, runtime: null }, true],
+  ["resource refusal", { ...missingPhone, runtime: { auto_use: { reason: "RESOURCE_REFUSED" } } }, true],
+  ["healthy despite expired discovery", { ...missingPhone, runtime: { auto_use: { state: "AVAILABLE", reason: "READY" }, discovery_observation: { state: "STALE" } } }, true],
+])("connection help is absent for %s", (_label, live, enabled) => {
+  const view = mount(<ConnectionHelp live={live} enabled={enabled} language="fr" />);
+  expect(view.container.textContent).toBe("");
+  view.unmount();
+});
+
+test("Dashboard shows connection guidance and removes it on fresh recovery", () => {
+  const props = {
+    api: { base: null }, snapshot: {}, evidence: [], roadmap: {}, arch: {}, fixtures: {},
+    compute: { running: false }, language: "fr", setLanguage: jest.fn(),
+    preference: { fresh: true, enabled: true, pending: false },
+  };
+  const view = mount(<Dashboard {...props} live={missingPhone} />);
+  expect(view.container.querySelector('[data-testid="connection-help"]')).not.toBeNull();
+  const recovered = { ...missingPhone, runtime: { auto_use: { state: "AVAILABLE", reason: "READY" } } };
+  act(() => view.root.render(<Dashboard {...props} live={recovered} />));
+  expect(view.container.querySelector('[data-testid="connection-help"]')).toBeNull();
+  view.unmount();
 });
 
 test("navigation landmark has a navigation label rather than a section label", () => {
