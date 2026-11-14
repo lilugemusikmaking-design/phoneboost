@@ -176,6 +176,12 @@ impl WorkerCore {
         self.resource_guard.health_status(now_ms)
     }
 
+    /// Observe health in the same worker-owned time domain used for admission.
+    /// Android boot-relative timestamps are not authority over sample freshness.
+    pub fn current_health_status(&self) -> HealthStatus {
+        self.resource_guard.health_status(self.clock.now_ms())
+    }
+
     pub const fn health_sample_count(&self) -> u64 {
         self.resource_guard.health_sample_count()
     }
@@ -1001,6 +1007,74 @@ pub(crate) fn random_nonzero_128() -> io::Result<[u8; RANDOM_ID_BYTES]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    struct ManualClock(Arc<AtomicU64>);
+
+    impl WorkerMonotonicClock for ManualClock {
+        fn now_ms(&self) -> u64 {
+            self.0.load(Ordering::Relaxed)
+        }
+    }
+
+    fn healthy_observation() -> HealthSample {
+        HealthSample {
+            available_memory_bytes: 1024 * 1024 * 1024,
+            low_memory: false,
+            thermal: ThermalBand::None,
+            battery_percent: 80,
+            charging: true,
+            power_save: false,
+            monotonic_ms: u64::MAX,
+        }
+    }
+
+    #[test]
+    fn current_health_observation_preserves_real_stale_boundary() {
+        let time = Arc::new(AtomicU64::new(100));
+        let mut worker = WorkerCore::cold_start().unwrap();
+        worker.clock = Box::new(ManualClock(Arc::clone(&time)));
+        worker.record_local_health(healthy_observation());
+        time.store(6100, Ordering::Relaxed);
+        assert!(worker.current_health_status().fresh);
+        assert_eq!(worker.current_health_status().sample_age_ms, Some(6000));
+        time.store(6101, Ordering::Relaxed);
+        let expired = worker.current_health_status();
+        assert!(!expired.fresh);
+        assert_eq!(expired.safety, SafetyBand::RefusedStaleState);
+        assert_eq!(expired.budget_bytes, 0);
+    }
+
+    #[test]
+    fn current_health_observation_preserves_memory_hysteresis() {
+        let time = Arc::new(AtomicU64::new(100));
+        let mut worker = WorkerCore::cold_start().unwrap();
+        worker.clock = Box::new(ManualClock(Arc::clone(&time)));
+        worker.record_local_health(healthy_observation());
+        assert_eq!(
+            worker.current_health_status().safety,
+            SafetyBand::RefusedMemoryPressure
+        );
+        time.store(10099, Ordering::Relaxed);
+        worker.record_local_health(healthy_observation());
+        assert_eq!(worker.current_health_status().budget_bytes, 0);
+        time.store(10100, Ordering::Relaxed);
+        worker.record_local_health(healthy_observation());
+        assert_eq!(worker.current_health_status().safety, SafetyBand::Nominal);
+        assert_eq!(
+            worker.current_health_status().budget_bytes,
+            128 * 1024 * 1024
+        );
+        let mut pressure = healthy_observation();
+        pressure.available_memory_bytes = 768 * 1024 * 1024 - 1;
+        worker.record_local_health(pressure);
+        assert_eq!(
+            worker.current_health_status().safety,
+            SafetyBand::RefusedMemoryPressure
+        );
+        assert_eq!(worker.current_health_status().budget_bytes, 0);
+    }
 
     #[test]
     fn a5_t06_incarnation_is_exactly_128_bits_and_nonzero() {

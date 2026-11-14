@@ -1420,6 +1420,13 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
         Some(lease.incarnation),
     );
     let mut lease = lease;
+    let mut next_renewal = lease_renewal_at(lease, Instant::now(), shared.timing.renewal_interval);
+    if renew_due_lease(&access, &mut lease, &mut next_renewal).is_err() {
+        client.cancel_session();
+        let _ = session.join();
+        clear_session(shared, identity);
+        return ConnectionEnd::AuthenticatedLost;
+    }
     if reconcile_cleanup(&access, peer_id, lease).is_err() {
         client.cancel_session();
         let _ = session.join();
@@ -1440,6 +1447,12 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
             } else {
                 ConnectionEnd::Disabled
             };
+        }
+        if renew_due_lease(&access, &mut lease, &mut next_renewal).is_err() {
+            client.cancel_session();
+            let _ = session.join();
+            clear_session(shared, identity);
+            return ConnectionEnd::AuthenticatedLost;
         }
         match readiness_with_purge_proof(&access, peer_id, lease) {
             Ok(()) => break,
@@ -1477,8 +1490,15 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
             ConnectionEnd::Disabled
         };
     }
+    // Readiness/heartbeat waits consume lease lifetime too. Never publish on
+    // a reused near-expiry grant merely because its earlier probe succeeded.
+    if renew_due_lease(&access, &mut lease, &mut next_renewal).is_err() {
+        client.cancel_session();
+        let _ = session.join();
+        clear_session(shared, identity);
+        return ConnectionEnd::AuthenticatedLost;
+    }
     publish_available(shared, identity, client.clone(), peer_id, lease);
-    let mut next_renewal = Instant::now() + shared.timing.renewal_interval;
     let mut next_readiness = Instant::now() + shared.timing.readiness_retry;
     loop {
         if !is_current(shared, epoch) {
@@ -1505,17 +1525,13 @@ fn run_connection(shared: &Shared, epoch: u64, candidate: TransportCandidate) ->
             return ConnectionEnd::AuthenticatedLost;
         }
         if Instant::now() >= next_renewal {
-            match renew_lease(&access, lease) {
-                Ok(renewed) => {
-                    lease = renewed;
-                    record_lease_active(shared, identity, lease);
+            match renew_due_lease(&access, &mut lease, &mut next_renewal) {
+                Ok(()) => {
                     if lock_data(shared).status.state == AutoUseState::Available {
                         publish_available(shared, identity, client.clone(), peer_id, lease);
                     }
-                    next_renewal = Instant::now() + shared.timing.renewal_interval;
                 }
                 Err(_) => {
-                    record_lease_unavailable(shared, identity, "C07_RENEW_FAILED");
                     client.cancel_session();
                     mark_connection_lost_identity(shared, identity, peer_id);
                     let _ = session.join();
@@ -1640,6 +1656,34 @@ fn renew_lease(
         lease.next_command_seq,
     ))?;
     lease_from_ack(ack, Some(lease), sent_at)
+}
+
+fn lease_renewal_at(lease: LeaseContext, now: Instant, interval: Duration) -> Instant {
+    // Keep the existing cadence for a full grant; bring renewal forward for
+    // reused/aged grants. This schedules a request, never extends authority.
+    let remaining = lease.not_after.saturating_duration_since(now);
+    now + interval.min(remaining.saturating_sub(interval))
+}
+
+fn renew_due_lease(
+    access: &SessionAccess<'_>,
+    lease: &mut LeaseContext,
+    next_renewal: &mut Instant,
+) -> Result<(), RemoteFailure> {
+    if Instant::now() < *next_renewal {
+        return Ok(());
+    }
+    let renewed = renew_lease(access, *lease).inspect_err(|_| {
+        record_lease_unavailable(access.shared, access.identity, "C07_RENEW_FAILED");
+    })?;
+    *lease = renewed;
+    *next_renewal = lease_renewal_at(
+        renewed,
+        Instant::now(),
+        access.shared.timing.renewal_interval,
+    );
+    record_lease_active(access.shared, access.identity, renewed);
+    Ok(())
 }
 
 fn release_lease(access: &SessionAccess<'_>, lease: LeaseContext) -> Result<(), RemoteFailure> {
@@ -3210,6 +3254,7 @@ mod tests {
         core: Mutex<WorkerCore>,
         force_busy: AtomicBool,
         force_resource_refusal: AtomicBool,
+        short_acquire_ttl: AtomicBool,
         command_types: Mutex<Vec<u8>>,
         acquire_leases: Mutex<Vec<[u8; 16]>>,
         block_compute: AtomicBool,
@@ -3233,6 +3278,7 @@ mod tests {
         ResourceReserve = 1,
         RemoteBufferPut = 2,
         ComputeSubmit = 3,
+        ControllerRenew = 4,
     }
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -3258,6 +3304,7 @@ mod tests {
                 core: Mutex::new(core),
                 force_busy: AtomicBool::new(false),
                 force_resource_refusal: AtomicBool::new(false),
+                short_acquire_ttl: AtomicBool::new(false),
                 command_types: Mutex::new(Vec::new()),
                 acquire_leases: Mutex::new(Vec::new()),
                 block_compute: AtomicBool::new(false),
@@ -3417,7 +3464,9 @@ mod tests {
             _request_id: u64,
             command: CommandPayload,
         ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
-            self.before_request(None);
+            self.before_request(
+                (command.command_type == 2).then_some(TestRequestStage::ControllerRenew),
+            );
             self.command_types
                 .lock()
                 .map_err(|_| AuthenticatedCommandHandlerError::Failed)?
@@ -3446,7 +3495,12 @@ mod tests {
                 .map_err(|_| AuthenticatedCommandHandlerError::Failed)?
                 .apply_controller_command(verified_session, command)
                 .map_err(|_| AuthenticatedCommandHandlerError::Failed)?;
-            let ack = controller_ack(result);
+            let mut ack = controller_ack(result);
+            // Model a conservative ACK for a reused lease near expiry. Worker
+            // authority stays intact; the host must respect the shorter bound.
+            if command_type == 1 && self.short_acquire_ttl.load(Ordering::Acquire) {
+                ack.ttl_remaining_ms = ack.ttl_remaining_ms.min(500);
+            }
             if command_type == 1 && ack.result_ref_present == 1 {
                 self.acquire_leases
                     .lock()
@@ -4234,11 +4288,18 @@ mod tests {
             assert!(Instant::now() < deadline, "automatic renewal not observed");
             thread::sleep(Duration::from_millis(10));
         }
+        // OFF prevents new admission, but cannot recall a command already sent
+        // to the peer. Hold that exact in-flight case instead of racing a TCP
+        // delivery against a snapshot of the responder's receive counter.
+        worker.block(TestRequestStage::ControllerRenew);
+        wait_for_flag(&worker.stage_entered, "in-flight renewal did not enter");
+        let renewals_before_disable = worker.command_count(2);
+        let requests_before_disable = worker.remote_request_count.load(Ordering::Acquire);
         controller.disable();
+        worker.unblock();
         assert_eq!(controller.current_state(), AutoUseState::Off);
-        let renewals_after_disable = worker.command_count(2);
         let deadline = Instant::now() + Duration::from_secs(2);
-        while host.snapshot().authenticated {
+        while host.snapshot().authenticated || !device.connections.lock().unwrap().is_empty() {
             assert!(
                 Instant::now() < deadline,
                 "disable did not tear down session"
@@ -4246,7 +4307,14 @@ mod tests {
             thread::sleep(Duration::from_millis(5));
         }
         thread::sleep(Duration::from_millis(150));
-        assert_eq!(worker.command_count(2), renewals_after_disable);
+        assert_eq!(worker.command_count(2), renewals_before_disable + 1);
+        assert_eq!(
+            worker.remote_request_count.load(Ordering::Acquire),
+            requests_before_disable,
+            "a new request reached the worker after OFF"
+        );
+        assert_eq!(controller.current_state(), AutoUseState::Off);
+        assert!(lock_data(&controller.shared).active.is_none());
     }
 
     #[test]
@@ -4281,6 +4349,44 @@ mod tests {
         wait_for(&controller, |status| {
             status.state() == AutoUseState::Available
         });
+    }
+
+    #[test]
+    fn renewal_schedule_preserves_cadence_but_precedes_reused_lease_expiry() {
+        let now = Instant::now();
+        let (_, _, mut lease, _) = capacity_fixture();
+        for (remaining_secs, delay_secs) in [(60, 20), (30, 10), (21, 1), (20, 0), (1, 0), (0, 0)] {
+            lease.not_after = now + Duration::from_secs(remaining_secs);
+            assert_eq!(
+                lease_renewal_at(lease, now, RENEWAL_INTERVAL),
+                now + Duration::from_secs(delay_secs)
+            );
+        }
+        lease.not_after = now - Duration::from_millis(1);
+        assert_eq!(lease_renewal_at(lease, now, RENEWAL_INTERVAL), now);
+    }
+
+    #[test]
+    fn short_acquired_lease_is_renewed_before_readiness_and_use() {
+        let (_directory, host, android) = paired_runtimes();
+        let worker = TestWorker::healthy();
+        worker.short_acquire_ttl.store(true, Ordering::Release);
+        let device = TestDevice::start(android, worker.clone());
+        let mut timing = test_timing();
+        timing.renewal_interval = RENEWAL_INTERVAL;
+        let controller = AutoUseController::with_timing(host, device.discovery(), timing).unwrap();
+        controller.enable();
+        wait_for(&controller, |s| s.state() == AutoUseState::Available);
+        assert!(
+            worker.command_count(2) >= 1,
+            "short lease was not renewed before AVAILABLE"
+        );
+        let result = controller.execute_blake3(b"short reused authority");
+        assert_eq!(result.source(), ExecutionSource::RemoteSuccess);
+        assert_eq!(
+            result.digest(),
+            *blake3::hash(b"short reused authority").as_bytes()
+        );
     }
 
     #[test]
