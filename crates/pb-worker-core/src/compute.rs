@@ -14,6 +14,7 @@ use crate::{WorkerIncarnationId, random_nonzero_128};
 pub(crate) const COMPUTE_IDEMPOTENCE_CAPACITY_PER_LEASE: usize = 256;
 pub(crate) const COMPUTE_TERMINAL_RETENTION_MS: u64 = 5 * 60_000;
 pub(crate) const PROVIDER_TIMEOUT_MS: u64 = 30_000;
+#[cfg(any(test, not(feature = "experimental-multicore")))]
 const HASH_CHUNK_BYTES: usize = 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -508,6 +509,7 @@ pub(crate) fn blake3_digest(input: &[u8]) -> [u8; 32] {
     blake3_digest_bounded(input, 0, || 0, || true).expect("zero-duration local hash")
 }
 
+#[cfg(any(test, not(feature = "experimental-multicore")))]
 pub(crate) fn blake3_digest_bounded(
     input: &[u8],
     started_ms: u64,

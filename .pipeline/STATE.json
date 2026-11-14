@@ -1,21 +1,16 @@
 {
   "schema_version": 1,
-  "branch": "fix/android-health-source-v0-1",
-  "head": "251306e825db79173f0bdeb97d1823d08d894ca7",
-  "head_meaning": "Parent master of this checkpoint. Resolve the containing commit with git log -1 --format=%H -- .pipeline/STATE.json; project-pipeline status reports the live HEAD.",
-  "task": "Minimal honest Android health source and deterministic ResourceGuard qualification",
-  "status": "ANDROID_HEALTH_QUALIFIED_ON_DEVICE",
-  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
-  "evidence": "docs/evidence/android-health-source-v0-1.json",
+  "branch": "spike/android-multicore-v0-2",
+  "head": "df020cecd7f9691eb431c4828055664c98f07f9d",
+  "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
+  "task": "Explicit experimental Android CPU profiles1/2/4 under unchanged ResourceGuard ceilings",
+  "status": "MULTICORE_EXECUTION_CONFIRMED",
+  "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md",
+  "evidence": "docs/evidence/android-multicore-v0-2.json",
   "previous_checkpoint": {
-    "commit": "251306e825db79173f0bdeb97d1823d08d894ca7",
-    "report": "docs/architecture/PHONEBOOST_GITHUB_CONVERGENCE_V0_1.md",
-    "merged_prs": [
-      30,
-      27,
-      28,
-      29
-    ]
+    "commit": "edad4ffc90c6143d1a4f43dfa6096be21cb97cfa",
+    "merged_pr": 31,
+    "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md"
   },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
@@ -28,22 +23,147 @@
     "divergence_relative_to": "1312cb1e7ddc40e71a9512d85663264eb63b30c6"
   },
   "completed": [
-    "Canonical hashes and Android public API/AOSP semantics audited",
-    "Existing producer path audited through JNI, worker and ResourceGuard",
-    "Missing/inconsistent readings invalidate cached health; protective recovery and allocations preserved",
-    "Collection-start age retained in worker clock; Android BOOTTIME includes suspend",
-    "Deterministic Rust fixtures and actual host Kotlin/JNI linkage passed",
-    "Android arm64/APK/lint passed with existing cached toolchain",
-    "Rust workspace: 499 tests including doctests passed; Clippy completed",
-    "Pipeline tests: 22 passed including installed Gitleaks integration",
-    "Physical Android health qualification: HAL Ready/no override, exact installed APK, memory/battery/power/thermal propagation, BOOTTIME stale refusal and recovery"
+    "Software validation and two CodeRabbit review cycles; decisions in evidence",
+    "Product isolation and explicit experimental APK verified",
+    "Physical APK/source hash matched; authenticated C12 control passed",
+    "Supplied Perfetto bench reused; official tool pinned; real C08 refusals preserved",
+    "Experimental processes stopped; product APK hash unchanged",
+    "docs(cpu): record physical guard refusal and Perfetto evidence",
+    "docs(cpu): confirm profile 2 scheduler overlap and bound capture duration"
   ],
-  "last_tests": {
-    "path": "docs/evidence/android-health-source-v0-1.json",
-    "scope": "Software and physical evidence recorded in the referenced file; GitHub validation must match the final published HEAD."
+  "last_tests": [
+    {
+      "name": "worker-feature-final",
+      "status": "PASS",
+      "log_sha256": "c6ea9cb5fa200c4047af12e02c54378e7edaf054a344eed514c42d781bd64a70",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "jni-feature",
+      "status": "PASS",
+      "log_sha256": "83835a20f1332e7803e35cf54c3c0e00ec65f48eaa2122559bc65f8b6994c31f",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "host-feature-initial",
+      "status": "FAILED_ONE_FIXTURE_THEN_FIXED",
+      "log_sha256": "f6bd2bc40f9873c9c38a7eb3271b4b011088c31c66a1c00ddb6af9f54b1dffa9",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "host-targeted-retest",
+      "status": "PASS",
+      "log_sha256": "b7340f679450a12cc07e3eacea37ecd814171679598ce5508a179c4cdd989455",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "product-android",
+      "status": "PASS",
+      "log_sha256": "eec9e76e9de6d8ef347af66decc0c2d99a1ac6de9716e7628b6dd86ac88907f3",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "spike-android-final",
+      "status": "PASS",
+      "log_sha256": "9a73c202bc764122c193c2f9d338e532c6109c612484ec131e48d340e2ecd25d",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "pipeline",
+      "status": "PASS",
+      "log_sha256": "4cb16ab6316d382d513a0b10ddc674ecb73bb70c6251882ab799aeba5fcdc83b",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    },
+    {
+      "name": "python-evidence",
+      "status": "PASS",
+      "log_sha256": "844451f8766e6e061667070e7743d1e7643b1900cc24d6e650dac13f558e4cf1",
+      "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
+    }
+  ],
+  "physical_proof": "One complete exact64MiB scheduler-qualified capture each1and2. Profile2:2TIDs,CPUs5/6/7,peak2,49.913692ms actualRunningoverlap, nominalHealth; no performance qualification.",
+  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite. V\u00e9rifier auparavant la restauration Battery Saver encore en attente.",
+  "writer": "Codex",
+  "deferred": [
+    "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
+  ],
+  "checkpoint": {
+    "date": "2026-11-14T16:45:03.975581+00:00",
+    "commit": "df020cecd7f9691eb431c4828055664c98f07f9d",
+    "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
-  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36: HAL Ready true, no override, exact installed APK, source-to-ResourceGuard coherence, physical stale/refused/recovery. See evidence; no deep-sleep or high-thermal claim.",
-  "blocked_technical_work": "This Android health change does not include CPU multicore or remote RAM; those remain the next scoped work after publication of #31.",
-  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
-  "writer": "Codex"
+  "canonical_documents": {
+    "order": [
+      {
+        "name": "SPEC V0.7",
+        "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
+        "path": null,
+        "sha256": null,
+        "external_filename": "PHONEBOOST_SPEC_V0_7_QR01B_LOCKED_IMPLEMENTATION_BASELINE.docx",
+        "recorded_sha256": "a2bcd508bd2432c1edfa8bbdbf0dfb259e9dce55a6c836541da1f43a0ff327bd",
+        "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone.",
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Contract Set V1.3",
+        "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
+        "path": null,
+        "sha256": null,
+        "external_filename": "PHONEBOOST_CONTRACT_SET_V1_3_QR01A_QR01B_LOCKED.docx",
+        "recorded_sha256": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+        "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone.",
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Tech Sheet V1.3",
+        "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
+        "path": null,
+        "sha256": null,
+        "external_filename": "PHONEBOOST_TECH_SHEET_V1_3_QR01A_QR01B_LOCKED_IMPLEMENTATION_HANDOFF.docx",
+        "recorded_sha256": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1",
+        "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone.",
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Pseudocode V1.1",
+        "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
+        "path": null,
+        "sha256": null,
+        "external_filename": "PHONEBOOST_PSEUDOCODE_CRITICAL_PATHS_V1_1_FINAL.docx",
+        "recorded_sha256": "1c396860ef9f3d1ea7903ac5f131965c692c8d384abfd01e15d375077d4d4df9",
+        "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone.",
+        "current_sha256": null,
+        "changed": false
+      },
+      {
+        "name": "Fixture Generation Spec V1.0",
+        "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
+        "path": null,
+        "sha256": null,
+        "external_filename": "PHONEBOOST_FIXTURE_GENERATION_SPEC_V1_0.docx",
+        "recorded_sha256": "981d3117e1fa2efa8f6d5f796d46b577516a93158cc3f17006ac7e75c3c21d15",
+        "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone.",
+        "current_sha256": null,
+        "changed": false
+      }
+    ],
+    "non_normative": [
+      "Install / Onboarding Technical Reconnaissance",
+      "UI / Design Guardrails"
+    ],
+    "rule": "Re-read only changed canonical hashes; never infer physical readiness from CI.",
+    "scoped_excerpts": [
+      {
+        "path": ".pipeline/decisions/003-host-startup-excerpt.md",
+        "sha256": "b10cba2225e42feed3b6c24c4fb35775de90f0ab5607e96f822b7af37d1f02c3",
+        "source": "user-supplied normative excerpt; originals external/not-local",
+        "scope": "HOST_STARTUP stale socket recovery"
+      }
+    ]
+  },
+  "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
+  "cleanup_pending": "Manual Battery Saver restoration ON: native command exited0 but officialHealth remainsfalse. Profile1 restored; isolatedhostOFF/stopped, ownforwardremoved. Verify restoration and stopexperimentalapp before next campaign."
 }

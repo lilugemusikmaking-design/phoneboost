@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-11-14T16:35:36.460177+00:00",
+  "source_head": "df020cecd7f9691eb431c4828055664c98f07f9d",
+  "apk_code_checkpoint": "93f1de187838163729c476da2c327f5a612cf8a9",
+  "apk_sha256": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+  "package": "org.phoneboost.app.multicore",
+  "device": {
+    "model": "Samsung SM-A155F",
+    "android": "16",
+    "api": 36,
+    "build": "BP4A.251205.006.A155FXXSBEZG1"
+  },
+  "inputs": {
+    "input_bytes": 67108864,
+    "input_sha256": "601fc533f64b11042a9ae821c272064871306a99496652afb5758c8979d8834d",
+    "expected_blake3": "7b2def9fc609feb94905bd0cdb0772743544d6564b8d73cf2bba66c4759116a4",
+    "transport": "ADB USB forward to existing authenticated local TCP transport; isolated host",
+    "profiles": [
+      1,
+      2
+    ],
+    "perfetto_duration_ms": 55000,
+    "perfetto_buffer_kib": 65536,
+    "bench_initial_sha256": "c4efd9bf739a4d421d1a476bdd43285290773a575c0b15a87d169b6ff8527151",
+    "initial_duration_ms": 40000,
+    "bench_effective_sha256": "c8720598bc58ecb6d4d3d4e501c114a86af778f499531f02cac3ae03ebe54f9d"
+  },
+  "verdict": "MULTICORE_EXECUTION_CONFIRMED",
+  "meaning": "Real simultaneous scheduler Running on distinct CPUs demonstrated for profile2; no reproducibility, performance gain or product-benefit verdict",
+  "performance_qualified": false,
+  "profile4_run": false,
+  "profiles": {
+    "1": {
+      "profile": 1,
+      "qualified": true,
+      "digest_exact": true,
+      "remote_success": true,
+      "observed_compute_threads": 1,
+      "tids": [
+        30849
+      ],
+      "cpus": [
+        3,
+        6
+      ],
+      "max_simultaneous_running": 1,
+      "time_ge_2_threads_ms": 0.0,
+      "cpu_time_sched_ms": 102.436693,
+      "wall_clock_phoneboost_ms": 102.739154,
+      "cpu_time_native_ms": 101.719151,
+      "migrations": [
+        {
+          "tid": 30849,
+          "ts": 1047176296977003,
+          "from_cpu": 3,
+          "to_cpu": 6
+        }
+      ],
+      "per_tid": [
+        {
+          "tid": 30849,
+          "cpus": [
+            3,
+            6
+          ],
+          "running_ms": 102.436693
+        }
+      ],
+      "trace_errors": [],
+      "trace_complete": true,
+      "health_nominal_during_job": true,
+      "health_samples": 19,
+      "source_sample_age_at_compute_end_ms": 579.0041569471359,
+      "performance_qualified": false,
+      "initial_health": {
+        "sample": {
+          "count": "474",
+          "at_ms": "1047135648",
+          "sample_worker_ms": "950196",
+          "age_ms": "3",
+          "result": "0",
+          "safety": "0",
+          "thermal": "0",
+          "battery": "0",
+          "charging": "true",
+          "power_save": "false",
+          "low_memory": "false",
+          "memory_mib": "1076",
+          "memory_bytes": "1128919040",
+          "total_memory_bytes": "3848155136",
+          "thermal_code": "0",
+          "battery_pct": "100",
+          "budget_bytes": "134217728"
+        },
+        "effective_sample_age_ms": 235,
+        "hal_ready": true,
+        "no_thermal_override": true,
+        "usb_powered": true,
+        "recovery_observed": true,
+        "recovery_window": {
+          "samples": 7,
+          "span_ms": 12047,
+          "available_min_bytes": 967577600
+        }
+      },
+      "pre_import_health": {
+        "count": "476",
+        "at_ms": "1047139665",
+        "sample_worker_ms": "954211",
+        "age_ms": "5",
+        "result": "0",
+        "safety": "0",
+        "thermal": "0",
+        "battery": "0",
+        "charging": "true",
+        "power_save": "false",
+        "low_memory": "false",
+        "memory_mib": "1058",
+        "memory_bytes": "1109585920",
+        "total_memory_bytes": "3848155136",
+        "thermal_code": "0",
+        "battery_pct": "100",
+        "budget_bytes": "134217728"
+      },
+      "health_capture_summary": {
+        "phase": "profile1-health",
+        "pid": "25768",
+        "start_boottime_ms": 1047136290,
+        "end_boottime_ms": 1047195350,
+        "duration_s": 59.06,
+        "samples": 29,
+        "memory_bytes": {
+          "min": 963719168,
+          "median": 1025925120,
+          "max": 1109585920
+        },
+        "budget_bytes": {
+          "min": 106712064,
+          "median": 122263552,
+          "max": 134217728
+        },
+        "age_ms": {
+          "min": 2,
+          "median": 5,
+          "max": 6
+        },
+        "safety": {
+          "0": 29
+        },
+        "low_memory": {
+          "false": 29
+        },
+        "power_save": {
+          "false": 29
+        },
+        "thermal": {
+          "0": 29
+        },
+        "battery": {
+          "0": 29
+        },
+        "battery_pct": {
+          "100": 29
+        },
+        "charging": {
+          "true": 29
+        },
+        "result": {
+          "0": 29
+        },
+        "max_sample_gap_ms": 2011,
+        "below_768_samples": 0,
+        "at_least_896_samples": 29
+      },
+      "health_at_compute": {
+        "available_bytes": 968646656,
+        "budget_bytes": 107943936,
+        "age_before_ms": 475,
+        "age_after_ms": 579,
+        "safety_before": 0,
+        "safety_after": 0,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "power_save": 0,
+        "charging": 1,
+        "battery_percent": 100,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864
+      },
+      "end_to_end_ms": 36395.090528,
+      "trace_sha256": "9097e7218c24fd774704d9faa7646be0a0baff605a247b93a8f07ba24dbc31f2",
+      "trace_size_bytes": 2867462,
+      "trace_bounds": "\"start_ts\",\"end_ts\"\n1047136262373308,1047191242201696"
+    },
+    "2": {
+      "profile": 2,
+      "qualified": true,
+      "digest_exact": true,
+      "remote_success": true,
+      "observed_compute_threads": 2,
+      "tids": [
+        30968,
+        30969
+      ],
+      "cpus": [
+        5,
+        6,
+        7
+      ],
+      "max_simultaneous_running": 2,
+      "time_ge_2_threads_ms": 49.913692,
+      "cpu_time_sched_ms": 102.609692,
+      "wall_clock_phoneboost_ms": 58.836385,
+      "cpu_time_native_ms": 101.757769,
+      "migrations": [
+        {
+          "tid": 30969,
+          "ts": 1047272396796778,
+          "from_cpu": 5,
+          "to_cpu": 6
+        }
+      ],
+      "per_tid": [
+        {
+          "tid": 30968,
+          "cpus": [
+            7
+          ],
+          "running_ms": 50.577154
+        },
+        {
+          "tid": 30969,
+          "cpus": [
+            5,
+            6
+          ],
+          "running_ms": 52.032538
+        }
+      ],
+      "trace_errors": [],
+      "trace_complete": true,
+      "health_nominal_during_job": true,
+      "health_samples": 21,
+      "source_sample_age_at_compute_end_ms": 207.89154696464539,
+      "performance_qualified": false,
+      "initial_health": {
+        "sample": {
+          "count": "520",
+          "at_ms": "1047228046",
+          "sample_worker_ms": "1042592",
+          "age_ms": "5",
+          "result": "0",
+          "safety": "0",
+          "thermal": "0",
+          "battery": "0",
+          "charging": "true",
+          "power_save": "false",
+          "low_memory": "false",
+          "memory_mib": "1044",
+          "memory_bytes": "1094762496",
+          "total_memory_bytes": "3848155136",
+          "thermal_code": "0",
+          "battery_pct": "100",
+          "budget_bytes": "134217728"
+        },
+        "effective_sample_age_ms": 799,
+        "hal_ready": true,
+        "no_thermal_override": true,
+        "usb_powered": true,
+        "recovery_observed": true,
+        "recovery_window": {
+          "samples": 7,
+          "span_ms": 12052,
+          "available_min_bytes": 1033392128
+        }
+      },
+      "pre_import_health": {
+        "count": "522",
+        "at_ms": "1047232062",
+        "sample_worker_ms": "1046608",
+        "age_ms": "5",
+        "result": "0",
+        "safety": "0",
+        "thermal": "0",
+        "battery": "0",
+        "charging": "true",
+        "power_save": "false",
+        "low_memory": "false",
+        "memory_mib": "1022",
+        "memory_bytes": "1072111616",
+        "total_memory_bytes": "3848155136",
+        "thermal_code": "0",
+        "battery_pct": "100",
+        "budget_bytes": "133810176"
+      },
+      "health_capture_summary": {
+        "phase": "profile2-health",
+        "pid": "25768",
+        "start_boottime_ms": 1047229200,
+        "end_boottime_ms": 1047288260,
+        "duration_s": 59.06,
+        "samples": 29,
+        "memory_bytes": {
+          "min": 933638144,
+          "median": 997044224,
+          "max": 1072812032
+        },
+        "budget_bytes": {
+          "min": 99191808,
+          "median": 115043328,
+          "max": 133985280
+        },
+        "age_ms": {
+          "min": 1,
+          "median": 5,
+          "max": 14
+        },
+        "safety": {
+          "0": 29
+        },
+        "low_memory": {
+          "false": 29
+        },
+        "power_save": {
+          "false": 29
+        },
+        "thermal": {
+          "0": 29
+        },
+        "battery": {
+          "0": 29
+        },
+        "battery_pct": {
+          "100": 29
+        },
+        "charging": {
+          "true": 29
+        },
+        "result": {
+          "0": 29
+        },
+        "max_sample_gap_ms": 2016,
+        "below_768_samples": 0,
+        "at_least_896_samples": 28
+      },
+      "health_at_compute": {
+        "available_bytes": 985919488,
+        "budget_bytes": 112262144,
+        "age_before_ms": 149,
+        "age_after_ms": 208,
+        "safety_before": 0,
+        "safety_after": 0,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "power_save": 0,
+        "charging": 1,
+        "battery_percent": 100,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864
+      },
+      "end_to_end_ms": 39525.958933,
+      "trace_sha256": "5e84f069b3173d94c650c0852e6bd1b9e4f19b739cfdeff44c88022caeaec104",
+      "trace_size_bytes": 3338383,
+      "trace_bounds": "\"start_ts\",\"end_ts\"\n1047229165018006,1047284141594932"
+    }
+  },
+  "instrumentation": {
+    "duration_ms": 55000,
+    "previous_duration_ms": 40000,
+    "user_authorization": "Oui, dur\u00e9e de 55 s uniquement",
+    "reason": "First exact profile1 command took43.200s and compute ended46.921s aftertrace start;40s trace missed it.55s gives8.079s measured headroom.",
+    "buffer_kib": 65536,
+    "events_changed": false,
+    "sql_changed": false,
+    "capture_termination": "natural duration; no pkill",
+    "format": "trace_processor query --format csv",
+    "memory_refusal_this_campaign": false,
+    "operator_wrapper": "Read-only official Health preflight before capture and again before import; no synthetic samples or policy changes"
+  },
+  "prior_attempts": [
+    {
+      "type": "operator-probe-aborted",
+      "workload_submitted": false,
+      "cause": "Read-only ADB probe inherited64MiB stdin, returnedemptyPID and consumedinput; DEVNULL fix verified without workload",
+      "path": "aborted-profile1-adb-stdin"
+    },
+    {
+      "type": "exact-profile1-incomplete-trace",
+      "remote_success": true,
+      "qualified": false,
+      "duration_ms": 40000,
+      "compute_started_after_trace_end_ms": 6855.647154,
+      "path": "incomplete-profile1-40s"
+    }
+  ],
+  "validation": {
+    "status": "PASS",
+    "checks": [
+      "Exact64MiB/literaloracle digest and REMOTE_SUCCESS",
+      "Full worker BOOTTIME intervals contained by tracebounds",
+      "BOOTTIME clockoffsetzero",
+      "No parser/error/loss/overrun/overwrite counters",
+      "ExistingSQL and independent event sweep agree",
+      "Distinct nativeTIDs observed in sched slices; direct different-CPU intersection49.913692ms",
+      "OfficialHealth brackets compute with freshsource, safetyNominal, powerSavefalse",
+      "Scratch8MiB released; productunchanged"
+    ],
+    "independent_review": "Read-only second agent reread actualprofile2trace and reproduced3schedslices andcross-CPUoverlap; no physical evidence inferred from tests"
+  },
+  "private_artifacts": "/var/tmp/phoneboost-multicore-v0-2-evidence-20261114-df020ce/scheduler-1-2-20261114",
+  "cleanup": {
+    "status": "BATTERY_SAVER_MANUAL_RESTORATION_PENDING",
+    "experimental_profile": 1,
+    "host_auto_use": "OFF",
+    "host_daemon_stopped": true,
+    "owned_adb_forward_removed": true,
+    "battery_saver_initial": true,
+    "battery_saver_latest_observed": false,
+    "native_restore_command": "adb shell cmd power set-mode 1",
+    "native_restore_command_exit": 0,
+    "native_restore_verified": false,
+    "manual_restoration_requested": true,
+    "experimental_health_service": "left active only to verify restoration; no workload pending",
+    "product_unchanged": true
+  },
+  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite."
+}

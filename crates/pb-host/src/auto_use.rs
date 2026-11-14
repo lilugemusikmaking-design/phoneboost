@@ -31,7 +31,12 @@ const RENEWAL_INTERVAL: Duration = Duration::from_secs(20);
 const FRESH_LIVENESS: Duration = Duration::from_secs(10);
 const FRESH_CAPACITY_METRICS: Duration = Duration::from_secs(6);
 const COMPUTE_STATUS_POLL: Duration = Duration::from_millis(25);
+#[cfg(not(feature = "experimental-multicore"))]
 const SCRATCH_BYTES: u64 = 1_024;
+// The experimental Android threads must be backed by the existing full C08
+// scratch envelope. This feature never alters the product's request or cap.
+#[cfg(feature = "experimental-multicore")]
+const SCRATCH_BYTES: u64 = pb_pbmux::NATIVE_OP_SCRATCH_MAX_BYTES;
 const LOCAL_DIGEST_CHUNK_BYTES: usize = 65_536;
 /// P2 is passive: this only bounds how long an already-observed discovery hint
 /// may be reported. It never schedules discovery.
@@ -2974,7 +2979,7 @@ mod tests {
             charging: 0,
             power_save: 0,
             available_bytes: 2 * 1024 * 1024 * 1024,
-            safe_budget_bytes: 4 * 1024,
+            safe_budget_bytes: SCRATCH_BYTES + 3 * 1024,
             reserved_bytes: 0,
             queue_depth: 0,
             provider_count: 0,

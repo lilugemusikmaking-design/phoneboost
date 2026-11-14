@@ -7,6 +7,9 @@
 /android/.gradle/
 /android/.kotlin/
 /android/app/build/
+/android/app/build-multicore/
+/phoneboost_perfetto_bench/trace_processor*
+/phoneboost_perfetto_bench/*.pftrace
 /android/.idea/
 /android/local.properties
 /frontend/test-results/
