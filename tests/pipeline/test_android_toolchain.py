@@ -95,6 +95,29 @@ else:
         self.assertEqual(len(self.calls.read_text().splitlines()), 1)
         self.assertFalse((self.root / ".tooling/pipeline-android/env.sh").exists())
 
+    def test_version_with_update_notice_keeps_the_pinned_version(self):
+        result = self.run_setup(
+            VERSION + "\n\nA new version of Android CLI is available (1.1.16919734).\n"
+            "Please run 'android update' to install it."
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [json.loads(line) for line in self.calls.read_text().splitlines()]
+        self.assertEqual(calls[1][2:], ["sdk", "install", "build-tools/36.0.0@36.0.0"])
+
+    def test_version_validation_rejects_missing_ambiguous_or_notice_only_match(self):
+        for output in [
+            "",
+            VERSION + "\n1.1.16919734",
+            "1.1.16919734\nA new version of Android CLI is available (" + VERSION + ").",
+        ]:
+            with self.subTest(output=output):
+                self.calls.unlink(missing_ok=True)
+                result = self.run_setup(output)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Android CLI version drift:", result.stderr)
+                self.assertEqual(len(self.calls.read_text().splitlines()), 1)
+                self.assertFalse((self.root / ".tooling/pipeline-android/env.sh").exists())
+
     def test_cached_executable_is_rechecked_against_verified_archive(self):
         self.assertEqual(self.run_setup().returncode, 0)
         binary = self.root / ".tooling/pipeline-android/android-cli/bin/android"

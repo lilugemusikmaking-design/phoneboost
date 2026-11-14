@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
@@ -67,9 +68,13 @@ sdk.mkdir(exist_ok=True)
 env = {**os.environ, 'JAVA_HOME': str(jdk), 'ANDROID_HOME': str(sdk), 'ANDROID_SDK_ROOT': str(sdk), 'GRADLE_USER_HOME': str(BASE / 'gradle-cache')}
 env['PATH'] = ':'.join(str(x / 'bin') for x in [jdk, gradle, cmdline]) + ':' + os.environ['PATH']
 manager = str(cmdline / 'bin/android')
-version = subprocess.check_output([manager, '--no-metrics', '--version'], env=env, text=True).strip()
-if version != LOCK['android_cli_version']:
-    raise SystemExit('Android CLI version drift: ' + version)
+version_output = subprocess.check_output([manager, '--no-metrics', '--version'], env=env, text=True).strip()
+# Update notices may include another version inside prose. Require one bare
+# version line, exactly matching the pin; missing or ambiguous output is refused.
+versions = [line.strip() for line in version_output.splitlines()
+            if re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', line.strip())]
+if versions != [LOCK['android_cli_version']]:
+    raise SystemExit('Android CLI version drift: ' + version_output)
 packages = [name.replace(';', '/') + '@' + (revision if '.' in revision else revision + '.0.0')
             for name, revision in LOCK['sdk_revisions'].items()]
 with (BASE / 'sdk-install.log').open('w') as log:
