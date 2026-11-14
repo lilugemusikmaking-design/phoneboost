@@ -2,33 +2,48 @@
   "order": [
     {
       "name": "SPEC V0.7",
-      "status": "external/not-local",
+      "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
       "path": null,
-      "sha256": null
+      "sha256": null,
+      "external_filename": "PHONEBOOST_SPEC_V0_7_QR01B_LOCKED_IMPLEMENTATION_BASELINE.docx",
+      "recorded_sha256": "a2bcd508bd2432c1edfa8bbdbf0dfb259e9dce55a6c836541da1f43a0ff327bd",
+      "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone."
     },
     {
       "name": "Contract Set V1.3",
-      "status": "external/not-local",
+      "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
       "path": null,
-      "sha256": null
+      "sha256": null,
+      "external_filename": "PHONEBOOST_CONTRACT_SET_V1_3_QR01A_QR01B_LOCKED.docx",
+      "recorded_sha256": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+      "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone."
     },
     {
       "name": "Tech Sheet V1.3",
-      "status": "external/not-local",
+      "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
       "path": null,
-      "sha256": null
+      "sha256": null,
+      "external_filename": "PHONEBOOST_TECH_SHEET_V1_3_QR01A_QR01B_LOCKED_IMPLEMENTATION_HANDOFF.docx",
+      "recorded_sha256": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1",
+      "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone."
     },
     {
       "name": "Pseudocode V1.1",
-      "status": "external/not-local",
+      "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
       "path": null,
-      "sha256": null
+      "sha256": null,
+      "external_filename": "PHONEBOOST_PSEUDOCODE_CRITICAL_PATHS_V1_1_FINAL.docx",
+      "recorded_sha256": "1c396860ef9f3d1ea7903ac5f131965c692c8d384abfd01e15d375077d4d4df9",
+      "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone."
     },
     {
       "name": "Fixture Generation Spec V1.0",
-      "status": "external/not-local",
+      "status": "external/reference-only; available in the accepted local audit, not distributed in Git",
       "path": null,
-      "sha256": null
+      "sha256": null,
+      "external_filename": "PHONEBOOST_FIXTURE_GENERATION_SPEC_V1_0.docx",
+      "recorded_sha256": "981d3117e1fa2efa8f6d5f796d46b577516a93158cc3f17006ac7e75c3c21d15",
+      "verification": "Hash recorded by accepted local audit on 2026-11-14; not rechecked automatically by project-pipeline on a public clone."
     }
   ],
   "non_normative": [

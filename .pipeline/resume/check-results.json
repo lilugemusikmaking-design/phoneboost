@@ -1,46 +1,270 @@
 [
   {
-    "command": [
-      "git",
-      "diff",
-      "--check"
-    ],
-    "returncode": 0,
-    "date": "2026-10-15T15:38:43.041993+00:00",
-    "head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c"
-  },
-  {
-    "command": [
-      "python3",
-      "-m",
-      "unittest",
-      "discover",
-      "-s",
-      "tests/pipeline",
-      "-v"
-    ],
-    "returncode": 0,
-    "date": "2026-10-15T15:38:43.055187+00:00",
-    "head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c"
-  },
-  {
-    "command": [
-      "actionlint"
-    ],
-    "returncode": 0,
-    "date": "2026-10-15T15:38:44.138379+00:00",
-    "head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c"
-  },
-  {
+    "name": "rust-workspace",
+    "branch": "sync/post-p14-product-fixes-v0-1",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
     "command": [
       "cargo",
-      "fmt",
-      "--all",
+      "test",
+      "--locked",
+      "--offline",
+      "--release",
+      "--workspace",
       "--",
-      "--check"
+      "--test-threads=1"
     ],
     "returncode": 0,
-    "date": "2026-10-15T15:38:44.171962+00:00",
-    "head": "be3a1e56b485e113c0b75cc1946e42afdbf56a0c"
+    "date": "2026-11-14T07:49:44.824749+00:00",
+    "elapsed_seconds": 610.51,
+    "log_sha256": "5ab4c395a5a28bcea9371b82cbb1566d015babb8f3d812674326f36a67607ef7",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "aggregate_including_doctests": {
+      "passed": 492,
+      "failed": 0,
+      "ignored": 0
+    },
+    "suite_results": [
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+      "test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+      "test result: ok. 237 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 326.95s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+      "test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.63s",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+      "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 118.48s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+    ],
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "fast-checks",
+    "branch": "sync/post-p14-product-fixes-v0-1",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "scripts/pre-commit-fast"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14T07:50:20.280777+00:00",
+    "elapsed_seconds": 3.03,
+    "log_sha256": "e16ba5d9c0b2bc961fe89927ca27121b840bb07e8a8c16191a22e5f759a663bc",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "clippy",
+    "branch": "sync/post-p14-product-fixes-v0-1",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--offline",
+      "--release",
+      "--workspace",
+      "--all-targets"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14T07:59:57.119809+00:00",
+    "elapsed_seconds": 30.72,
+    "log_sha256": "8b40bd5786486bf78e695d34a9f6cbccb3fffc292cb50516007282a9dd402a7c",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "warnings": [
+      "warning: this OR pattern can be rewritten using a range",
+      "warning: derefed type is same as origin",
+      "warning: this function has too many arguments (9/7)",
+      "warning: derefed type is same as origin",
+      "warning: this function has too many arguments (11/7)",
+      "warning: this `if` statement can be collapsed",
+      "warning: variable does not need to be mutable",
+      "warning: variable does not need to be mutable"
+    ],
+    "warning_policy": "Repository CI command semantics: exit 0 with warnings, no -D warnings. No unrelated lint cleanup added.",
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "android",
+    "branch": "sync/post-p14-product-fixes-v0-1",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "scripts/pipeline-android"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14T08:11:23.209931+00:00",
+    "elapsed_seconds": 102.06,
+    "log_sha256": "de101d71ac08561e58e56a55b5f89203f235717c77ea2fc2e94c81bf3ec0849b",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "resource_limits": "Existing SDK/NDK/Gradle cache, offline, Cargo jobs=1, Gradle max-workers=1 and heap=1024 MiB. Exact pinned aapt2 9.3.0-15703166 obtained directly from Google, publisher digest verified, selected by command-line android.aapt2FromMavenOverride; no repository/tool version change. No device installation.",
+    "pinned_aapt2": {
+      "version": "9.3.0-15703166",
+      "source": "https://dl.google.com/dl/android/maven2/com/android/tools/build/aapt2/9.3.0-15703166/aapt2-9.3.0-15703166-linux.jar",
+      "publisher_sha1_verified": "5287feac13566b9165cdf02c77565e68aec3aad0",
+      "archive_sha256": "e772a3dae8354764f1b0793903218427f483982445207f2e4ffc8c2026755bd4",
+      "binary_sha256": "baf6784be1b4284da49c78ea2f6961b0c525d56ecf57f1f1d879ca264dc96197"
+    },
+    "standalone_checks": {
+      "ControllerLeaseStateNameTest": "5/5 PASS",
+      "PairingSasDisplayTest": "4/4 PASS",
+      "assembleDebug": "PASS",
+      "lintDebug": "PASS"
+    },
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "frontend-tests",
+    "branch": "sync/post-p14-usb-guidance-v0-1",
+    "head": "be988c700584cc0b9113866dfae25b2030783be0",
+    "command": [
+      "yarn",
+      "--cwd",
+      "frontend",
+      "test",
+      "--watchAll=false",
+      "--runInBand"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14T08:13:06.768658+00:00",
+    "elapsed_seconds": 8.11,
+    "log_sha256": "28cd82aa142bcb3ba41c0f2d5af241455ec8afc5dbb61062d5df6f5a982742d7",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "tests": {
+      "passed": 358,
+      "total": 358
+    },
+    "suites": {
+      "passed": 8,
+      "total": 8
+    },
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "frontend-build",
+    "branch": "sync/post-p14-usb-guidance-v0-1",
+    "head": "be988c700584cc0b9113866dfae25b2030783be0",
+    "command": [
+      "yarn",
+      "--cwd",
+      "frontend",
+      "build"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14T08:13:14.942748+00:00",
+    "elapsed_seconds": 20.81,
+    "log_sha256": "c047070eb5605ff1b270709fa7d062cfb34cea7dfb6f2a7ee948c3ee94125aba",
+    "scope": "Current reconstructed tree; local software only. Raw log retained locally, not published.",
+    "commit_mapping": "Executed on the reconstructed worktree before commit; unchanged tested source bytes mapped to the resulting commit. No post-test product edit."
+  },
+  {
+    "name": "android-offline-first-attempt",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "scripts/pipeline-android"
+    ],
+    "returncode": 1,
+    "date": "2026-11-14T08:00:27.888043+00:00",
+    "elapsed_seconds": 102.01,
+    "log_sha256": "ed57709970af9415a2b4784fd8d6c7bf197edd68e448264dd165b7ad3862b282",
+    "scope": "Preserved infrastructure failure: aapt2-9.3.0-15703166-linux.jar not in Gradle cache. ARM64 JNI compilation had passed. Subsequent validation is a separate result, not a relabeling of this attempt."
+  },
+  {
+    "name": "android-online-stalled-attempt",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "scripts/pipeline-android"
+    ],
+    "returncode": 1,
+    "date": "2026-11-14T08:03:15.473777+00:00",
+    "elapsed_seconds": 436.63,
+    "log_sha256": "dabc82efb40536b80a5e5ca0e14a3a46c96e411cbcf13e1967023748bc0718e5",
+    "scope": "Stopped by operator after SDK manifest retrieval made no progress. Only this validation daemon was terminated. No product test failure inferred; this attempt is not PASS. Final offline attempt used the exact pinned artifact fetched and verified separately."
+  },
+  {
+    "name": "check_c07_wire_addendum_002.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c07_wire_addendum_002.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
+  },
+  {
+    "name": "check_c08_c09_wire_addendum_001.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c08_c09_wire_addendum_001.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
+  },
+  {
+    "name": "check_c10_wire_addendum_001.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c10_wire_addendum_001.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
+  },
+  {
+    "name": "check_c12_import_contract_v0_1.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c12_import_contract_v0_1.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
+  },
+  {
+    "name": "check_c12_import_async_wire_v0_1.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c12_import_async_wire_v0_1.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
+  },
+  {
+    "name": "check_c12_imported_blake3_consumer_v0_1.py",
+    "head": "d566b3a42aef3d4926a071c30a123e4f6abdb876",
+    "command": [
+      "python3",
+      "scripts/check_c12_imported_blake3_consumer_v0_1.py"
+    ],
+    "returncode": 0,
+    "date": "2026-11-14",
+    "log_sha256": "9e7335158146424aa6a15669cb4950f1b490724b1e5403d5c095a61f6e9b4b8b",
+    "scope": "Current unchanged contracts and fixtures; shared local log for the six sequential validators."
   }
 ]
