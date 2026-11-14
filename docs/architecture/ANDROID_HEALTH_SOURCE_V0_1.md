@@ -7,10 +7,9 @@ Le commit contenant ce rapport se retrouve avec
 
 Le producteur Android public existait déjà. Cette correction en précise la
 sémantique et ferme les défauts de fraîcheur et d'indisponibilité ; elle ne
-réactive pas le collecteur shell quarantiné. Qualification documentaire et
-logicielle uniquement. **Aucune preuve physique nouvelle, aucun AVD exécuté.**
-Le téléphone est indisponible pour cette mission, sur confirmation de l'utilisateur.
-Le chantier logiciel continue avec les fixtures et la vraie liaison JNI sur hôte.
+réactive pas le collecteur shell quarantiné. Les tests logiciels et une
+qualification physique courte sur Samsung SM-A155F / Android 16 sont enregistrés
+dans l'artefact de preuve. Aucun AVD n'a été exécuté.
 
 ## Autorité et périmètre
 
@@ -91,16 +90,19 @@ Les états batterie et économie d'énergie suivent les références
 métriques. Elles restent accessibles si le processus s'exécute ; le foreground
 service ne garantit pas une cadence pendant la veille profonde ni après sa mort.
 Le Handler peut être retardé. Une interruption laisse la santé périmer, sans
-ajout de réveil, permission ou boucle de polling. Ces comportements sont justifiés
-par le contrat d'API, mais n'ont pas été observés sur le téléphone dans cette PR.
+ajout de réveil, permission ou boucle de polling. Sur cet appareil, le service
+a continué à échantillonner pendant la courte séquence écran éteint ; un arrêt
+temporaire contrôlé du seul processus PhoneBoost a ensuite permis d'observer
+la péremption et la récupération sans changer les réglages système.
 
 **Limite thermique explicite :** AOSP Android 16 initialise `mStatus` à NONE et
 `getCurrentThermalStatus()` peut le retourner même si le HAL n'est pas prêt.
 Une exception ou un code invalide est donc détectable ; un NONE plausible ne
 prouve pas à lui seul la disponibilité matérielle. Cette limite est vérifiée dans
 [ThermalManagerService, Android 16 r1](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-16.0.0_r1/services/core/java/com/android/server/power/ThermalManagerService.java).
-La qualification du téléphone doit encore vérifier cette provenance. Le code
-n'invente pas une disponibilité HAL à partir d'une valeur synthétique.
+Le téléphone testé rapporte `HAL Ready: true`, `ThermalHAL AIDL 3 connected: yes`,
+`IsStatusOverride: false`, des températures HAL non nulles et `Thermal Status: 0`.
+Le code n'invente pas une disponibilité HAL à partir d'une valeur synthétique.
 
 ## Horloges, indisponibilité et refus
 
@@ -184,25 +186,62 @@ est une exécution réelle de la liaison logicielle avec des entrées simulées 
 il n'exécute pas les services Android. Les anciennes preuves A6/P2 restent
 historiques et ne valident pas ce nouvel APK. Aucun benchmark n'a été relancé.
 
-## Vérification courte restant sur appareil
+## Qualification physique du 14 novembre 2026
 
-Avec l'APK correspondant à la PR, sans modifier les réglages système :
+L'appareil Samsung SM-A155F exécute Android 16 / API 36, build
+`BP4A.251205.006`. L'APK de débogage installé a été relu depuis le téléphone :
+son SHA-256 `fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a`
+est identique à l'APK construit depuis cette branche. Il contient les logs de
+provenance `HEALTH_PRECHECK` et `HEALTH_SAMPLE` ; aucune bibliothèque native
+différente n'a été introduite pour cette qualification. Le service est resté
+dans le même processus pendant les étapes observées.
 
-1. Enregistrer version Android, build de l'application et empreinte APK.
-2. Observer les lectures mémoire/batterie/Battery Saver et les valeurs reçues
-   dans le worker/C08 pendant un usage ordinaire ; rechercher une variation
-   mémoire naturelle, sans provoquer de pression destructive.
-3. Vérifier le service thermique/HAL en lecture seule et la cohérence de la
-   bande native avec celle reçue. Un NONE constant seul n'est pas une preuve.
-4. Observer une courte séquence premier plan, arrière-plan et écran éteint ;
-   comparer `HEALTH_PRECHECK` (avant lecture) à `HEALTH_SAMPLE` (après lecture).
-   Un écart de plus de 6 s doit produire un pré-contrôle périmé/refusé et le
-   retour d'un échantillon frais doit suivre les règles existantes. Une simple
-   reprise des logs après l'écran éteint ne prouve pas le refus pendant l'écart.
-   Toute absence connue doit rester refusée ; aucun test de chauffe ou de
-   charge extrême requis.
+Le service thermique est présent, son HAL AIDL 3 est prêt et connecté, sans
+override. Le statut Android est 0 (`NONE`), des capteurs AP, BAT et SKIN
+fournissent des valeurs non nulles, et les 181 échantillons PhoneBoost ont
+`thermal_code=0`, bande thermique 0. La preuve établit la provenance de NONE
+sur **cet appareil et dans cet état** ; elle ne provoque ni ne valide une
+transition thermique.
 
-**NEXT_ACTION : valider sur appareil la provenance thermique et la cohérence des
-lectures/fraîcheur de cette source minimale avant de rouvrir le spike CPU
-multicœur, puis la RAM distante.** Les simulations ferment le travail logiciel
-de cette mission ; elles n'accordent aucune autorisation de reprise physique.
+`ActivityManager.MemoryInfo.totalMem` vaut 3 848 155 136 octets dans les
+échantillons, valeur cohérente avec `MemTotal` de `/proc/meminfo` converti en
+octets. `availMem` varie naturellement de 759 193 600 à 1 225 216 000 octets,
+avec `lowMemory=false` dans les 181 échantillons. Quatre lectures passent sous
+768 MiB : ResourceGuard donne `RefusedMemoryPressure` et budget zéro dans les
+quatre cas, même si le booléen Android reste faux. Les 124 lectures en bande
+`Throttle` respectent exactement le budget C08 calculé depuis `availMem`.
+`MemAvailable` lu séparément dans `/proc/meminfo` n'est pas traité comme une
+mesure synchrone ni comme une équivalence à `availMem`.
+
+Le téléphone est alimenté en USB et en charge (`status=2`). La batterie passe
+de 22 à 24 % dans les échantillons. Battery Saver est activé dans Android et
+`power_save=true` dans PhoneBoost ; Low Power Standby est désactivé et ne sert
+pas de substitut. Après l'hystérésis mémoire initiale, la décision reste
+`Throttle` à cause de Battery Saver, avec bande batterie nominale. Les mesures
+fraîches ont un âge de 1 à 42 ms dans cette trace.
+
+PhoneBoost a été observé au premier plan, puis avec le lanceur au premier plan
+et le service Android toujours actif. Après extinction de l'écran, Android
+rapportait `Dozing` ; le service a continué à produire une lecture environ
+toutes les 2 s pendant 45 s. Aucune péremption naturelle n'était attendue dans
+cette fenêtre. Pendant que l'écran restait éteint, une pause de 9 s du seul
+processus PhoneBoost, avec reprise automatique, a produit un `HEALTH_PRECHECK`
+**avant** la lecture suivante : âge 11 040 ms, `RefusedStaleState`, budget zéro.
+L'écart de l'horloge worker (BOOTTIME) est 11 040 ms et celui de
+`SystemClock.elapsedRealtime()` 11 034 ms. La lecture suivante est fraîche
+(4 ms), puis ResourceGuard revient à `Throttle` et recalcule le budget. Le
+processus n'a pas redémarré. Le retour de l’UI au premier plan après écran
+éteint n’a pas été observé sous le keyguard ; la reprise du service et de
+ResourceGuard l’a été. Le précontrôle initial avant toute lecture donnait
+également `RefusedStaleState`, âge absent et budget zéro.
+
+**Limites :** la pause contrôlée démontre la péremption en temps écoulé écran
+éteint, mais ne prouve pas une entrée du SoC en veille profonde. Aucun tuple
+Android naturellement absent ou incohérent n'a été produit ; les tests
+déterministes Kotlin/JNI/ResourceGuard couvrent ces refus. L'âge borne la
+collecte des API, pas un timestamp matériel non exposé par Android. Aucune
+charge destructive ni modification durable des réglages du téléphone.
+
+**NEXT_ACTION après fusion et checks verts de #31 : reprendre le spike CPU
+multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le
+chantier RAM distante.**

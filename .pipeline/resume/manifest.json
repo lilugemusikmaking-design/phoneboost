@@ -3,10 +3,10 @@
   "parent_head": "251306e825db79173f0bdeb97d1823d08d894ca7",
   "date": "2026-11-14",
   "writer": "Codex",
-  "next_action": "Valider sur appareil la provenance thermique et la cohérence des lectures/fraîcheur de la source Android health avant de reprendre le spike CPU multicœur, puis la RAM distante.",
+  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
   "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
   "evidence": "docs/evidence/android-health-source-v0-1.json",
-  "physical_proof": "NOT RUN: phone unavailable by user confirmation. Host fixtures are not Android runtime or physical evidence.",
-  "publication": "Dedicated PR only. Verify Actions/CodeQL for its exact HEAD; no automatic merge while device provenance remains unresolved.",
+  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36; exact installed APK, HAL Ready true/no override, source-to-ResourceGuard and stale/refused/recovery. See evidence.",
+  "publication": "Publication gate for #31: Project pipeline and CodeQL must pass on the final PR HEAD before merge; GitHub records the merged master SHA.",
   "historical_source": "9daae7fb496da2f903212d7c811357901f4b2aee"
 }
