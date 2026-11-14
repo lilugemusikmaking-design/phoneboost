@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "base_master": "edad4ffc90c6143d1a4f43dfa6096be21cb97cfa",
+  "scope": "Explicit experimental CPU profiles1/2/4 only; no C13 policy, affinity, RAM, GPU or NPU work",
+  "software": {
+    "worker_default": {
+      "status": "PASS",
+      "unit_tests": 60,
+      "doctests": 2
+    },
+    "worker_experimental": {
+      "status": "PASS",
+      "unit_tests": 64,
+      "doctests": 2,
+      "scope": "Final deterministic names and BOOTTIME version:64+2PASS"
+    },
+    "jni_experimental": {
+      "status": "PASS",
+      "tests": 20,
+      "seconds": 185.23,
+      "scope": "full authenticated wire suite including64MiB, session teardown, exactness and refusal/reservation ownership; before diagnostic-only terminal reason correction"
+    },
+    "host_experimental": {
+      "status": "PASS_WITH_TARGETED_RETEST",
+      "initial_passed": 236,
+      "initial_failed": 1,
+      "corrected_test": "capacity_runtime_requires_fresh_bound_safe_worker_metrics",
+      "targeted_retest": "PASS",
+      "binary_tests_passed": 2,
+      "explanation": "test fixture budget now includes feature-dependent scratch; product fixture remains4096 bytes"
+    },
+    "python_evidence_tests": {
+      "status": "PASS",
+      "tests": 6
+    },
+    "pipeline_tests": {
+      "status": "PASS",
+      "tests": 22
+    },
+    "clippy_experimental": {
+      "status": "PASS",
+      "preexisting_warnings": 5,
+      "crate_with_warnings": "pb-runtime-secure"
+    },
+    "format_diff_shell_syntax": {
+      "status": "PASS"
+    },
+    "product_android": {
+      "status": "PASS",
+      "scope": "ARM64 JNI, APK, Kotlin host JNI health tests, UI mapping tests and lint"
+    },
+    "experimental_android": {
+      "status": "PASS",
+      "scope": "ARM64 final code, APK with Kotlin receiver included, lint and packaging assertions"
+    },
+    "review": {
+      "reviewer": "CodeRabbit CLI 0.8.0",
+      "initial_issues": 5,
+      "decisions": [
+        {
+          "issue": "JNI profile4 test on fewer CPUs",
+          "decision": "REJECT",
+          "evidence": "set_experimental_cpu_profile validates enum1/2/4 only; admit_cpu_profile checks THROTTLE before CPU availability. Wire test deliberately exercises this refusal with power_save=true; full JNI suite passed."
+        },
+        {
+          "issue": "Diagnostic hash success can differ from terminal timeout",
+          "decision": "ACCEPT",
+          "fix": "Record reason from terminal ComputeResponse; preserve terminal failure even for tiny readiness workloads."
+        },
+        {
+          "issue": "Restoration failure can erase summary or original failure",
+          "decision": "ACCEPT",
+          "fix": "Persist summary before cleanup; catch restoration/thermal read errors independently; deterministic disconnect test preserves original error."
+        },
+        {
+          "issue": "Telemetry correlation",
+          "decision": "ACCEPT",
+          "fix": "Unique probe token and sequence-coherent dumps. Each successful configure clears native snapshot under worker mutex. Every >=1MiB compute records terminal result, tiny successful readiness cannot replace it. Isolated host issues one file compute synchronously; profile/input/exit/digest/outcome checked."
+        },
+        {
+          "issue": "Refusal without digest prematurely stops campaign",
+          "decision": "ACCEPT",
+          "fix": "Matching coherent native refusal preserves row, blocks that profile and allows remaining profiles; mismatching digest still stops campaign."
+        }
+      ],
+      "followup_issues": 5,
+      "followup_decisions": [
+        {
+          "issue": "Profile4 configuration above CPU count",
+          "decision": "REJECT",
+          "evidence": "Same refuted concern: from_threads enum only, THROTTLE admission precedes CPU count."
+        },
+        {
+          "issue": "Snapshot correlation",
+          "decision": "REJECT",
+          "evidence": "set_experimental_cpu_profile always invalidates cpu_record under worker mutex before each invocation; current >=1MiB terminal result replaces snapshot. Tiny probes cannot masquerade as 64MiB workload."
+        },
+        {
+          "issue": "readelf failure must stop packaging",
+          "decision": "REJECT",
+          "evidence": "scripts/pipeline-android begins set -euo pipefail; readelf is standalone simple command, so nonzero terminates before packaging."
+        },
+        {
+          "issue": "Disk full must not prevent restoration",
+          "decision": "ACCEPT",
+          "fix": "Report persistence failures retained explicitly; always attempt restoration; deterministic disk-full test; cleanup failure yields nonzero after successful measurement without masking prior error."
+        },
+        {
+          "issue": "Missing baseline should retain execution evidence",
+          "decision": "PARTIAL_ACCEPT",
+          "fix": "Report multicore_execution_confirmed independently plus baseline_missing. Global verdict remains NOT_CONFIRMED without valid control, avoiding unsupported no-benefit claim."
+        }
+      ],
+      "remaining_confirmed_issues": 0
+    },
+    "apk_inspection": [
+      {
+        "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
+        "spike": false,
+        "apk_sha256": "1711df34a6e98f1168c46964d0889f5f84db73860fd8794c558c3271968dde3c",
+        "packaged_native_sha256": "c2c44918691350ca340571f6d5c269dc3f04329b4b5387e16de96a837da07bb3",
+        "experimental_control_present": false
+      },
+      {
+        "apk": "android/app/build-multicore/outputs/apk/debug/app-debug.apk",
+        "spike": true,
+        "apk_sha256": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+        "packaged_native_sha256": "cb40269a31981410568667f1f3449fae5fb972ed7c7804d1c560ce1639caac73",
+        "experimental_control_present": true
+      }
+    ],
+    "perfetto_sql": {
+      "status": "PASS",
+      "scope": "synthetic interval/migration arithmetic only; empty trace gives zeros"
+    }
+  },
+  "physical": {
+    "status": "NOT_RUN",
+    "verdict": "MULTICORE_NOT_CONFIRMED"
+  },
+  "limitations": [
+    "Sampling observes only migrations at quantum boundaries",
+    "Worker mutex serializes jobs, health updates and incoming ComputeCancel",
+    "Configured profile is a bound, not an assertion of simultaneous CPU execution",
+    "No dynamic policy or canonical change"
+  ],
+  "logs_sha256": {
+    "phoneboost-multicore-python-tests.log": "844451f8766e6e061667070e7743d1e7643b1900cc24d6e650dac13f558e4cf1",
+    "phoneboost-multicore-spike-final-android.log": "55e39618830f9b42e9feb0230d356593e95827914820fd9162626d42448b12a5",
+    "phoneboost-multicore-host-retest.log": "b7340f679450a12cc07e3eacea37ecd814171679598ce5508a179c4cdd989455",
+    "phoneboost-multicore-host-validation.log": "f6bd2bc40f9873c9c38a7eb3271b4b011088c31c66a1c00ddb6af9f54b1dffa9",
+    "phoneboost-multicore-pipeline-tests.log": "4cb16ab6316d382d513a0b10ddc674ecb73bb70c6251882ab799aeba5fcdc83b",
+    "phoneboost-multicore-spike-android.log": "18c1d7366061e335e59643171c5fc4c2340d0dd32f65ea1db41600537c7da5a8",
+    "phoneboost-multicore-product-android.log": "eec9e76e9de6d8ef347af66decc0c2d99a1ac6de9716e7628b6dd86ac88907f3",
+    "phoneboost-multicore-jni-tests.log": "83835a20f1332e7803e35cf54c3c0e00ec65f48eaa2122559bc65f8b6994c31f",
+    "phoneboost-multicore-worker-tests.log": "b3d8a4b6cddfc4e5e674a17814809d92ee38be9b6086d63c4813cbd1e78d4a3a",
+    "phoneboost-multicore-check.log": "c8689f762c0ba22c2f2b160cc170af5c9bb87feb3015f39068612eb165e31fe5",
+    "phoneboost-multicore-spike-perfetto-android.log": "9a73c202bc764122c193c2f9d338e532c6109c612484ec131e48d340e2ecd25d",
+    "phoneboost-multicore-worker-perfetto-tests.log": "c6ea9cb5fa200c4047af12e02c54378e7edaf054a344eed514c42d781bd64a70"
+  },
+  "perfetto_tool": {
+    "host_manifest": {
+      "arch": "linux-amd64",
+      "file_name": "trace_processor_shell",
+      "file_size": 15885448,
+      "url": "https://commondatastorage.googleapis.com/perfetto-luci-artifacts/v59.1/linux-amd64/trace_processor_shell",
+      "sha256": "2434129a3af4dc9e2034a476f7b76447b490975213e301769310d3bd0d5d6458",
+      "platform": "linux",
+      "machine": [
+        "x86_64"
+      ]
+    },
+    "device_version": "v51.2",
+    "format": "query --format csv",
+    "bench_zip_sha256": "3d04c95f0e744cbda02c5b5bb97895d11a5acc8c4ff26beb5c6be92949a12596",
+    "scope": "supplied bench reused; launch bound to C12; SQL extraction clipped to PhoneBoost TID/BOOTTIME intervals"
+  }
+}

@@ -2,6 +2,11 @@ plugins {
     id("com.android.application")
 }
 
+// Explicit experiment: separate APK identity, output directory and JNI input.
+// The product source sets never include the control receiver or JNI bridge.
+val multicoreSpike = providers.gradleProperty("phoneboostMulticoreSpike").orNull == "true"
+if (multicoreSpike) layout.buildDirectory.set(file("build-multicore"))
+
 android {
     namespace = "org.phoneboost.app"
     compileSdk = 37
@@ -20,13 +25,21 @@ android {
 
     sourceSets {
         getByName("main") {
-            jniLibs.directories.add("../../.work/a5/jniLibs")
+            jniLibs.directories.add(if (multicoreSpike) "../../.work/multicore/jniLibs" else "../../.work/a5/jniLibs")
+        }
+        if (multicoreSpike) getByName("debug") {
+            kotlin.directories.add("../multicore-spike/java")
+            manifest.srcFile("../multicore-spike/AndroidManifest.xml")
         }
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
+            if (multicoreSpike) {
+                applicationIdSuffix = ".multicore"
+                versionNameSuffix = "-experimental-multicore"
+            }
         }
     }
 
@@ -34,6 +47,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+androidComponents.beforeVariants(androidComponents.selector().all()) {
+    if (multicoreSpike && it.buildType != "debug") it.enable = false
 }
 
 tasks.register<JavaExec>("testControllerLeaseStateName") {

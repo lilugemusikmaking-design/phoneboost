@@ -1,21 +1,16 @@
 {
   "schema_version": 1,
-  "branch": "fix/android-health-source-v0-1",
-  "head": "251306e825db79173f0bdeb97d1823d08d894ca7",
-  "head_meaning": "Parent master of this checkpoint. Resolve the containing commit with git log -1 --format=%H -- .pipeline/STATE.json; project-pipeline status reports the live HEAD.",
-  "task": "Minimal honest Android health source and deterministic ResourceGuard qualification",
-  "status": "ANDROID_HEALTH_QUALIFIED_ON_DEVICE",
-  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
-  "evidence": "docs/evidence/android-health-source-v0-1.json",
+  "branch": "spike/android-multicore-v0-2",
+  "head": "edad4ffc90c6143d1a4f43dfa6096be21cb97cfa",
+  "head_meaning": "Parent master. Resolve containing checkpoint via git log; live HEAD from project-pipeline status.",
+  "task": "Explicit experimental Android CPU profiles1/2/4 under unchanged ResourceGuard ceilings",
+  "status": "SOFTWARE_VALIDATED_PHYSICAL_CAMPAIGN_PENDING",
+  "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md",
+  "evidence": "docs/evidence/android-multicore-v0-2.json",
   "previous_checkpoint": {
-    "commit": "251306e825db79173f0bdeb97d1823d08d894ca7",
-    "report": "docs/architecture/PHONEBOOST_GITHUB_CONVERGENCE_V0_1.md",
-    "merged_prs": [
-      30,
-      27,
-      28,
-      29
-    ]
+    "commit": "edad4ffc90c6143d1a4f43dfa6096be21cb97cfa",
+    "merged_pr": 31,
+    "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md"
   },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
@@ -28,22 +23,14 @@
     "divergence_relative_to": "1312cb1e7ddc40e71a9512d85663264eb63b30c6"
   },
   "completed": [
-    "Canonical hashes and Android public API/AOSP semantics audited",
-    "Existing producer path audited through JNI, worker and ResourceGuard",
-    "Missing/inconsistent readings invalidate cached health; protective recovery and allocations preserved",
-    "Collection-start age retained in worker clock; Android BOOTTIME includes suspend",
-    "Deterministic Rust fixtures and actual host Kotlin/JNI linkage passed",
-    "Android arm64/APK/lint passed with existing cached toolchain",
-    "Rust workspace: 499 tests including doctests passed; Clippy completed",
-    "Pipeline tests: 22 passed including installed Gitleaks integration",
-    "Physical Android health qualification: HAL Ready/no override, exact installed APK, memory/battery/power/thermal propagation, BOOTTIME stale refusal and recovery"
+    "Software validation and two CodeRabbit review cycles; decisions in evidence",
+    "Product isolation and explicit experimental APK verified"
   ],
   "last_tests": {
-    "path": "docs/evidence/android-health-source-v0-1.json",
-    "scope": "Software and physical evidence recorded in the referenced file; GitHub validation must match the final published HEAD."
+    "path": "docs/evidence/android-multicore-v0-2.json",
+    "scope": "software only; physical campaign pending"
   },
-  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36: HAL Ready true, no override, exact installed APK, source-to-ResourceGuard coherence, physical stale/refused/recovery. See evidence; no deep-sleep or high-thermal claim.",
-  "blocked_technical_work": "This Android health change does not include CPU multicore or remote RAM; those remain the next scoped work after publication of #31.",
-  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
+  "physical_proof": "NOT_RUN",
+  "next_action": "Run the prepared physical CPU campaign1/2/4; preserve all ResourceGuard refusals.",
   "writer": "Codex"
 }

@@ -9,6 +9,7 @@ publish = false
 [features]
 default = []
 c04-test-probe = []
+experimental-multicore = []
 
 [[bin]]
 name = "c04-lan-probe"
