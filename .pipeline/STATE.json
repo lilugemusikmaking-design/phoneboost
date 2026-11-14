@@ -1,12 +1,22 @@
 {
   "schema_version": 1,
-  "branch": "master",
-  "head": "d29f78825c0444c11042e2b0279674f9a693a39f",
-  "head_meaning": "Parent master of this documentation checkpoint. Resolve the containing commit on master with git log -1 --format=%H -- .pipeline/STATE.json; project-pipeline status reports the live HEAD.",
-  "task": "Post-P14 GitHub convergence of CI, product fixes, USB guidance and documentation",
-  "status": "CONVERGED_POST_P14_MASTER_HEALTH_QUALIFICATION_NEXT",
-  "report": "docs/architecture/PHONEBOOST_GITHUB_CONVERGENCE_V0_1.md",
-  "evidence": "docs/evidence/post-p14-consolidation-v0-1.json",
+  "branch": "fix/android-health-source-v0-1",
+  "head": "251306e825db79173f0bdeb97d1823d08d894ca7",
+  "head_meaning": "Parent master of this checkpoint. Resolve the containing commit with git log -1 --format=%H -- .pipeline/STATE.json; project-pipeline status reports the live HEAD.",
+  "task": "Minimal honest Android health source and deterministic ResourceGuard qualification",
+  "status": "ANDROID_HEALTH_QUALIFIED_ON_DEVICE",
+  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
+  "evidence": "docs/evidence/android-health-source-v0-1.json",
+  "previous_checkpoint": {
+    "commit": "251306e825db79173f0bdeb97d1823d08d894ca7",
+    "report": "docs/architecture/PHONEBOOST_GITHUB_CONVERGENCE_V0_1.md",
+    "merged_prs": [
+      30,
+      27,
+      28,
+      29
+    ]
+  },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
     "head": "9daae7fb496da2f903212d7c811357901f4b2aee",
@@ -17,93 +27,23 @@
     "preserved": true,
     "divergence_relative_to": "1312cb1e7ddc40e71a9512d85663264eb63b30c6"
   },
-  "publication_branches": [
-    {
-      "branch": "sync/post-p14-product-fixes-v0-1",
-      "head": "f7d29a32021393e46f058782908718ec62387763",
-      "base": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
-      "files": [
-        "android/core-jni/src/lib.rs",
-        "crates/pb-host/src/auto_use.rs",
-        "crates/pb-runtime-secure/src/runtime.rs",
-        "crates/pb-worker-core/src/lib.rs"
-      ],
-      "tree": "ee098aa4808ba96c3fb391c912acc7093339f6db",
-      "pr": 27,
-      "merged_into_master": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f"
-    },
-    {
-      "branch": "sync/post-p14-usb-guidance-v0-1",
-      "head": "e03949e8d01aa4e5b59fdfee90f0ace2ae51c153",
-      "base": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
-      "files": [
-        "frontend/src/pages/Dashboard.js",
-        "frontend/src/pages/Dashboard.test.js"
-      ],
-      "tree": "ca9a09e0d029dbcb082c8705569da5b932eae4bc",
-      "pr": 28,
-      "merged_into_master": "d29f78825c0444c11042e2b0279674f9a693a39f"
-    }
-  ],
   "completed": [
-    "Remote baseline, visibility and open PRs inspected",
-    "Minimal native and USB guidance changes reconstructed on independent branches",
-    "Local software validation on reconstructed extraction heads completed",
-    "Public evidence summarized without raw artifacts or private paths",
-    "PR #30 CI/toolchain merged after Project pipeline and CodeQL success",
-    "PR #27 native product fixes merged after rebase and successful Actions",
-    "PR #28 USB guidance merged after rebase and successful Actions",
-    "PR #29 documentation checkpoint prepared on the resulting master"
+    "Canonical hashes and Android public API/AOSP semantics audited",
+    "Existing producer path audited through JNI, worker and ResourceGuard",
+    "Missing/inconsistent readings invalidate cached health; protective recovery and allocations preserved",
+    "Collection-start age retained in worker clock; Android BOOTTIME includes suspend",
+    "Deterministic Rust fixtures and actual host Kotlin/JNI linkage passed",
+    "Android arm64/APK/lint passed with existing cached toolchain",
+    "Rust workspace: 499 tests including doctests passed; Clippy completed",
+    "Pipeline tests: 22 passed including installed Gitleaks integration",
+    "Physical Android health qualification: HAL Ready/no override, exact installed APK, memory/battery/power/thermal propagation, BOOTTIME stale refusal and recovery"
   ],
   "last_tests": {
-    "path": ".pipeline/resume/check-results.json",
-    "scope": "Historical local results from the 2026-11-14 extraction heads. Current integration CI is recorded in integrated_pull_requests; consult exact GitHub runs."
+    "path": "docs/evidence/android-health-source-v0-1.json",
+    "scope": "Software and physical evidence recorded in the referenced file; GitHub validation must match the final published HEAD."
   },
-  "physical_proof": "NOT RUN: no phone, installation, physical campaign, or benchmark in this consolidation.",
-  "historical_state": {
-    "commit": "1312cb1e7ddc40e71a9512d85663264eb63b30c6",
-    "path": ".pipeline/STATE.json",
-    "meaning": "Installer export blocker is obsolete: PR24 was merged. Prior completed work and tests remain in Git history."
-  },
-  "blocked_technical_work": "Android health source qualification for ResourceGuard: faithful protection signals, provenance, freshness, missing-data behavior and fail-closed refusal before multicore CPU and remote RAM work.",
-  "next_action": "Qualifier une source Android health correcte et réellement exploitable par ResourceGuard, avant de reprendre le spike CPU multicœur et RAM distante.",
-  "writer": "Codex",
-  "integrated_pull_requests": [
-    {
-      "pr": 30,
-      "branch": "fix/ci-dependency-android-pin-v0-1",
-      "head": "59fc5c693a3521d4759648b3449f36015d806829",
-      "base": "1312cb1e7ddc40e71a9512d85663264eb63b30c6",
-      "master_commit": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
-      "pipeline_run": 43581182828,
-      "codeql_run": 43581182831,
-      "status": "MERGED_CI_SUCCESS"
-    },
-    {
-      "pr": 27,
-      "branch": "sync/post-p14-product-fixes-v0-1",
-      "head": "f7d29a32021393e46f058782908718ec62387763",
-      "base": "abef20b08b90fe3bbe57e4953dcc8770e9b9fa3a",
-      "master_commit": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
-      "pipeline_run": 43582373599,
-      "codeql_run": 43582373614,
-      "status": "MERGED_CI_SUCCESS"
-    },
-    {
-      "pr": 28,
-      "branch": "sync/post-p14-usb-guidance-v0-1",
-      "head": "e03949e8d01aa4e5b59fdfee90f0ace2ae51c153",
-      "base": "02889add9cb45fa9cd86510cbe6c8b6a89c2a38f",
-      "master_commit": "d29f78825c0444c11042e2b0279674f9a693a39f",
-      "pipeline_run": 43582970305,
-      "codeql_run": 43582970291,
-      "status": "MERGED_CI_SUCCESS"
-    }
-  ],
-  "documentation_pr": {
-    "pr": 29,
-    "branch": "sync/post-p14-evidence-convergence-v0-1",
-    "base": "d29f78825c0444c11042e2b0279674f9a693a39f",
-    "containing_commit_resolution": "git log -1 --format=%H -- .pipeline/STATE.json"
-  }
+  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36: HAL Ready true, no override, exact installed APK, source-to-ResourceGuard coherence, physical stale/refused/recovery. See evidence; no deep-sleep or high-thermal claim.",
+  "blocked_technical_work": "This Android health change does not include CPU multicore or remote RAM; those remain the next scoped work after publication of #31.",
+  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
+  "writer": "Codex"
 }

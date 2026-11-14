@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "base": "251306e825db79173f0bdeb97d1823d08d894ca7",
+  "branch": "fix/android-health-source-v0-1",
+  "proof_scope": "SOFTWARE_AND_PHYSICAL_DEVICE_QUALIFICATION",
+  "physical": {
+    "status": "QUALIFIED_ON_DEVICE",
+    "reason": "Samsung SM-A155F Android 16 API 36; exact installed debug APK verified; HAL ready, source-to-guard and stale/recovery observed",
+    "avd": "NOT_RUN: emulator, AVD and system image not installed",
+    "host_jni": "Actual JVM/native linkage with simulated API-value fixtures; not Android runtime evidence",
+    "hal_ready": true,
+    "screen_off": "PASS: FGS sampled during 45 s Dozing; controlled 9 s PhoneBoost-process pause while screen off produced stale/refused precheck, followed by fresh recovery; deep sleep not established",
+    "android_to_resource_guard": "PASS: Android thermal, MemoryInfo, battery, charging and Battery Saver propagated to debug JNI/ResourceGuard trace; same PID throughout",
+    "preflight": {
+      "observed_utc": "2026-11-14T11:26:21.219903+00:00",
+      "manufacturer": "samsung",
+      "model": "SM-A155F",
+      "android_release": "16",
+      "api_level": 36,
+      "build_id": "BP4A.251205.006",
+      "abi": "arm64-v8a",
+      "existing_phoneboost_install": "2026-10-25; older than PR #31",
+      "thermal_service_present": true,
+      "thermal_hal_ready": true,
+      "thermal_hal_connection": "AIDL 3 connected: yes",
+      "thermal_status": 0,
+      "thermal_override": false,
+      "thermal_skin_celsius_from_hal": 25.3,
+      "battery_level_percent_at_preflight": 21,
+      "battery_status_at_preflight": 2,
+      "battery_usb_powered": true,
+      "battery_saver_enabled_at_preflight": true,
+      "raw_dumps_sha256": {
+        "thermalservice.raw.txt": "3b5a82bfd5d0de24f831f70c2b71677b6435befe5d38795562e68b01074d48dc",
+        "battery.raw.txt": "003eaaeb6d9bd9ca53d58dd6517d0f5981335efca0e32379ea9d9d10e948e216",
+        "power.raw.txt": "eaa8d2490c30a5999594a41c1b1f69f3cf254f0303d03aac5d4c5046bf032d07"
+      }
+    },
+    "device_qualification": {
+      "model": "SM-A155F",
+      "android_release": "16",
+      "api_level": 36,
+      "build_id": "BP4A.251205.006",
+      "abi": "arm64-v8a",
+      "phone_serial_recorded": false,
+      "installed_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "installed_apk_matches_local_debug_apk": true,
+      "apk_source_commit_at_install": "1cdf80c3937bbc5706098319c0f57ce19c2a4479",
+      "service_pid_same_across_sequence": true,
+      "foreground": "MainActivity focused; keyguard absent",
+      "background": "launcher focused; PhoneBoost foreground service active",
+      "screen_off": "Android mWakefulness=Dozing; PhoneBoost service active",
+      "thermal": {
+        "service_present": true,
+        "hal_ready": true,
+        "hal_aidl_3_connected": true,
+        "override": false,
+        "android_status": 0,
+        "phoneboost_thermal_code": 0,
+        "resource_guard_thermal_band": 0,
+        "hal_sensor_temperatures_observed": [
+          "AP",
+          "BAT",
+          "SKIN"
+        ],
+        "thermal_transition_exercised": false
+      },
+      "memory": {
+        "sample_count": 181,
+        "avail_mem_min_bytes": 759193600,
+        "avail_mem_max_bytes": 1225216000,
+        "total_mem_bytes": 3848155136,
+        "proc_memtotal_matches_total_mem": true,
+        "low_memory_false_samples": 181,
+        "samples_below_768_mib": 4,
+        "sub_768_mib_refused_memory_and_zero_budget": 4,
+        "throttle_samples_with_exact_c08_budget_formula": 124,
+        "memory_pressure_not_induced": true
+      },
+      "battery": {
+        "sample_percent_min": 22,
+        "sample_percent_max": 24,
+        "dumpsys_status": 2,
+        "usb_powered": true,
+        "phoneboost_charging_samples": 181,
+        "android_battery_saver_enabled": true,
+        "phoneboost_power_save_samples": 181,
+        "low_power_standby_enabled": false,
+        "low_power_standby_active": false,
+        "resource_guard_battery_band": 0,
+        "post_recovery_safety_band": 1
+      },
+      "freshness": {
+        "fresh_sample_age_min_ms": 1,
+        "fresh_sample_age_max_ms": 42,
+        "normal_worker_interval_min_ms": 2003,
+        "normal_worker_interval_max_ms": 2044,
+        "natural_screen_off_gap_over_6000_ms": false,
+        "cold_start_precheck": {
+          "sample_count": 0,
+          "age_ms": -1,
+          "safety_band": 5,
+          "budget_bytes": 0
+        },
+        "controlled_pause_while_screen_off": {
+          "pause_target": "PhoneBoost process only",
+          "pause_duration_s": 9,
+          "pid_restart": false,
+          "last_sample_count_before_pause": 178,
+          "precheck_sample_count": 178,
+          "precheck_age_ms": 11040,
+          "precheck_safety_band": 5,
+          "precheck_budget_bytes": 0,
+          "worker_boottime_delta_ms": 11040,
+          "android_elapsed_realtime_delta_ms": 11034,
+          "next_sample_count": 179,
+          "next_sample_age_ms": 4,
+          "next_sample_safety_band": 1,
+          "next_sample_budget_bytes": 130765824
+        }
+      },
+      "raw_captures": "Private local captures under /tmp/phoneboost-health-audit/physical-2026-11-14; not committed because full dumps may include unrelated device data",
+      "capture_sha256": {
+        "foreground-health.raw.txt": "53ab92ae8f4ffc8dfa14cb72e76f0443d8ea923502874c39954aec571c26b1e3",
+        "background-health.txt": "5c234add32f6456ae417b3e4e0bf7b854f082020b94a5019f5b78593594e7704",
+        "screenoff-before-wakeup-health.txt": "14e33de144504106c777ad2cadcd790cf4cbebea62015e8656a770aab7956005",
+        "controlled-pause-health.txt": "7c384cd45888560af94541da432ccb1338a4f1abef17772d764dac8d7e4ba2cf",
+        "thermalservice.after-pause.txt": "261cbcbe88def1f2e873470d01609c903ab1e7c518451388aa31c4dc224af615",
+        "battery.after-pause.txt": "a23851010273e4ec1d5d2af0b6a0eeb7a41562e8db89ca64d32e31171e9794e1",
+        "power.after-pause.txt": "a9617a61961308ea8648522736ffc4de736abb45b6f6703f799cfb7f41e915d1"
+      },
+      "physical_limits": [
+        "No deep-sleep entry demonstrated by the short Dozing interval",
+        "No naturally missing or incoherent Android API tuple observed; deterministic tests cover these cases",
+        "Collection age is measured; underlying hardware state timestamp is not exposed by these APIs",
+        "No high-thermal transition or destructive memory pressure induced",
+        "Post-screen-off UI foreground not observed while device keyguard remained showing; worker/service recovery was observed"
+      ],
+      "screen_off_return": "PhoneBoost worker resumed in same PID and fresh ResourceGuard state was observed; post-screen-off UI foreground was not observed because keyguard remained showing"
+    }
+  },
+  "canonical_documents": [
+    {
+      "name": "SPEC V0.7",
+      "sha256": "a2bcd508bd2432c1edfa8bbdbf0dfb259e9dce55a6c836541da1f43a0ff327bd",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Contract Set V1.3",
+      "sha256": "205744f4ca500736c1c5b0cf013aa102e78ed49830a163a39f228eb570f76e0a",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Tech Sheet V1.3",
+      "sha256": "c055ce00ebf31d95c52b0c7e5ea584a3726fd97f7451e5402cddc6f2dfb7b6b1",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Pseudocode V1.1",
+      "sha256": "1c396860ef9f3d1ea7903ac5f131965c692c8d384abfd01e15d375077d4d4df9",
+      "audit_result": "MATCH_RECORDED_HASH"
+    },
+    {
+      "name": "Fixture Generation Spec V1.0",
+      "sha256": "981d3117e1fa2efa8f6d5f796d46b577516a93158cc3f17006ac7e75c3c21d15",
+      "audit_result": "MATCH_RECORDED_HASH"
+    }
+  ],
+  "sources": [
+    {
+      "file": "PowerManager.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "eceed282b2a2c36266b5b180fd1d832a8f6f8dd57f53043f5e8c0f39b5063d1c"
+    },
+    {
+      "file": "ProcessList.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "2faefc787442d6f54c801cf21609d9319d932b39aae8156c0e5c34577b70f62e"
+    },
+    {
+      "file": "ThermalManagerService.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "b9e6e9ba2b3a5a34900824ca44db1c56f5bd7cff0ec6a41cb3510cd47885b634"
+    },
+    {
+      "file": "BatteryService.java",
+      "tag": "android-16.0.0_r1",
+      "sha256": "e6dc3579908a2f4f86f54712745ac1ac888ae7c0fbbd0d472f6fe364cbca3fce"
+    }
+  ],
+  "checks": [
+    {
+      "command": "cargo test --offline -p pb-worker-core",
+      "status": "PASS",
+      "exit_code": 0,
+      "unit_passed": 60,
+      "doc_passed": 2,
+      "log_name": "worker-tests.log",
+      "log_sha256": "068f7c1f6d4841b6fbae9a749e1db309d62dcc03ce6134de90776c48f65372ce"
+    },
+    {
+      "command": "cargo test --offline --locked -p phoneboost-core-jni health -- --test-threads=1",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed": 3,
+      "log_name": "jni-health-tests.log",
+      "log_sha256": "bc07fd2a5dd72ac8d98f109f88fb8399ede5c1e62620ff98612f60791991bd7f"
+    },
+    {
+      "command": "scripts/pipeline-android (cached SDK/NDK/Gradle, offline, one worker)",
+      "status": "PASS",
+      "exit_code": 0,
+      "android_arm64_build": "PASS",
+      "host_jni_build": "PASS",
+      "apk_assemble": "PASS",
+      "controller_mapping_cases": 5,
+      "sas_cases": 4,
+      "health_api_fixtures_and_real_host_jni": "PASS",
+      "lintDebug": "PASS",
+      "gradle_tasks_executed": 51,
+      "log_name": "android-local.log",
+      "log_sha256": "2b209b02825738a29b4afc18f75bf90a00faa281923ac40eda8dbccb33610cae"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/pipeline -v (installed Gitleaks on PATH)",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed": 22,
+      "skipped": 0,
+      "log_name": "pipeline-tests-with-scanner.log",
+      "log_sha256": "720c36cbda508041349146130346954467aac1a5ae33ae3ce29437409b6a28ce"
+    },
+    {
+      "command": "cargo test --offline --locked --workspace",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed_including_doctests": 499,
+      "failed": 0,
+      "ignored": 0,
+      "log_name": "workspace-tests.log",
+      "log_sha256": "f1f8c077f849a0fa2a3d4c94ef6050a78149616a2889806cf98887744c982d44"
+    },
+    {
+      "command": "cargo clippy --offline --locked --workspace --all-targets",
+      "status": "PASS",
+      "exit_code": 0,
+      "note": "Warnings in unchanged pb-pbmux and pb-runtime-secure files; no warnings in the changed health code.",
+      "log_name": "clippy.log",
+      "log_sha256": "5b4562a809fd6282ac467c9f24e6ee0958e2f5770183f6675735570aa8fb02e3"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "bash -n scripts/pipeline-android",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "actionlint (installed tool)",
+      "status": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "gradle --offline --max-workers=1 -p android :app:assembleDebug :app:lintDebug (cached SDK/NDK; diagnostic-only change)",
+      "status": "PASS",
+      "exit_code": 0,
+      "log_name": "physical-diagnostics-build-final.log",
+      "log_sha256": "b35ac03a65ce5d3314ba0c4dac7ecdfc7d7997c3ceadeded53b5d05fd2e695b2"
+    }
+  ],
+  "remaining_checks": [
+    "GitHub Actions Project pipeline and CodeQL must pass on the final published PR #31 HEAD before merge"
+  ],
+  "limitations": [
+    "Thermal HAL readiness and NONE provenance qualified on this Samsung/Android build only; no thermal transition tested",
+    "Stale refusal observed after controlled process pause while screen off; actual deep sleep not established",
+    "No naturally missing or incoherent Android API tuple observed; deterministic tests cover fail-closed",
+    "Freshness bounds API collection age, not an unexposed hardware-sensor timestamp",
+    "No multicore/RAM/performance claim",
+    "Post-screen-off UI foreground not observed under keyguard; same-process service/ResourceGuard recovery was observed"
+  ],
+  "next_action": "After PR #31 passes CI/CodeQL and is merged: resume guarded physical CPU multicore spike, then open remote RAM work",
+  "build_artifacts": [
+    {
+      "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "scope": "CURRENT DEBUG BUILD; SHA-256 verified equal to installed APK read back from physical device"
+    },
+    {
+      "path": ".work/a5/jniLibs/arm64-v8a/libphoneboost_core_jni.so",
+      "sha256": "86dafe778f35f15b8e3d799537ca9a284494ca3329ad944f643a27763f9a79ee",
+      "scope": "Android arm64 JNI build used in APK qualification; no native code change in physical-diagnostics commit"
+    }
+  ],
+  "publication_security": "Native project-pipeline scan_index must pass on staged bytes before commit; local checkpoint log records execution.",
+  "previous_local_apk_sha256": "e65dd0ef65b54909f7077e070fd555cb535c4ddc0639203305413d18605693a5",
+  "physical_diagnostics": {
+    "purpose": "DEBUGGABLE app only; observational log, not an admission signal",
+    "source_path": "android/app/src/main/java/org/phoneboost/app/PhoneBoostService.kt",
+    "source_sha256": "b2a641a23c7889680341d84e12dc2af842e690f72285abc83574f22be1c5b116",
+    "local_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+    "embedded_dex": "classes3.dex",
+    "dex_contains_expected_provenance_fields": true,
+    "local_build": "PASS: Android assembleDebug and lintDebug",
+    "build_log_sha256": "b35ac03a65ce5d3314ba0c4dac7ecdfc7d7997c3ceadeded53b5d05fd2e695b2",
+    "physical_state": "QUALIFIED_ON_DEVICE: installed APK SHA-256 match; provenance and stale/refused/recovery trace recorded"
+  }
+}

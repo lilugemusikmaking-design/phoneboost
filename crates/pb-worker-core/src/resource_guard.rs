@@ -300,12 +300,30 @@ impl ResourceGuard {
     }
 
     pub fn record_health(&mut self, sample: HealthSample) -> HealthStatus {
+        if let Some(previous) = self.latest {
+            if sample.monotonic_ms < previous.monotonic_ms {
+                return self.invalidate_health();
+            }
+            if sample.monotonic_ms - previous.monotonic_ms > HEALTH_STALE_AFTER_MS {
+                self.invalidate_health();
+            }
+        }
         self.update_memory(sample);
         self.update_thermal(sample);
         self.update_battery(sample);
         self.latest = Some(sample);
         self.sample_count = self.sample_count.saturating_add(1);
         self.health_status(sample.monotonic_ms)
+    }
+
+    pub fn invalidate_health(&mut self) -> HealthStatus {
+        self.latest = None;
+        // An unobserved interval cannot count as stable recovery. Preserve the
+        // last protective bands and all allocations/reservations, however.
+        self.memory_recovery_since_ms = None;
+        self.thermal_recovery = None;
+        self.battery_recovery = None;
+        HealthStatus::unavailable()
     }
 
     pub fn health_status(&self, now_ms: u64) -> HealthStatus {
@@ -713,7 +731,7 @@ impl ResourceGuard {
 
     fn update_thermal(&mut self, sample: HealthSample) {
         let observed = sample.thermal;
-        if self.latest.is_none() || observed > self.effective_thermal {
+        if self.effective_thermal == ThermalBand::Unknown || observed > self.effective_thermal {
             self.effective_thermal = observed;
             self.thermal_recovery = None;
         } else if observed < self.effective_thermal {
@@ -745,7 +763,9 @@ impl ResourceGuard {
         if sample.charging {
             self.effective_battery = BatteryBand::Nominal;
             self.battery_recovery = None;
-        } else if self.latest.is_none() || observed > self.effective_battery {
+        } else if self.effective_battery == BatteryBand::Unknown
+            || observed > self.effective_battery
+        {
             self.effective_battery = observed;
             self.battery_recovery = None;
         } else if observed < self.effective_battery {
@@ -950,6 +970,7 @@ mod tests {
     fn ready_guard(now_ms: u64) -> ResourceGuard {
         let mut guard = ResourceGuard::new();
         guard.record_health(healthy(now_ms.saturating_sub(10_000)));
+        guard.record_health(healthy(now_ms.saturating_sub(5_000)));
         guard.record_health(healthy(now_ms));
         guard
     }
@@ -998,6 +1019,115 @@ mod tests {
     }
 
     #[test]
+    fn unavailable_health_refuses_reserve_and_commit_without_losing_allocations() {
+        let mut guard = ready_guard(10_000);
+        let (mut leases, session, lease_id) = authority(10_000);
+        let request = ReserveRequest {
+            request_id: RequestId::test_only(81),
+            class: ResourceClass::NativeOpScratchBytes,
+            bytes: MIB,
+        };
+        let ReservationDecision::Reserved { reservation_id } =
+            guard.reserve(&mut leases, &session, lease_id, request, 10_000)
+        else {
+            panic!("healthy admission must reserve");
+        };
+        assert_eq!(
+            guard.invalidate_health().safety,
+            SafetyBand::RefusedStaleState
+        );
+        assert_eq!(guard.reserved_bytes(), MIB);
+        assert_eq!(guard.health_status(10_001).budget_bytes, 0);
+        assert_eq!(
+            guard.reserve(
+                &mut leases,
+                &session,
+                lease_id,
+                ReserveRequest {
+                    request_id: RequestId::test_only(82),
+                    ..request
+                },
+                10_001
+            ),
+            ReservationDecision::RefusedSafety
+        );
+        assert_eq!(
+            guard.commit(&mut leases, &session, lease_id, reservation_id, 10_001),
+            CommitDecision::RefusedSafety
+        );
+        assert_eq!(guard.reserved_bytes(), 0);
+    }
+
+    #[test]
+    fn missing_intervals_cannot_count_as_memory_or_thermal_recovery() {
+        let mut guard = ResourceGuard::new();
+        guard.record_health(healthy(0));
+        assert_eq!(
+            guard.record_health(healthy(10_000)).safety,
+            SafetyBand::RefusedMemoryPressure
+        );
+        guard.record_health(healthy(15_000));
+        assert_eq!(
+            guard.record_health(healthy(20_000)).safety,
+            SafetyBand::Nominal
+        );
+        let severe = HealthSample {
+            thermal: ThermalBand::Severe,
+            ..healthy(21_000)
+        };
+        guard.record_health(severe);
+        guard.invalidate_health();
+        assert_eq!(
+            guard.record_health(healthy(22_000)).safety,
+            SafetyBand::RefusedThermal
+        );
+        // A fresh reading after a gap starts recovery again, it does not certify the gap.
+        assert_eq!(
+            guard.record_health(healthy(32_000)).safety,
+            SafetyBand::RefusedThermal
+        );
+        guard.record_health(healthy(37_000));
+        assert_eq!(
+            guard.record_health(healthy(42_000)).safety,
+            SafetyBand::Nominal
+        );
+        assert_eq!(
+            guard.record_health(healthy(41_999)).safety,
+            SafetyBand::RefusedStaleState
+        );
+    }
+
+    #[test]
+    fn unavailable_interval_preserves_battery_refusal_and_restarts_recovery() {
+        let mut guard = ready_guard(10_000);
+        guard.record_health(HealthSample {
+            battery_percent: 14,
+            ..healthy(11_000)
+        });
+        guard.invalidate_health();
+        for time in (12_000..42_000).step_by(5_000) {
+            assert_eq!(
+                guard
+                    .record_health(HealthSample {
+                        battery_percent: 20,
+                        ..healthy(time)
+                    })
+                    .safety,
+                SafetyBand::RefusedBattery
+            );
+        }
+        assert_eq!(
+            guard
+                .record_health(HealthSample {
+                    battery_percent: 20,
+                    ..healthy(42_000)
+                })
+                .safety,
+            SafetyBand::Throttle
+        );
+    }
+
+    #[test]
     fn rg_t06_memory_threshold_and_ten_second_hysteresis() {
         let mut guard = ready_guard(10_000);
         let mut low = healthy(11_000);
@@ -1012,6 +1142,8 @@ mod tests {
             guard.record_health(recovery).safety,
             SafetyBand::RefusedMemoryPressure
         );
+        recovery.monotonic_ms = 17_000;
+        guard.record_health(recovery);
         recovery.monotonic_ms = 21_999;
         assert_eq!(
             guard.record_health(recovery).safety,
@@ -1053,6 +1185,8 @@ mod tests {
             guard.record_health(sample).safety,
             SafetyBand::RefusedThermal
         );
+        sample.monotonic_ms = 18_000;
+        guard.record_health(sample);
         sample.monotonic_ms = 23_000;
         assert_eq!(guard.record_health(sample).safety, SafetyBand::Nominal);
     }
@@ -1072,11 +1206,22 @@ mod tests {
             guard.record_health(sample).safety,
             SafetyBand::RefusedBattery
         );
+        for time in (17_000..42_000).step_by(5_000) {
+            sample.monotonic_ms = time;
+            assert_eq!(
+                guard.record_health(sample).safety,
+                SafetyBand::RefusedBattery
+            );
+        }
         sample.monotonic_ms = 42_000;
         assert_eq!(guard.record_health(sample).safety, SafetyBand::Throttle);
         sample.monotonic_ms = 43_000;
         sample.battery_percent = 30;
         assert_eq!(guard.record_health(sample).safety, SafetyBand::Throttle);
+        for time in (48_000..73_000).step_by(5_000) {
+            sample.monotonic_ms = time;
+            assert_eq!(guard.record_health(sample).safety, SafetyBand::Throttle);
+        }
         sample.monotonic_ms = 73_000;
         assert_eq!(guard.record_health(sample).safety, SafetyBand::Nominal);
     }

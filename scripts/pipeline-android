@@ -14,6 +14,10 @@ export AR_aarch64_linux_android="$ndk/llvm-ar"
 "$root/scripts/pipeline-with-sccache" cargo build --locked --release --target aarch64-linux-android -p phoneboost-core-jni
 mkdir -p .work/a5/jniLibs/arm64-v8a
 cp "${CARGO_TARGET_DIR:-target}/aarch64-linux-android/release/libphoneboost_core_jni.so" .work/a5/jniLibs/arm64-v8a/
-gradle --no-daemon -p android :app:assembleDebug :app:testControllerLeaseStateName :app:testPairingSasDisplay :app:lintDebug
+# Exercise Kotlin -> actual JNI -> ResourceGuard with deterministic fixtures on
+# the host. The Android library is built separately above; this is not AVD proof.
+"$root/scripts/pipeline-with-sccache" cargo build --locked -p phoneboost-core-jni
+health_jni_dir="$(realpath "${CARGO_TARGET_DIR:-target}/debug")"
+gradle --no-daemon -p android -PphoneboostHealthJniDir="$health_jni_dir" :app:assembleDebug :app:testControllerLeaseStateName :app:testPairingSasDisplay :app:testAndroidHealthSource :app:lintDebug
 test -f android/app/build/outputs/apk/debug/app-debug.apk
 printf '%s\n' 'SOFTWARE/CI PROOF only; no physical hardware proof.'

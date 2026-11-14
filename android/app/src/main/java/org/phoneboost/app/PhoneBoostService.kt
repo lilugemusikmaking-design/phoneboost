@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.Handler
@@ -38,36 +39,66 @@ class PhoneBoostService : Service() {
     private var healthHandler: Handler? = null
     private var localIpTransport: LocalIpTransport? = null
     private var secureReady = false
+    // Physical qualification diagnostics only. Admission never reads these logs.
+    private val healthDiagnostics by lazy {
+        (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     private val sampleHealth = object : Runnable {
         override fun run() {
             try {
-                val observations = readAndroidObservations()
-                val battery = observations.batteryPercent
-                if (battery != null) {
-                    val sampledAt = SystemClock.elapsedRealtime()
-                    val result = WorkerNative.workerUpdateHealth(
-                        observations.availableMemoryBytes,
-                        if (observations.lowMemory) 1 else 0,
-                        observations.thermalCode,
-                        battery,
-                        if (observations.charging) 1 else 0,
-                        if (observations.powerSave) 1 else 0,
-                        sampledAt,
+                val sampledAt = WorkerNative.workerHealthSampleTimeMs()
+                if (sampledAt < 0) {
+                    Log.w(LOG_TAG, "HEALTH_SAMPLE_FAILED reason=WORKER_UNAVAILABLE result=$sampledAt")
+                    return
+                }
+                if (healthDiagnostics) {
+                    val before = WorkerNative.healthSnapshot(sampledAt)
+                    Log.i(
+                        LOG_TAG,
+                        "HEALTH_PRECHECK count=${before.samples} at_ms=${SystemClock.elapsedRealtime()} " +
+                            "sample_worker_ms=$sampledAt safety=${before.safety} " +
+                            "thermal=${before.thermal} battery=${before.battery} " +
+                            "age_ms=${before.ageMs} budget_bytes=${before.budgetBytes}",
                     )
+                }
+                val observations = readAndroidObservations()
+                val unavailable = observations.healthUnavailableReason()
+                val result = observations.publishHealth(sampledAt)
+                if (unavailable == null) {
                     val health = WorkerNative.healthSnapshot(sampledAt)
                     Log.i(
                         LOG_TAG,
-                        "HEALTH_SAMPLE count=${health.samples} at_ms=$sampledAt " +
+                        "HEALTH_SAMPLE count=${health.samples} at_ms=${SystemClock.elapsedRealtime()} " +
+                            "sample_worker_ms=$sampledAt age_ms=${health.ageMs} " +
                             "result=$result safety=${health.safety} thermal=${health.thermal} " +
                             "battery=${health.battery} charging=${observations.charging} " +
                             "power_save=${observations.powerSave} low_memory=${observations.lowMemory} " +
-                            "memory_mib=${observations.availableMemoryMib}",
+                            "memory_mib=${observations.availableMemoryMib}" +
+                            if (healthDiagnostics) {
+                                " memory_bytes=${observations.availableMemoryBytes} " +
+                                    "total_memory_bytes=${observations.totalMemoryBytes} " +
+                                    "thermal_code=${observations.thermalCode} " +
+                                    "battery_pct=${observations.batteryPercent} " +
+                                    "budget_bytes=${health.budgetBytes}"
+                            } else "",
                     )
                 } else {
-                    Log.w(LOG_TAG, "HEALTH_SAMPLE_SKIPPED reason=BATTERY_UNAVAILABLE")
+                    if (healthDiagnostics) {
+                        val health = WorkerNative.healthSnapshot(sampledAt)
+                        Log.w(
+                            LOG_TAG,
+                            "HEALTH_SAMPLE_UNAVAILABLE reason=$unavailable result=$result " +
+                                "safety=${health.safety} age_ms=${health.ageMs} " +
+                                "budget_bytes=${health.budgetBytes}",
+                        )
+                    } else {
+                        Log.w(LOG_TAG, "HEALTH_SAMPLE_UNAVAILABLE reason=$unavailable result=$result")
+                    }
                 }
-            } catch (_: RuntimeException) {
-                Log.e(LOG_TAG, "HEALTH_SAMPLE_FAILED")
+            } catch (error: RuntimeException) {
+                val result = WorkerNative.workerInvalidateHealth()
+                Log.e(LOG_TAG, "HEALTH_SAMPLE_FAILED reason=ANDROID_READ_FAILED " +
+                    "source_error=${error.javaClass.simpleName} result=$result")
             } finally {
                 healthHandler?.postDelayed(this, HEALTH_INTERVAL_MS)
             }

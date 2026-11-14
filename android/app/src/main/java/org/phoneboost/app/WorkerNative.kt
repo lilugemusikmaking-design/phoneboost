@@ -4,6 +4,7 @@ object WorkerNative {
     const val RESULT_OK = 0
     const val RESULT_ALREADY_RUNNING = 1
     const val ERROR_PANIC_CONTAINED = -4
+    const val ERROR_BAD_LOCAL_SAMPLE = -5
     const val STATE_STOPPED = 0
     const val STATE_COLD_START = 1
     const val STATE_PAIRING_REQUIRED = 2
@@ -36,6 +37,10 @@ object WorkerNative {
     external fun workerIncarnationHigh(): Long
     external fun workerIncarnationLow(): Long
     external fun workerStop(): Int
+    // Capture before reading Android APIs. This is the worker's clock domain;
+    // SystemClock.elapsedRealtime() is only a diagnostic timestamp.
+    external fun workerHealthSampleTimeMs(): Long
+    external fun workerInvalidateHealth(): Int
     external fun workerUpdateHealth(
         availableMemoryBytes: Long,
         lowMemory: Int,
@@ -43,7 +48,7 @@ object WorkerNative {
         batteryPercent: Int,
         charging: Int,
         powerSave: Int,
-        monotonicMs: Long,
+        sampledAtWorkerMs: Long,
     ): Int
     external fun workerHealthField(field: Int, nowMs: Long): Long
     external fun workerAuthorityState(field: Int): Int
