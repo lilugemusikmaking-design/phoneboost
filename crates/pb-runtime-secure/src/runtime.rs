@@ -1322,6 +1322,7 @@ fn enter_authenticated_loop(
         initiator,
         initiator_driver.as_deref_mut(),
         initiator_generation,
+        std::thread::sleep,
     );
     verified_peer.revoke();
     if let Some(driver) = initiator_driver.as_deref_mut() {
@@ -1344,6 +1345,7 @@ fn run_authenticated_loop(
     initiator: bool,
     mut initiator_driver: Option<&mut InitiatorSessionDriver>,
     initiator_generation: Option<u64>,
+    mut wait_for_input: impl FnMut(Duration),
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
     let mut last_authenticated_traffic = Instant::now();
@@ -1639,21 +1641,26 @@ fn run_authenticated_loop(
             } else {
                 return Err(RuntimeError::Pbmux);
             }
-        } else if initiator_transport_expired(
-            last_authenticated_traffic.elapsed(),
-            application_outstanding
-                .as_ref()
-                .map(|request| request.sent_at.elapsed()),
-        ) {
-            // A large fragmented send can occupy this thread long enough for
-            // authenticated heartbeats or the application response to queue in
-            // the socket. Process queued traffic before declaring the peer
-            // offline. An active request retains its separate bounded deadline;
-            // all idle sessions still fail closed at the ten-second bound.
-            verified_peer.revoke();
-            return Err(RuntimeError::SessionLost);
+        } else {
+            if initiator_transport_expired(
+                last_authenticated_traffic.elapsed(),
+                application_outstanding
+                    .as_ref()
+                    .map(|request| request.sent_at.elapsed()),
+            ) {
+                // A large fragmented send can occupy this thread long enough for
+                // authenticated heartbeats or the application response to queue in
+                // the socket. Process queued traffic before declaring the peer
+                // offline. An active request retains its separate bounded deadline;
+                // all idle sessions still fail closed at the ten-second bound.
+                verified_peer.revoke();
+                return Err(RuntimeError::SessionLost);
+            }
+            // Poll only while input is unavailable (including a partial record
+            // prefix). Queued frames must not each pay this idle delay. Keep the
+            // outer loop so cancellation and heartbeats are checked between frames.
+            wait_for_input(SESSION_POLL);
         }
-        std::thread::sleep(SESSION_POLL);
     }
 }
 
@@ -2346,6 +2353,183 @@ mod tests {
     #[test]
     fn pairing_timeout_is_exactly_120_seconds() {
         assert_eq!(PAIRING_TIMEOUT_MS, 120_000);
+    }
+
+    fn with_authenticated_poll_test(
+        exercise: impl FnOnce(
+            &mut TcpStream,
+            &mut TransportState,
+            &mut TcpStream,
+            TransportState,
+            &SecureRuntime,
+            &VerifiedPeerSession<'_>,
+        ),
+    ) {
+        let host_dir = TestDirectory::new("poll-host");
+        let android_dir = TestDirectory::new("poll-android");
+        let host_store = open_store(&host_dir.0);
+        let android_store = open_store(&android_dir.0);
+        let host_identity = host_store.load_or_create_identity().unwrap();
+        let android_identity = android_store.load_or_create_identity().unwrap();
+        let android_peer = PeerRecord::new(*android_identity.public(), "Android", 1);
+        android_store
+            .commit_peer(&PeerRecord::new(*host_identity.public(), "host", 1))
+            .unwrap();
+        let android = Arc::new(
+            SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap(),
+        );
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let responder_runtime = Arc::clone(&android);
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            configure_handshake_stream(&stream).unwrap();
+            let first = read_record(&mut stream).unwrap();
+            let (transport, remote) =
+                responder_ik(&mut stream, &responder_runtime, &first).unwrap();
+            configure_session_stream(&stream).unwrap();
+            (stream, transport, remote)
+        });
+        let mut host_stream = TcpStream::connect(endpoint).unwrap();
+        host_stream.set_nodelay(true).unwrap();
+        configure_handshake_stream(&host_stream).unwrap();
+        let (mut host_transport, _) =
+            initiator_ik(&mut host_stream, host_identity.private(), &android_peer).unwrap();
+        let (mut android_stream, android_transport, remote) = responder.join().unwrap();
+        let scope = SessionScope::new();
+        let verified_peer = android.mark_authenticated(&remote, &scope).unwrap();
+        exercise(
+            &mut host_stream,
+            &mut host_transport,
+            &mut android_stream,
+            android_transport,
+            &android,
+            &verified_peer,
+        );
+        verified_peer.revoke();
+    }
+
+    fn wait_for_queued_bytes(stream: &TcpStream, length: usize) {
+        let mut bytes = vec![0; length];
+        wait_until(|| match stream.peek(&mut bytes) {
+            Ok(count) => count == length,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => false,
+            Err(error) => panic!("test queue failed: {error}"),
+        });
+    }
+
+    #[test]
+    fn authenticated_poll_does_not_delay_queued_control_and_buffer_fragments() {
+        struct VerifyPut(RemoteBufferRequest, AtomicUsize);
+        impl AuthenticatedCommandHandler for VerifyPut {
+            fn handle_authenticated_command(
+                &self,
+                _: &VerifiedPeerSession<'_>,
+                _: u64,
+                _: CommandPayload,
+            ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+                panic!("unexpected command");
+            }
+
+            fn handle_authenticated_remote_buffer(
+                &self,
+                peer: &VerifiedPeerSession<'_>,
+                request_id: u64,
+                request: RemoteBufferRequest,
+            ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError>
+            {
+                assert!(peer.is_live());
+                assert_eq!(request_id, 44);
+                assert_eq!(request, self.0);
+                self.1.fetch_add(1, Ordering::Relaxed);
+                // End the loop only after exact authenticated reassembly; this
+                // test is not a fabricated successful provider operation.
+                Err(AuthenticatedCommandHandlerError::Failed)
+            }
+        }
+
+        with_authenticated_poll_test(|host, sender, worker, receiver, runtime, peer| {
+            let request = RemoteBufferRequest::Put {
+                lease_id: [1; 16],
+                worker_incarnation_id: [2; 16],
+                buffer_id: [3; 16],
+                offset: 17,
+                data: vec![0x5a; pb_types::MAX_PBMUX_PAYLOAD + 17],
+            };
+            let frames = build_remote_buffer_request_frames(&request, 44, 1).unwrap();
+            assert_eq!(frames.len(), 2);
+            let mut wire = Vec::new();
+            for frame in std::iter::once(control_frame(ControlType::Ping, 9, 0)).chain(frames) {
+                write_encrypted(&mut wire, sender, &encode(&frame).unwrap()).unwrap();
+            }
+            host.write_all(&wire).unwrap();
+            wait_for_queued_bytes(worker, wire.len());
+            let handler = VerifyPut(request, AtomicUsize::new(0));
+            let mut waits = 0;
+            let outcome = run_authenticated_loop(
+                worker,
+                runtime,
+                &handler,
+                receiver,
+                peer,
+                0,
+                SequenceTracker::default(),
+                false,
+                None,
+                None,
+                |duration| {
+                    assert_eq!(duration, SESSION_POLL);
+                    waits += 1;
+                },
+            );
+            assert_eq!(outcome, Err(RuntimeError::CommandHandlerFailed));
+            assert_eq!(handler.1.load(Ordering::Relaxed), 1);
+            let pong = decode(&read_encrypted(host, sender).unwrap()).unwrap();
+            assert_eq!(pong.header.message_type, ControlType::Pong as u16);
+            assert_eq!(pong.header.request_id, 9);
+            assert_eq!(waits, 0, "queued frames must not pay an idle polling wait");
+        });
+    }
+
+    #[test]
+    fn authenticated_poll_waits_on_empty_socket_and_partial_prefix() {
+        for prefix_bytes in [0, 1] {
+            with_authenticated_poll_test(|host, sender, worker, receiver, runtime, peer| {
+                let mut wire = Vec::new();
+                let close = control_frame(ControlType::SessionClose, 9, 0);
+                write_encrypted(&mut wire, sender, &encode(&close).unwrap()).unwrap();
+                if prefix_bytes != 0 {
+                    host.write_all(&wire[..prefix_bytes]).unwrap();
+                    wait_for_queued_bytes(worker, prefix_bytes);
+                }
+                let queue_probe = worker.try_clone().unwrap();
+                let mut waits = 0;
+                let outcome = run_authenticated_loop(
+                    worker,
+                    runtime,
+                    &NoAuthenticatedCommandHandler,
+                    receiver,
+                    peer,
+                    0,
+                    SequenceTracker::default(),
+                    false,
+                    None,
+                    None,
+                    |duration| {
+                        assert_eq!(duration, Duration::from_millis(20));
+                        waits += 1;
+                        assert_eq!(
+                            waits, 1,
+                            "complete queued input must resume without spinning"
+                        );
+                        host.write_all(&wire[prefix_bytes..]).unwrap();
+                        wait_for_queued_bytes(&queue_probe, wire.len());
+                    },
+                );
+                assert_eq!(outcome, Ok(SessionOutcome::Lost));
+                assert_eq!(waits, 1);
+            });
+        }
     }
 
     #[test]

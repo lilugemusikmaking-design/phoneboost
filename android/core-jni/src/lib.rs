@@ -514,16 +514,18 @@ fn update_health(
 }
 
 fn health_field(field: JInt, now_ms: JLong) -> JLong {
-    let Ok(now_ms) = u64::try_from(now_ms) else {
+    if now_ms < 0 {
         return ERROR_BAD_LOCAL_SAMPLE as JLong;
-    };
+    }
     let Ok(slot) = worker_slot().lock() else {
         return ERROR_INTERNAL as JLong;
     };
     let Some(worker) = slot.as_ref() else {
         return ERROR_NOT_RUNNING as JLong;
     };
-    let status = worker.health_status(now_ms);
+    // Keep the JNI signature/argument validation for compatibility, but never
+    // compare Android's boot-relative clock with worker-relative sample times.
+    let status = worker.current_health_status();
     match field {
         0 => worker.health_sample_count() as JLong,
         1 => status.safety as JLong,
@@ -2108,6 +2110,30 @@ mod tests {
             health_field(3, 2_000),
             pb_worker_core::BatteryBand::Nominal as JLong
         );
+        reset();
+    }
+
+    #[test]
+    fn local_health_observation_uses_worker_time_not_android_boot_time() {
+        let _test_guard = test_lock();
+        reset();
+        assert_eq!(start_worker(), RESULT_OK);
+        let android_boot_ms = 569_947_402;
+        assert_eq!(
+            update_health(1_073_741_824, 0, 0, 80, 1, 0, android_boot_ms),
+            RESULT_OK
+        );
+        // Initial memory hysteresis remains in force. A just-recorded sample
+        // is fresh, though, regardless of the unrelated Android clock origin.
+        assert_eq!(
+            health_field(1, android_boot_ms),
+            pb_worker_core::SafetyBand::RefusedMemoryPressure as JLong
+        );
+        assert_eq!(
+            health_field(1, JLong::MAX),
+            pb_worker_core::SafetyBand::RefusedMemoryPressure as JLong
+        );
+        assert_eq!(health_field(4, -1), ERROR_BAD_LOCAL_SAMPLE as JLong);
         reset();
     }
 
