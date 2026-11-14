@@ -1,9 +1,25 @@
-# Reprise CPU Android : refus ResourceGuard observé
+# Reprise CPU Android : multicœur réel confirmé, performance à qualifier
 
-Lire [le rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md) et [les preuves](../../docs/evidence/android-multicore-v0-2.json). Le code testé est `93f1de187838163729c476da2c327f5a612cf8a9`, sur master `edad4ffc90c6143d1a4f43dfa6096be21cb97cfa`.
+Verdict intermédiaire : **MULTICORE_EXECUTION_CONFIRMED**. Lire le
+[rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md) et les
+[preuves scheduler](../../docs/evidence/android-multicore-scheduler-1-2-v0-2.json).
+Le code APK testé reste93f1de187838163729c476da2c327f5a612cf8a9 ; cette publication
+ne change que les preuves et la durée Perfetto40→55s explicitement autorisée.
 
-Verdict : **MULTICORE_BLOCKED_BY_RESOURCE_GUARD**. Un contrôle distant64MiB/1thread est exact. Les captures complètes1/2/4 sont refusées avant C10 ; Health montre RefusedMemory/budget0 sur toute la fenêtre des profils2/4. Battery Saver reste actif. Aucun gain ni parallélisme physique démontré. Aucun réglage ni seuil modifié.
+Une capture complète exacte64MiB par profil1/2. Le profil2 montre deux TID sur
+CPU5/6/7, maximum2Running simultanément, overlap49,913692ms. Health nominale,
+HAL Ready sans override, Battery Saver désactivé manuellement pour les essais.
+Aucun seuil, C13, affinité ou comportement produit modifié. Le profil4 n'est pas lancé.
 
-NEXT_ACTION : Rejouer la preuve physique Perfetto1/2/4 lorsque Health est naturellement nominale, sans modifier les seuils ResourceGuard; RAM/GPU/NPU restent fermés.
+NEXT_ACTION : effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.
 
-La publication de cette branche dédiée doit passer Actions/CodeQL. La PR reste ouverte tant que le multicœur Android n’a pas été exécuté et qualifié physiquement. Produit et APK `org.phoneboost.app` conservés ; expérimental `org.phoneboost.app.multicore` arrêté après remise à1. Aucune destruction de worktree/branche historique. Ne pas relancer WebP, CAPACITY/THROUGHPUT, audit SoC ou étude below-OS. Ergonomie appairage/verrouillage explicitement différée.
+Ne pas fusionner #32 : aucun verdict de performance reproductible/avantage produit
+n'est établi. Les anciens refus et la trace40s incomplète sont conservés, mais ne
+sont ni une baseline qualifiée ni une preuve multicœur. Les traces brutes privées
+et leurs hashes sont référencés par les preuves. Ne pas relancer la campagne1/2/4
+en bloc, ni ouvrir RAM/GPU/NPU/C13. Produit et worktrees historiques intacts.
+
+Nettoyage encore à vérifier : Battery Saver initialement ON reste OFF malgré
+la commande native de restauration (exit0, sans effet observé). Demande manuelle
+en attente ; vérifier Health power_save=true puis arrêter l’APK expérimental.
+Profil1 restauré, auto-useOFF, daemon/tunnel privés arrêtés ; aucun workload en cours.

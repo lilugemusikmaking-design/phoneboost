@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "branch": "spike/android-multicore-v0-2",
-  "head": "93f1de187838163729c476da2c327f5a612cf8a9",
-  "head_meaning": "Parent master. Resolve containing checkpoint via git log; live HEAD from project-pipeline status.",
+  "head": "df020cecd7f9691eb431c4828055664c98f07f9d",
+  "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Explicit experimental Android CPU profiles1/2/4 under unchanged ResourceGuard ceilings",
-  "status": "MULTICORE_BLOCKED_BY_RESOURCE_GUARD",
+  "status": "MULTICORE_EXECUTION_CONFIRMED",
   "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md",
   "evidence": "docs/evidence/android-multicore-v0-2.json",
   "previous_checkpoint": {
@@ -28,7 +28,8 @@
     "Physical APK/source hash matched; authenticated C12 control passed",
     "Supplied Perfetto bench reused; official tool pinned; real C08 refusals preserved",
     "Experimental processes stopped; product APK hash unchanged",
-    "docs(cpu): record physical guard refusal and Perfetto evidence"
+    "docs(cpu): record physical guard refusal and Perfetto evidence",
+    "docs(cpu): confirm profile 2 scheduler overlap and bound capture duration"
   ],
   "last_tests": [
     {
@@ -80,15 +81,15 @@
       "scope": "See docs/evidence/android-multicore-v0-2.json for exact commands, source scope and preserved failure."
     }
   ],
-  "physical_proof": "One exact64MiB remote1-thread control; complete1/2/4Perfetto campaign refused before compute under C08 memory constraints. No multicore claim.",
-  "next_action": "Rejouer la preuve physique Perfetto 1/2/4 lorsque Health est naturellement nominale, sans modifier les seuils ResourceGuard; RAM/GPU/NPU restent ferm\u00e9s.",
+  "physical_proof": "One complete exact64MiB scheduler-qualified capture each1and2. Profile2:2TIDs,CPUs5/6/7,peak2,49.913692ms actualRunningoverlap, nominalHealth; no performance qualification.",
+  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite. V\u00e9rifier auparavant la restauration Battery Saver encore en attente.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-14T14:11:42.503471+00:00",
-    "commit": "93f1de187838163729c476da2c327f5a612cf8a9",
+    "date": "2026-11-14T16:45:03.975581+00:00",
+    "commit": "df020cecd7f9691eb431c4828055664c98f07f9d",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -162,5 +163,7 @@
         "scope": "HOST_STARTUP stale socket recovery"
       }
     ]
-  }
+  },
+  "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
+  "cleanup_pending": "Manual Battery Saver restoration ON: native command exited0 but officialHealth remainsfalse. Profile1 restored; isolatedhostOFF/stopped, ownforwardremoved. Verify restoration and stopexperimentalapp before next campaign."
 }

@@ -500,16 +500,18 @@
       "thermal-after.private.txt": "dfbcdd1523b874508fe5a377fcd762db6421f36bda1e6adc03be182ec1edc4e9",
       "power-after.private.txt": "7777411ddbaf0acc01f8c35a27145efae4b8b3de7b501f9883d27a1421cc1386",
       "battery-after.private.txt": "0b9611cf34939a4041b0442e573eb443a9566b95753c444fc335d1bcbb5ebd57"
-    }
+    },
+    "historical": true,
+    "superseded_for_current_status_by": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json"
   },
   "limitations": [
     "Sampling observes only migrations at quantum boundaries",
     "Worker mutex serializes jobs, health updates and incoming ComputeCancel",
     "Configured profile is a bound, not an assertion of simultaneous CPU execution",
     "No dynamic policy or canonical change",
-    "Profiles2/4 did not reach C10 on the device: C08 memory refusal; Battery Saver also remained active. Their exactness/concurrency are software evidence only.",
     "The64MiBconfigured Perfetto buffer and real C12 input have an observational memory cost not isolated here; do not infer that an uninstrumented phone would have identical admission.",
-    "No physical cancellation/lease-loss injection in this campaign; existing wire/software tests cover those paths."
+    "No physical cancellation/lease-loss injection in this campaign; existing wire/software tests cover those paths.",
+    "Profile2 now has one exact nominalHealth scheduler-qualified physical execution. Reproducibility, speedup and product benefit are not established. Profile4 remains unrun in the current campaign."
   ],
   "logs_sha256": {
     "phoneboost-multicore-python-tests.log": "844451f8766e6e061667070e7743d1e7643b1900cc24d6e650dac13f558e4cf1",
@@ -542,13 +544,20 @@
     "bench_zip_sha256": "3d04c95f0e744cbda02c5b5bb97895d11a5acc8c4ff26beb5c6be92949a12596",
     "scope": "supplied bench reused; launch bound to C12; SQL extraction clipped to PhoneBoost TID/BOOTTIME intervals"
   },
-  "next_action": "Rejouer la preuve physique Perfetto1/2/4 lorsque Health est naturellement nominale, sans modifier les seuils ResourceGuard; RAM/GPU/NPU restent ferm\u00e9s.",
+  "next_action": "Effectuer la comparaison physique reproductible 1 vs 2 ; profil 4 seulement ensuite.",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "publication": {
     "state": "Consult live GitHub PR/checks for this branch; no CI success inferred from local tests",
-    "merge_gate": "Keep PR open while physical multicore execution is unqualified; Actions/CodeQL must validate published HEAD."
+    "merge_gate": "Keep PR32 draft/unmerged until the requested reproducible performance verdict is established and Actions/CodeQL validate the published HEAD."
   },
-  "date_utc": "2026-11-14T14:09:58.590436+00:00"
+  "date_utc": "2026-11-14T14:09:58.590436+00:00",
+  "current_verdict": "MULTICORE_EXECUTION_CONFIRMED",
+  "scheduler_qualification": {
+    "path": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
+    "verdict": "MULTICORE_EXECUTION_CONFIRMED",
+    "performance_qualified": false,
+    "profile4_run": false
+  }
 }

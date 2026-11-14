@@ -1,4 +1,4 @@
-duration_ms: 40000
+duration_ms: 55000
 buffers: {
   size_kb: 65536
   fill_policy: DISCARD
