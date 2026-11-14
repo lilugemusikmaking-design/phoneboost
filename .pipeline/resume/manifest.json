@@ -1,12 +1,9 @@
 {
-  "branch": "fix/android-health-source-v0-1",
-  "parent_head": "251306e825db79173f0bdeb97d1823d08d894ca7",
-  "date": "2026-11-14",
+  "next_action": "Rejouer la preuve physique Perfetto 1/2/4 lorsque Health est naturellement nominale, sans modifier les seuils ResourceGuard; RAM/GPU/NPU restent ferm\u00e9s.",
   "writer": "Codex",
-  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
-  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
-  "evidence": "docs/evidence/android-health-source-v0-1.json",
-  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36; exact installed APK, HAL Ready true/no override, source-to-ResourceGuard and stale/refused/recovery. See evidence.",
-  "publication": "Publication gate for #31: Project pipeline and CodeQL must pass on the final PR HEAD before merge; GitHub records the merged master SHA.",
-  "historical_source": "9daae7fb496da2f903212d7c811357901f4b2aee"
+  "parent_head": "93f1de187838163729c476da2c327f5a612cf8a9",
+  "date": "2026-11-14T14:11:42.504330+00:00",
+  "branch": "spike/android-multicore-v0-2",
+  "push": "verify remote on resume",
+  "physical_proof": "One exact64MiB remote1-thread control; complete1/2/4Perfetto campaign refused before compute under C08 memory constraints. No multicore claim."
 }

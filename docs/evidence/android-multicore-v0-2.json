@@ -135,14 +135,381 @@
     }
   },
   "physical": {
-    "status": "NOT_RUN",
-    "verdict": "MULTICORE_NOT_CONFIRMED"
+    "status": "CAMPAIGN_COMPLETED_WITH_RESOURCE_GUARD_REFUSALS",
+    "verdict": "MULTICORE_BLOCKED_BY_RESOURCE_GUARD",
+    "verdict_basis": "C12 explicitly reports RESOURCE_REFUSED for profiles2/4; all20/19 official Health samples in their BOOTTIME trace windows show RefusedMemory and zero budget. No C10 job/worker profile admission was reached. Native-only automatic performance summaries remain NOT_CONFIRMED, correctly, because no admitted multicore compute record exists.",
+    "device": {
+      "model": "SM-A155F",
+      "android_release": "16",
+      "api": 36,
+      "build": "BP4A.251205.006.A155FXXSBEZG1",
+      "abi": "arm64-v8a",
+      "serial_published": false
+    },
+    "installed_apk": {
+      "package": "org.phoneboost.app.multicore",
+      "installed_apk_sha256": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+      "source_sha": "93f1de187838163729c476da2c327f5a612cf8a9",
+      "verified_exact": true
+    },
+    "product_preserved": {
+      "package": "org.phoneboost.app",
+      "installed_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "unchanged": true
+    },
+    "thermal": {
+      "hal_ready": true,
+      "hal": "AIDL3",
+      "override": false,
+      "status": 0,
+      "phoneboost_thermal_bands": [
+        0
+      ],
+      "stress_induced": false
+    },
+    "input": {
+      "bytes": 67108864,
+      "generator": "byte(i)=(i*31+7)%256 repeated over64MiB",
+      "expected_blake3": "7b2def9fc609feb94905bd0cdb0772743544d6564b8d73cf2bba66c4759116a4",
+      "sha256": "601fc533f64b11042a9ae821c272064871306a99496652afb5758c8979d8834d",
+      "identical_for_all_profiles": true
+    },
+    "first_single_thread_control": {
+      "profile": 1,
+      "warmup": true,
+      "rotation": -1,
+      "input_bytes": 67108864,
+      "end_to_end_ms": 29106.264294,
+      "exit_code": 0,
+      "digest_exact": true,
+      "digest_mismatch": false,
+      "valid": true,
+      "native": {
+        "sequence": 1,
+        "configured_threads": 1,
+        "input_bytes": 67108864,
+        "wall_ns": 120455769,
+        "cpu_ns": 119428771,
+        "peak_hash_scopes": 1,
+        "executed_threads": 1,
+        "cpu_mask": 64,
+        "refusal": 0,
+        "outcome": 0,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864,
+        "safety_before": 1,
+        "safety_after": 1,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "age_before_ms": 854,
+        "age_after_ms": 974,
+        "available_bytes": 906477568,
+        "charging": 1,
+        "power_save": 1,
+        "budget_bytes": 92401664,
+        "battery_percent": 90,
+        "threads": [
+          {
+            "tid": 20570,
+            "begin_ns": 1038137277395324,
+            "end_ns": 1038137397830401,
+            "cpu_ns": 119428771,
+            "cpu_mask": 64,
+            "observed_migrations": 0,
+            "bytes": 67108864,
+            "cpu_id_overflow": 0,
+            "worker_index": 0
+          }
+        ],
+        "coherent": true
+      }
+    },
+    "first_control_native_mib_s": 531.3153577559245,
+    "first_control_limit": "One successful remote control, not a repeated performance result. Its20sPerfetto trace ended before the real compute after29.106s end-to-end; no scheduler proof is claimed from this trace.",
+    "capture_duration_ms": 40000,
+    "duration_reason": "Measured29.106s end-to-end plus2sstartup/2.1sHealth wait;40s gives bounded measured headroom. Original20strace preserved separately.",
+    "capture_buffer_kib": 65536,
+    "profiles": {
+      "1": {
+        "job": {
+          "profile": 1,
+          "warmup": true,
+          "rotation": -1,
+          "input_bytes": 67108864,
+          "end_to_end_ms": 27814.376632,
+          "exit_code": 3,
+          "digest_exact": true,
+          "digest_mismatch": false,
+          "valid": false,
+          "native": {
+            "sequence": -1,
+            "configured_threads": -1,
+            "input_bytes": -1,
+            "wall_ns": -1,
+            "cpu_ns": -1,
+            "peak_hash_scopes": -1,
+            "executed_threads": -1,
+            "cpu_mask": -1,
+            "refusal": -1,
+            "outcome": -1,
+            "scratch_bytes": -1,
+            "held_before": -1,
+            "held_after": -1,
+            "safety_before": -1,
+            "safety_after": -1,
+            "thermal_before": -1,
+            "thermal_after": -1,
+            "age_before_ms": -1,
+            "age_after_ms": -1,
+            "available_bytes": -1,
+            "charging": -1,
+            "power_save": -1,
+            "budget_bytes": -1,
+            "battery_percent": -1,
+            "threads": [],
+            "coherent": true
+          }
+        },
+        "host_reason": "RESOURCE_REFUSED",
+        "execution_source": "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE",
+        "trace_sha256": "598ac950be08d5d61fff9673a68d768a50d38f3235efe0a259130d17328c9c16",
+        "trace_bytes": 9622588,
+        "sql_sha256": "1b2eb68c15f0408a75430a93431a790735fdf4425f448ee1ede4279e8e0ab179",
+        "metrics_csv_sha256": "2496c37e2f82b0ab586125bfc9c893a85d14309991846e55c5c4d1cbb31a6cc2",
+        "no_admitted_compute_window": true
+      },
+      "2": {
+        "job": {
+          "profile": 2,
+          "warmup": true,
+          "rotation": -1,
+          "input_bytes": 67108864,
+          "end_to_end_ms": 127.190205,
+          "exit_code": 3,
+          "digest_exact": true,
+          "digest_mismatch": false,
+          "valid": false,
+          "native": {
+            "sequence": -1,
+            "configured_threads": -1,
+            "input_bytes": -1,
+            "wall_ns": -1,
+            "cpu_ns": -1,
+            "peak_hash_scopes": -1,
+            "executed_threads": -1,
+            "cpu_mask": -1,
+            "refusal": -1,
+            "outcome": -1,
+            "scratch_bytes": -1,
+            "held_before": -1,
+            "held_after": -1,
+            "safety_before": -1,
+            "safety_after": -1,
+            "thermal_before": -1,
+            "thermal_after": -1,
+            "age_before_ms": -1,
+            "age_after_ms": -1,
+            "available_bytes": -1,
+            "charging": -1,
+            "power_save": -1,
+            "budget_bytes": -1,
+            "battery_percent": -1,
+            "threads": [],
+            "coherent": true
+          }
+        },
+        "host_reason": "RESOURCE_REFUSED",
+        "execution_source": "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE",
+        "trace_sha256": "b2d3ffc8ea655d3a9b7248b3082bb2ff97eb248702c9b55e8e6c688a4889a75b",
+        "trace_bytes": 6228886,
+        "sql_sha256": "1b2eb68c15f0408a75430a93431a790735fdf4425f448ee1ede4279e8e0ab179",
+        "metrics_csv_sha256": "d4c5628b519babd41125bf13be5f3a335f83ff41a74f7be72865344568937c1b",
+        "no_admitted_compute_window": true
+      },
+      "4": {
+        "job": {
+          "profile": 4,
+          "warmup": true,
+          "rotation": -1,
+          "input_bytes": 67108864,
+          "end_to_end_ms": 132.964562,
+          "exit_code": 3,
+          "digest_exact": true,
+          "digest_mismatch": false,
+          "valid": false,
+          "native": {
+            "sequence": -1,
+            "configured_threads": -1,
+            "input_bytes": -1,
+            "wall_ns": -1,
+            "cpu_ns": -1,
+            "peak_hash_scopes": -1,
+            "executed_threads": -1,
+            "cpu_mask": -1,
+            "refusal": -1,
+            "outcome": -1,
+            "scratch_bytes": -1,
+            "held_before": -1,
+            "held_after": -1,
+            "safety_before": -1,
+            "safety_after": -1,
+            "thermal_before": -1,
+            "thermal_after": -1,
+            "age_before_ms": -1,
+            "age_after_ms": -1,
+            "available_bytes": -1,
+            "charging": -1,
+            "power_save": -1,
+            "budget_bytes": -1,
+            "battery_percent": -1,
+            "threads": [],
+            "coherent": true
+          }
+        },
+        "host_reason": "RESOURCE_REFUSED",
+        "execution_source": "LOCAL_FALLBACK_AFTER_REMOTE_UNAVAILABLE",
+        "trace_sha256": "d106b1135266845fd4515b6943c42fc756e875fac1ed5b32ecbd25db88bfc9a9",
+        "trace_bytes": 8212089,
+        "sql_sha256": "1b2eb68c15f0408a75430a93431a790735fdf4425f448ee1ede4279e8e0ab179",
+        "metrics_csv_sha256": "0157992112ae82cdeed1eeb964622fb6127d3c7b4a6394d07b80796634c12910",
+        "no_admitted_compute_window": true
+      }
+    },
+    "perfetto": {
+      "1": {
+        "profile": 1.0,
+        "configured_threads": 1.0,
+        "observed_compute_threads": 0.0,
+        "cpus_used": 0.0,
+        "max_simultaneous_running": 0.0,
+        "time_ge_2_threads_ms": 0.0,
+        "time_ge_3_threads_ms": 0.0,
+        "time_ge_4_threads_ms": 0.0,
+        "cpu_time_ms": 0.0,
+        "migration_count": 0.0,
+        "cpu_ids": "[NULL]",
+        "input_bytes": 67108864,
+        "qualified": false
+      },
+      "2": {
+        "profile": 2.0,
+        "configured_threads": 2.0,
+        "observed_compute_threads": 0.0,
+        "cpus_used": 0.0,
+        "max_simultaneous_running": 0.0,
+        "time_ge_2_threads_ms": 0.0,
+        "time_ge_3_threads_ms": 0.0,
+        "time_ge_4_threads_ms": 0.0,
+        "cpu_time_ms": 0.0,
+        "migration_count": 0.0,
+        "cpu_ids": "[NULL]",
+        "input_bytes": 67108864,
+        "qualified": false
+      },
+      "4": {
+        "profile": 4.0,
+        "configured_threads": 4.0,
+        "observed_compute_threads": 0.0,
+        "cpus_used": 0.0,
+        "max_simultaneous_running": 0.0,
+        "time_ge_2_threads_ms": 0.0,
+        "time_ge_3_threads_ms": 0.0,
+        "time_ge_4_threads_ms": 0.0,
+        "cpu_time_ms": 0.0,
+        "migration_count": 0.0,
+        "cpu_ids": "[NULL]",
+        "input_bytes": 67108864,
+        "qualified": false
+      }
+    },
+    "guard_windows": {
+      "1": {
+        "start_boottime_ms": 1038211794,
+        "end_boottime_ms": 1038251778,
+        "sample_count": 20,
+        "safety_bands": [
+          1,
+          2
+        ],
+        "zero_budget_samples": 9,
+        "available_min_bytes": 684965888,
+        "available_max_bytes": 1068302336,
+        "thermal_bands": [
+          0
+        ],
+        "power_save": [
+          "true"
+        ],
+        "fresh_age_max_ms": 7,
+        "under_768_mib_samples": 4
+      },
+      "2": {
+        "start_boottime_ms": 1038257659,
+        "end_boottime_ms": 1038297641,
+        "sample_count": 20,
+        "safety_bands": [
+          2
+        ],
+        "zero_budget_samples": 20,
+        "available_min_bytes": 790409216,
+        "available_max_bytes": 876679168,
+        "thermal_bands": [
+          0
+        ],
+        "power_save": [
+          "true"
+        ],
+        "fresh_age_max_ms": 6,
+        "under_768_mib_samples": 1
+      },
+      "4": {
+        "start_boottime_ms": 1038301309,
+        "end_boottime_ms": 1038341301,
+        "sample_count": 19,
+        "safety_bands": [
+          2
+        ],
+        "zero_budget_samples": 19,
+        "available_min_bytes": 811921408,
+        "available_max_bytes": 943751168,
+        "thermal_bands": [
+          0
+        ],
+        "power_save": [
+          "true"
+        ],
+        "fresh_age_max_ms": 8,
+        "under_768_mib_samples": 0
+      }
+    },
+    "repetitions": "NOT_RUN after the warmup/capture refusals; no retries to force admission, no median/speedup reported.",
+    "concurrency_claim": "No physical multicore claim. Zero qualified compute intervals in refused captures is not evidence of single-thread fallback on Android; returned digests were explicitly computed locally by the host.",
+    "cleanup": {
+      "experimental_profile_restored": 1,
+      "experimental_host_auto_use": "OFF",
+      "experimental_app_stopped": true,
+      "product_app_replaced": false,
+      "own_adb_forward_removed": true,
+      "system_settings_changed": false
+    },
+    "private_artifacts": "Raw traces, full Android dumps, pairing data and logs remain private locally; only sanitized records/hashes are published.",
+    "capture_sha256": {
+      "health-campaign.private.log": "aa404d4c3dd7a63006542cf609e175cdd1a533cba4750e3583cf0a4b41c5f9b8",
+      "thermal-before.private.txt": "171cdecc124718401aa93bda683575e6f7ffaf7558a05e6d72d35bc30611a349",
+      "thermal-after.private.txt": "dfbcdd1523b874508fe5a377fcd762db6421f36bda1e6adc03be182ec1edc4e9",
+      "power-after.private.txt": "7777411ddbaf0acc01f8c35a27145efae4b8b3de7b501f9883d27a1421cc1386",
+      "battery-after.private.txt": "0b9611cf34939a4041b0442e573eb443a9566b95753c444fc335d1bcbb5ebd57"
+    }
   },
   "limitations": [
     "Sampling observes only migrations at quantum boundaries",
     "Worker mutex serializes jobs, health updates and incoming ComputeCancel",
     "Configured profile is a bound, not an assertion of simultaneous CPU execution",
-    "No dynamic policy or canonical change"
+    "No dynamic policy or canonical change",
+    "Profiles2/4 did not reach C10 on the device: C08 memory refusal; Battery Saver also remained active. Their exactness/concurrency are software evidence only.",
+    "The64MiBconfigured Perfetto buffer and real C12 input have an observational memory cost not isolated here; do not infer that an uninstrumented phone would have identical admission.",
+    "No physical cancellation/lease-loss injection in this campaign; existing wire/software tests cover those paths."
   ],
   "logs_sha256": {
     "phoneboost-multicore-python-tests.log": "844451f8766e6e061667070e7743d1e7643b1900cc24d6e650dac13f558e4cf1",
@@ -174,5 +541,14 @@
     "format": "query --format csv",
     "bench_zip_sha256": "3d04c95f0e744cbda02c5b5bb97895d11a5acc8c4ff26beb5c6be92949a12596",
     "scope": "supplied bench reused; launch bound to C12; SQL extraction clipped to PhoneBoost TID/BOOTTIME intervals"
-  }
+  },
+  "next_action": "Rejouer la preuve physique Perfetto1/2/4 lorsque Health est naturellement nominale, sans modifier les seuils ResourceGuard; RAM/GPU/NPU restent ferm\u00e9s.",
+  "deferred": [
+    "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
+  ],
+  "publication": {
+    "state": "Consult live GitHub PR/checks for this branch; no CI success inferred from local tests",
+    "merge_gate": "Keep PR open while physical multicore execution is unqualified; Actions/CodeQL must validate published HEAD."
+  },
+  "date_utc": "2026-11-14T14:09:58.590436+00:00"
 }

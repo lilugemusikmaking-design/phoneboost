@@ -30,7 +30,9 @@ Important:
 - Let Perfetto finish naturally from `duration_ms`.
 - Use `trace_processor query --format csv`.
 - Wall-clock and digest correctness stay owned by PhoneBoost.
-- The campaign harness intentionally does not guess the spike launch command; Codex should plug in the real 1/2/4 invocation.
+- The campaign harness invokes the existing authenticated C12 compute command.
+- Capture duration is 40 s: the supplied 20 s window missed the actual compute
+  after a measured 29.106 s transfer/command path. The incomplete trace is kept.
 
 Integration: set `PB_CTL` to the experimental host CLI, `PB_INPUT` to the shared
 regular input, `PB_EXPECTED_DIGEST` to the independent oracle, `TRACE_PROCESSOR`
