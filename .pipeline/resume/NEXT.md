@@ -19,7 +19,8 @@ sont ni une baseline qualifiée ni une preuve multicœur. Les traces brutes priv
 et leurs hashes sont référencés par les preuves. Ne pas relancer la campagne1/2/4
 en bloc, ni ouvrir RAM/GPU/NPU/C13. Produit et worktrees historiques intacts.
 
-Nettoyage encore à vérifier : Battery Saver initialement ON reste OFF malgré
-la commande native de restauration (exit0, sans effet observé). Demande manuelle
-en attente ; vérifier Health power_save=true puis arrêter l’APK expérimental.
-Profil1 restauré, auto-useOFF, daemon/tunnel privés arrêtés ; aucun workload en cours.
+Nettoyage terminé : Battery Saver réactivé manuellement par l’utilisateur et
+vérifié dans Health et le service Android ; profil expérimental 1, APK de test
+arrêté, auto-use OFF, daemon et tunnel privés absents. Les deux APK sont inchangés.
+Aucun nouveau run effectué. L’échec antérieur de la commande native reste
+historique ; il n’est pas la preuve de cette restauration manuelle.

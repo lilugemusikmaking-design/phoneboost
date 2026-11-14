@@ -51,11 +51,13 @@ la trace40s : il est conservé comme non qualifié. L'utilisateur a ensuite auto
 65536KiB, événements, SQL et protections PhoneBoost restent inchangés. Les deux
 captures55s finissent naturellement ; aucun refus mémoire n'est survenu.
 
-Fin de mesure : profil expérimental remis à 1, auto-use OFF, daemon et tunnel
-privés arrêtés. Le retour de Battery Saver à ON reste en attente d’une action
-manuelle : la commande native a renvoyé 0 mais Health est restée OFF. Le service
-Health expérimental reste actif pour vérifier cette restauration ; aucun workload
-n’est en cours. Aucun état de restauration réussi n’est déclaré sans observation.
+Nettoyage vérifié : Battery Saver remis manuellement sur ON par l’utilisateur,
+confirmé dans la Health officielle fraîche (power_save=true, safety=Throttle)
+et dans le service Android. Profil expérimental remis à 1, application de test
+arrêtée, auto-use OFF, daemon et tunnel privés absents. Les SHA-256 des deux APK
+sont inchangés. Aucun nouveau workload n’a été lancé pour cette vérification.
+La commande native antérieure avait renvoyé 0 sans restaurer le mode : cet échec
+reste conservé séparément et n’est pas transformé en succès.
 
 La PR32 reste draft et non fusionnée. **NEXT_ACTION : effectuer la comparaison
 physique reproductible 1 vs 2 ; profil 4 seulement ensuite.** RAM/GPU/NPU et toute
