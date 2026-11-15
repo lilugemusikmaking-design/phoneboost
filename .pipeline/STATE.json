@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "branch": "spike/c12-end-to-end-timing-v0-1",
-  "head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+  "branch": "spike/session-input-wait-v0-1",
+  "head": "21f664783d333024d9b336a7423dfb7e197a9318",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
-  "task": "Quantify C12 end-to-end latency without behavior change",
-  "status": "RELEASE_VS_DEV_ABAB_MEASURED",
-  "report": "docs/architecture/C12_RELEASE_VS_DEV_V0_1.md",
-  "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json",
+  "task": "Host authenticated session input readiness; physical release A/B",
+  "status": "HOST_INPUT_WAIT_PHYSICALLY_MEASURED",
+  "report": "docs/architecture/SESSION_INPUT_WAIT_V0_1.md",
+  "evidence": "docs/evidence/session-input-wait-v0-1.json",
   "previous_checkpoint": {
-    "commit": "524d0065f5609919c61e37c242771ee3bf61eb9b",
-    "merged_pr": 32,
-    "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md"
+    "commit": "21f664783d333024d9b336a7423dfb7e197a9318",
+    "merged_pr": 33,
+    "report": "docs/architecture/C12_RELEASE_VS_DEV_V0_1.md"
   },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
@@ -35,98 +35,56 @@
     "docs(cpu): close physical profile 4 qualification",
     "docs(diag): scope C12 end-to-end timing measurements",
     "feat(diag): measure C12 end-to-end timing without behavior changes",
-    "docs(diag): qualify standard release host with physical ABAB evidence"
+    "docs(diag): qualify standard release host with physical ABAB evidence",
+    "perf(session): wake host input waits on socket readiness"
   ],
   "last_tests": [
     {
-      "command": [
-        "cargo",
-        "test",
-        "--offline",
-        "--locked",
-        "--release",
-        "-p",
-        "pb-types",
-        "-p",
-        "pb-cli",
-        "-p",
-        "pb-host",
-        "-p",
-        "pb-runtime-secure",
-        "--features",
-        "pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing",
-        "--",
-        "--test-threads=2"
-      ],
+      "log": "tests.log",
+      "log_sha256": "a441780105ffd40b7d9653e634e77aafbbb0aa85d55719929522df6c9a7913d6",
       "returncode": 0,
-      "scope": "300 tests + 4 doctests passed; ignored microbenchmark run separately",
-      "log": "tests-release.log",
-      "log_sha256": "e0c411c4139e3519fa7965dc25f694fb72b1c4999cff0a3b0ffe6e71b2c2b163",
-      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
-      "date": "2026-11-15T13:03:56.195946+00:00",
-      "basis": "Already executed and passed this mission; log retained, not rerun"
+      "scope": "303 release tests + 4 doctests; initial wait patch",
+      "recorded_utc": "2026-11-15T14:11:21.852138+00:00"
     },
     {
-      "command": [
-        "python3",
-        "scripts/test_c12_timing.py",
-        "--daemon",
-        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
-        "--client",
-        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl",
-        "--reference-daemon",
-        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostd",
-        "--reference-client",
-        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostctl"
-      ],
+      "log": "runtime-final.log",
+      "log_sha256": "d4b1447140a5e8a1a8df3432b4b68c0d5ef124a4e123ac9fea01cbccd62ae0c0",
       "returncode": 0,
-      "scope": "OFF/ON and dev/release stdout, errors, digest, exit and fallback equivalence",
-      "log": "cli-equivalence.log",
+      "scope": "31 runtime tests + 4 doctests; final FIN/cancel cases",
+      "recorded_utc": "2026-11-15T14:12:45.173122+00:00"
+    },
+    {
+      "log": "clippy.log",
+      "log_sha256": "b2cb11625817ef706b420403f0afaec4e5f4d877fb56c581572ee973d9c5bea9",
+      "returncode": 0,
+      "scope": "Clippy runtime all-targets diagnostic; existing warnings",
+      "recorded_utc": "2026-11-15T14:13:21.949556+00:00"
+    },
+    {
+      "log": "equivalence.log",
       "log_sha256": "e86f336d77b5b7a6d56c4042c4e3f793b88bac9f71e58f954dfbc40849bb5017",
-      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
-      "date": "2026-11-15T12:59:39.731409+00:00",
-      "basis": "Already executed and passed this mission; log retained, not rerun"
+      "returncode": 0,
+      "scope": "OFF/ON and baseline/new CLI equivalence",
+      "recorded_utc": "2026-11-15T14:13:39.281760+00:00"
     },
     {
       "command": [
         "python3",
-        "scripts/test_c12_import_cli.py",
-        "--daemon",
-        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
-        "--client",
-        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl"
+        "scripts/test_analyze_session_wait.py"
       ],
       "returncode": 0,
-      "scope": "Existing C12 real-process tests; diagnostic env 0",
-      "log": "c12-existing-release.log",
-      "log_sha256": "c382282d0018cc7cb2d41b3e9afab49f3f10044c23c0d5fe2f627095b707b47f",
-      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
-      "date": "2026-11-15T12:59:40.175426+00:00",
-      "basis": "Already executed and passed this mission; log retained, not rerun"
+      "log": "proof-tests.log",
+      "log_sha256": "2def5aeac6b65b2581bff5adb7c7df030d387019f3d5c82880f178c6765609c4"
     },
     {
       "command": [
-        "cargo",
-        "test",
-        "--offline",
-        "--locked",
-        "--release",
-        "-p",
-        "pb-types",
-        "--features",
-        "diagnostic-timing",
-        "measure_counter_overhead",
-        "--",
-        "--ignored",
-        "--nocapture"
+        "python3",
+        "scripts/analyze_session_wait.py",
+        "docs/evidence/session-input-wait-v0-1.json"
       ],
       "returncode": 0,
-      "scope": "One million OFF/ON counter spans",
-      "log": "overhead-release.log",
-      "log_sha256": "3ec235cf26777ec400d12bf4270c7d37b9e0e657339204076aa40edd9dc573d8",
-      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
-      "date": "2026-11-15T13:04:40.401169+00:00",
-      "basis": "Already executed and passed this mission; log retained, not rerun"
+      "log": "proof-analysis.log",
+      "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
     },
     {
       "command": [
@@ -134,10 +92,8 @@
         "scripts/test_compare_c12_build_timing.py"
       ],
       "returncode": 0,
-      "log": "proof-tests-final.log",
-      "log_sha256": "02c3f750e6900e2de15c1678788d6010f762cf3a28bd25e14c1ce5eacbb20966",
-      "date": "2026-11-15T13:37:45.668921+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
+      "log": "historical-proof-tests.log",
+      "log_sha256": "1c4ae311b1f65257ea3123e4c99bd1aaf976b99d50983d56bbdf0d9c0227c9d6"
     },
     {
       "command": [
@@ -149,38 +105,19 @@
         "docs/evidence/c12-release-vs-dev-v0-1.json"
       ],
       "returncode": 0,
-      "log": "proof-comparison-final.log",
-      "log_sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c",
-      "date": "2026-11-15T13:37:45.761967+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
+      "log": "historical-proof-analysis.log",
+      "log_sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
     },
     {
       "command": [
-        "python3",
-        "scripts/analyze_c12_timing.py",
-        "docs/evidence/c12-end-to-end-timing-v0-1.json"
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
       ],
       "returncode": 0,
-      "log": "historical-proof-final.log",
-      "log_sha256": "0ae9d9b2ec50241f09d1b8ffa1ec2efde4021a1c351bccae12a51c189d612bd4",
-      "date": "2026-11-15T13:37:45.837106+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
-    },
-    {
-      "command": [
-        "python3",
-        "-m",
-        "py_compile",
-        "scripts/analyze_c12_timing.py",
-        "scripts/compare_c12_build_timing.py",
-        "scripts/test_c12_timing.py",
-        "scripts/test_compare_c12_build_timing.py"
-      ],
-      "returncode": 0,
-      "log": "python-syntax-final.log",
-      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "date": "2026-11-15T13:37:45.906571+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
+      "log": "format.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "command": [
@@ -188,10 +125,8 @@
         ".github/workflows/pipeline.yml"
       ],
       "returncode": 0,
-      "log": "actionlint-final.log",
-      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "date": "2026-11-15T13:37:45.910118+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
+      "log": "actionlint.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "command": [
@@ -200,21 +135,19 @@
         "--check"
       ],
       "returncode": 0,
-      "log": "diff-final.log",
-      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "date": "2026-11-15T13:37:45.917020+00:00",
-      "scope": "Offline diagnostic validation; no new physical workload"
+      "log": "diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
-  "physical_proof": "Two warmups then three exact ABAB dev/release pairs: median 34.855s to 3.586s, 9.720x paired, Noise 32.490s to 90.160ms. Three initial release runs preserved separately versus historical dev (7.439x). Session wait dominates; no product logic, APK, protocol or ResourceGuard change.",
-  "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9.",
+  "physical_proof": "Same-APK release A/B: 2 warmups +3 exact pairs; median paired 1.031819x, 3/3 favorable but small variable gain. Host idle CPU 0.4% both. Remaining host wait 3.073s. No further optimization.",
+  "next_action": "D\u00e9composer les 3,07 s d\u2019attente r\u00e9siduelle des PUT entre file host et polling Android avant toute seconde optimisation.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T13:38:36.994255+00:00",
-    "commit": "31ecca48a347a95c1650cf08822e82cf82889e88",
+    "date": "2026-11-15T14:21:53.618707+00:00",
+    "commit": "21f664783d333024d9b336a7423dfb7e197a9318",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -291,7 +224,7 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "verified_utc": "2026-11-15T13:34:08.195808+00:00",
+    "verified_utc": "2026-11-15T14:17:05.350882+00:00",
     "battery_saver_initial": true,
     "battery_saver_restored": true,
     "timing_collection": false,
@@ -301,19 +234,16 @@
     "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json#cleanup"
+    "evidence": "docs/evidence/session-input-wait-v0-1.json#cleanup"
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
   "previous_comparison_evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
   "diagnostic": {
-    "base_master": "524d0065f5609919c61e37c242771ee3bf61eb9b",
-    "plan": "docs/architecture/C12_END_TO_END_TIMING_DIAGNOSTIC_V0_1.md",
-    "status": "STANDARD_RELEASE_QUALIFIED_ABAB",
-    "physical_measurements": "6 exact ABAB measured runs + 2 warmups; 3 initial release measurements and original dev evidence preserved",
-    "scope": "C12 import, copies, PBMUX transport, readiness/lease, RemoteBuffer and compute; no optimization",
-    "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json",
-    "report": "docs/architecture/C12_RELEASE_VS_DEV_V0_1.md",
-    "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9."
+    "base_master": "21f664783d333024d9b336a7423dfb7e197a9318",
+    "status": "HOST_INPUT_WAIT_AB_MEASURED",
+    "physical_measurements": "two warmups +three baseline/new pairs, same APK; no protocol/guard changes",
+    "report": "docs/architecture/SESSION_INPUT_WAIT_V0_1.md",
+    "evidence": "docs/evidence/session-input-wait-v0-1.json"
   }
 }

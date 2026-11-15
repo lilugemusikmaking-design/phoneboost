@@ -11,7 +11,7 @@ curve25519-dalek.workspace = true
 pb-pbmux = { path = "../pb-pbmux" }
 pb-secure = { path = "../pb-secure" }
 pb-types = { path = "../pb-types" }
-rustix = { workspace = true, features = ["fs", "process"] }
+rustix = { workspace = true, features = ["fs", "process", "event"] }
 serde_json.workspace = true
 snow.workspace = true
 

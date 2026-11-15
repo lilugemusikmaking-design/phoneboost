@@ -19,7 +19,7 @@ SESSION_PHASES = ('RequestBuild', 'FrameEncode', 'Encrypt', 'WireWrite',
                   'Reassembly', 'SessionPoll')
 
 
-def validate(run, *, warmup_control_tail=0):
+def validate(run, *, warmup_control_tail=0, separate_control_windows=False):
     assert run['valid'] and run['returncode'] == 0 and run['digest_exact']
     assert run['execution_source'] == 'REMOTE_SUCCESS' and run['input_bytes'] == 64 * 2**20
     metrics = run['metrics']
@@ -36,21 +36,38 @@ def validate(run, *, warmup_control_tail=0):
         assert host[name]['bytes'] == run['input_bytes']
     assert android['WorkerPutCopy']['bytes'] == run['input_bytes']
     assert android['WorkerPutCopy']['calls'] == host['PutPrepare']['calls'] == 17
-    assert host['TxFrame']['calls'] == android['RxFrame']['calls']
+    if separate_control_windows:
+        # Android capture surrounds the CLI/host interval. Validate payload
+        # exactly; account explicitly for at most two extra control frames
+        # in either direction, without editing any recorded counter.
+        for tx, rx, tx_control, rx_control in (
+            (host['TxFrame'],android['RxFrame'],host['TxControl'],android['RxControl']),
+            (host['RxFrame'],android['TxFrame'],host['RxControl'],android['TxControl']),
+        ):
+            assert 0 <= rx_control['calls']-tx_control['calls'] <= 2
+            assert 0 <= rx_control['bytes']-tx_control['bytes'] <= 380
+            for field in ('calls','bytes'):
+                assert tx[field]-tx_control[field] == rx[field]-rx_control[field]
+        assert host['WireWrite']['bytes'] == host['TxFrame']['bytes']+18*host['TxFrame']['calls']
+        assert android['WireReadPrefix']['bytes']+android['WireReadBody']['bytes'] == android['RxFrame']['bytes']+18*android['RxFrame']['calls']
+    else:
+        assert host['TxFrame']['calls'] == android['RxFrame']['calls']
     # A separately recorded, excluded warmup has one 40-byte control frame
     # in the larger Android snapshot window. Measured runs stay strict.
     assert warmup_control_tail in (0, 1)
     if warmup_control_tail:
         assert run['experiment']['warmup'] is True
-    assert host['RxFrame']['calls'] + warmup_control_tail == android['TxFrame']['calls']
-    assert host['RxFrame']['bytes'] + 40*warmup_control_tail == android['TxFrame']['bytes']
-    assert host['RxControl']['calls'] + warmup_control_tail == android['TxControl']['calls']
-    assert host['RxControl']['bytes'] + 40*warmup_control_tail == android['TxControl']['bytes']
-    assert host['TxFrame']['bytes'] == android['RxFrame']['bytes']
+    if not separate_control_windows:
+        assert host['RxFrame']['calls'] + warmup_control_tail == android['TxFrame']['calls']
+        assert host['RxFrame']['bytes'] + 40*warmup_control_tail == android['TxFrame']['bytes']
+        assert host['RxControl']['calls'] + warmup_control_tail == android['TxControl']['calls']
+        assert host['RxControl']['bytes'] + 40*warmup_control_tail == android['TxControl']['bytes']
+        assert host['TxFrame']['bytes'] == android['RxFrame']['bytes']
     assert host['TxFrame']['calls'] - host['TxControl']['calls'] == 1113
     assert host['RxFrame']['calls'] - host['RxControl']['calls'] == 25
-    assert host['WireWrite']['bytes'] == (android['WireReadPrefix']['bytes']
-                                          + android['WireReadBody']['bytes'])
+    if not separate_control_windows:
+        assert host['WireWrite']['bytes'] == (android['WireReadPrefix']['bytes']
+                                              + android['WireReadBody']['bytes'])
     assert host['LeaseAcquire']['calls'] == 0
     assert host['ComputeStatus']['calls'] == host['ComputePollSleep']['calls'] == 0
     # READY may be observed on a different poll under another build/host load.
