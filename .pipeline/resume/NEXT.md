@@ -1,23 +1,28 @@
-# Reprise : spike CPU physique fermé, profil 2 retenu
+# Reprise : comparaison C12 release/dev ABAB terminée
 
-Verdict global : **MULTICORE_CONFIRMED_BENEFICIAL**, limité à BLAKE3 natif.
-Preuve 1→2 historique : 1,754×, 6/6 favorables. Profil 4 physique confirmé : 4 TID,
-pic à 4 Running, 25,824309 ms à quatre. Gain incrémental 2→4 non qualifié : cinq paires
-complètes, 1,065364×, 3/5 favorables ; sixième profil 4 isolé à 69,703308 ms conservé.
+Branche `spike/c12-end-to-end-timing-v0-1`, PR #33 ouverte, non fusionnée.
+Source produit mesurée : `31ecca48a347a95c1650cf08822e82cf82889e88`.
+Base master : `524d0065f5609919c61e37c242771ee3bf61eb9b`.
+Résoudre le HEAD publié et ses checks sur GitHub ; ne pas reprendre l'ancien
+NEXT_ACTION demandant de compiler en release.
 
-Lire le [rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md) et les
-[preuves 2/4](../../docs/evidence/android-multicore-comparison-2-4-v0-2.json). Le dernier profil 2 n'est jamais soumis : après baisse mémoire
-et refus C08, C08 récupère avant 120 s, mais la fenêtre opérateur de sept échantillons
-déjà nominaux n'est pas atteinte. Ne pas confondre cet arrêt avec un refus C08
-encore actif, ni présenter six paires complètes. Aucune relance à effectuer.
+[Rapport](../../docs/architecture/C12_RELEASE_VS_DEV_V0_1.md) —
+[preuves](../../docs/evidence/c12-release-vs-dev-v0-1.json).
 
-NEXT_ACTION : Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.
+Deux warmups puis trois paires dev/release exactes : **34,855 → 3,586 s**,
+**9,720×**, 3/3 favorables. Noise **32,490 s → 90,160 ms**. Le profil Cargo
+release standard est la seule différence logicielle. Environnement Cargo,
+resolver/features snow et état CPU/alimentation host sont enregistrés.
+Trois premières mesures release groupées et trois dev historiques conservées
+séparément : 26,502 → 3,563 s (7,439×). Ne pas refaire ces campagnes closes.
 
-Cette action n'a pas été commencée. RAM/GPU/NPU/C13 et affinité restent fermés.
-Produit à 1 thread ; exception 1/2/4 strictement expérimentale ; ResourceGuard,
-contrats et plafonds inchangés. PR #32 draft et non fusionnée, aucune fusion
-automatique. Vérifier Actions/CodeQL du HEAD publié.
+Le nouveau poste dominant est **SessionPoll host, 3,325 s médian**. Il contient
+les sleeps inconditionnels de 20 ms et l'attente de traitement/réponse Android.
+Ce n'est pas un RTT USB. La part évitable n'est pas encore isolée.
 
-Nettoyage vérifié : Battery Saver ON, profil 1, auto-use OFF, APK expérimental arrêté,
-hôte/tunnel privés absents, deux APK inchangés. Anciennes preuves conservées,
-leurs NEXT_ACTION historiques remplacés par celui-ci.
+Battery Saver ON, profil 1, collecte OFF, app/daemon/forward expérimentaux
+arrêtés, APK produit et expérimental inchangés ; restauration finale vérifiée.
+Aucune modification Noise/PBMUX/chunks/protocole/ResourceGuard. Pas de chantier
+RAM/GPU/NPU/C13, d'affinité, ni de suppression de worktree historique.
+
+NEXT_ACTION : Réduire la latence du polling de session à 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchangé.

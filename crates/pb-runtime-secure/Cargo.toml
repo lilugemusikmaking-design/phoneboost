@@ -14,3 +14,7 @@ pb-types = { path = "../pb-types" }
 rustix = { workspace = true, features = ["fs", "process"] }
 serde_json.workspace = true
 snow.workspace = true
+
+[features]
+default = []
+diagnostic-timing = ["pb-types/diagnostic-timing"]

@@ -29,6 +29,8 @@ pub(crate) fn write_record(
     stream: &mut (impl Write + ?Sized),
     bytes: &[u8],
 ) -> Result<(), SecureWireError> {
+    pb_types::timing_scope!(_timing_scope, WireWrite, bytes.len() + RECORD_PREFIX_BYTES);
+
     if bytes.is_empty() || bytes.len() > MAX_RECORD_BYTES {
         return Err(SecureWireError::RecordLength);
     }
@@ -42,16 +44,18 @@ pub(crate) fn write_record(
 
 pub(crate) fn read_record(stream: &mut (impl Read + ?Sized)) -> Result<Vec<u8>, SecureWireError> {
     let mut prefix = [0_u8; RECORD_PREFIX_BYTES];
-    stream
-        .read_exact(&mut prefix)
-        .map_err(|_| SecureWireError::Io)?;
+    pb_types::timed!(
+        WireReadPrefix,
+        RECORD_PREFIX_BYTES,
+        stream.read_exact(&mut prefix)
+    )
+    .map_err(|_| SecureWireError::Io)?;
     let length = usize::from(u16::from_be_bytes(prefix));
     if length == 0 || length > MAX_RECORD_BYTES {
         return Err(SecureWireError::RecordLength);
     }
     let mut record = vec![0_u8; length];
-    stream
-        .read_exact(&mut record)
+    pb_types::timed!(WireReadBody, length, stream.read_exact(&mut record))
         .map_err(|_| SecureWireError::Io)?;
     Ok(record)
 }
@@ -65,9 +69,12 @@ pub(crate) fn write_encrypted(
         return Err(SecureWireError::RecordLength);
     }
     let mut ciphertext = vec![0_u8; MAX_NOISE_CIPHERTEXT];
-    let length = transport
-        .write_message(plaintext, &mut ciphertext)
-        .map_err(|_| SecureWireError::Crypto)?;
+    let length = pb_types::timed!(
+        Encrypt,
+        plaintext.len(),
+        transport.write_message(plaintext, &mut ciphertext)
+    )
+    .map_err(|_| SecureWireError::Crypto)?;
     if length > MAX_NOISE_CIPHERTEXT {
         return Err(SecureWireError::RecordLength);
     }
@@ -83,9 +90,12 @@ pub(crate) fn read_encrypted(
         return Err(SecureWireError::RecordLength);
     }
     let mut plaintext = vec![0_u8; MAX_PBMUX_PLAINTEXT];
-    let length = transport
-        .read_message(&ciphertext, &mut plaintext)
-        .map_err(|_| SecureWireError::Crypto)?;
+    let length = pb_types::timed!(
+        Decrypt,
+        ciphertext.len(),
+        transport.read_message(&ciphertext, &mut plaintext)
+    )
+    .map_err(|_| SecureWireError::Crypto)?;
     plaintext.truncate(length);
     Ok(plaintext)
 }

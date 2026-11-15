@@ -15,16 +15,22 @@ enum Command {
 }
 
 fn main() {
+    #[cfg(feature = "diagnostic-timing")]
+    pb_types::diagnostic_timing::initialize_from_environment();
     let Some(command) = parse_command(std::env::args_os().skip(1)) else {
         eprintln!("{USAGE}");
         std::process::exit(2);
     };
-    let result = execute(command);
+    #[cfg(feature = "diagnostic-timing")]
+    let timing = pb_types::diagnostic_timing::Snapshot::take();
+    let result = pb_types::timed!(CliTotal, 0, execute(command));
     let exit_code = result_exit_code(&result);
     match result {
         Ok((output, _)) => println!("{output}"),
         Err(error) => eprintln!("{error}"),
     }
+    #[cfg(feature = "diagnostic-timing")]
+    timing.emit_delta("cli");
     if exit_code != 0 {
         std::process::exit(exit_code);
     }

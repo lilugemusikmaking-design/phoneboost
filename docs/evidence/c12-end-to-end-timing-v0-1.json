@@ -1,0 +1,4932 @@
+{
+  "schema": 1,
+  "scope": "Physical C12 timing diagnostic only; no optimization and no product-performance claim",
+  "base_master": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+  "plan_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+  "build": {
+    "base_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+    "worktree_dirty": true,
+    "apk_sha256": "7ece5cb887986d5408492915489432065c19c352efae19b0c228fef104bf0ce4",
+    "native_sha256": "768a719a111bf2f9cd5d5e0f8b13ca9e0dbec00c24ace85449df2c7f0081c2d5",
+    "native_matches_gradle_stripped": true,
+    "host_sha256": {
+      "phoneboostd": "34b0f3a51cabd9e8a51feacc802c40be9e3dead57d20a1e47dd50a7e627f9e22",
+      "phoneboostctl": "37c076cf50ff9c8e549d82af549dd7dd4dabdb2bbae4a78792122eee2a77297b"
+    },
+    "host_profile": "dev unoptimized + debuginfo",
+    "android_native_profile": "release optimized",
+    "features": "pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing; JNI diagnostic-timing",
+    "source_files": [
+      {
+        "path": "android/core-jni/src/diagnostic_timing.rs",
+        "sha256": "aa685c58681d311995f786f90e1ccdd65170e2a81867e398a457ad7ee915646e"
+      },
+      {
+        "path": "android/timing-diagnostic/AndroidManifest.xml",
+        "sha256": "9afd362b4815d995071b2a012558b2572fa0184d6d63fec178e01b937f2a40c8"
+      },
+      {
+        "path": "android/timing-diagnostic/java/org/phoneboost/app/TimingDiagnosticReceiver.kt",
+        "sha256": "c342cfb519896064da067110a680e8907affcaf55bacf48f3d978e50690e2c64"
+      },
+      {
+        "path": "crates/pb-types/src/diagnostic_timing.rs",
+        "sha256": "b747bd66c240d8fbe6ab699aa4d9b5596a10a5687b7db3b3098cf7541660ad4d"
+      },
+      {
+        "path": "Cargo.lock",
+        "sha256": "788dd17646b9f725ca7e382e7d04819155f159038f0122c9ea86438de045e605"
+      },
+      {
+        "path": "android/app/build.gradle.kts",
+        "sha256": "6f2f81d83e20ae9514cf4650182fe522fb61d598ff119548c311e76ce9d4a494"
+      },
+      {
+        "path": "android/core-jni/Cargo.toml",
+        "sha256": "3f6b37ad02d4ffbdaa735a207d873c70c23a8c68619208ba809e130b713fe8a8"
+      },
+      {
+        "path": "android/core-jni/src/lib.rs",
+        "sha256": "b59f01d9b28404f102fbd387086ebda023896e5557ee7d30603867444b513d66"
+      },
+      {
+        "path": "crates/pb-cli/Cargo.toml",
+        "sha256": "361a3af0fafd10cd3831d2127244d2f6566fe427f80708deeb01c01643cb940a"
+      },
+      {
+        "path": "crates/pb-cli/src/bin/phoneboostctl.rs",
+        "sha256": "d9b73c5ee48fa086b92d5f5ee496a205ebf26fc9deb29a400038827843fe34ab"
+      },
+      {
+        "path": "crates/pb-cli/src/import.rs",
+        "sha256": "1e3e3b9b58f2480b43bb8982db0b9270f3026aa1e182f860a9908d7c1f5eb7e9"
+      },
+      {
+        "path": "crates/pb-host/Cargo.toml",
+        "sha256": "555d3f566500eb4438fd62c03f13cf50cdb7a87bf10f05313dd910c493a60f27"
+      },
+      {
+        "path": "crates/pb-host/src/auto_use.rs",
+        "sha256": "3febaf012e26a08ca22032d528e58eee0dab58df26555aead72ba2a9379638d2"
+      },
+      {
+        "path": "crates/pb-host/src/bin/phoneboostd.rs",
+        "sha256": "e8ff27b45cf4617e210b825287fda7e088b1da3976092ce56cc8a31583085af6"
+      },
+      {
+        "path": "crates/pb-host/src/import_store.rs",
+        "sha256": "bbec5dce1e74d680ac32acf6f3810a3f5a6293b07cd8ad100b8541d2ae0aff86"
+      },
+      {
+        "path": "crates/pb-host/src/local_api.rs",
+        "sha256": "a30ac3677dc90ee1819e29be2e722d722f0f4d3220efa9fc8325ab177b5ab693"
+      },
+      {
+        "path": "crates/pb-runtime-secure/Cargo.toml",
+        "sha256": "d53d7cf765c72090463b100238ad2473e1ebdfdf61423e6c3d0a5a5d86aedefe"
+      },
+      {
+        "path": "crates/pb-runtime-secure/src/initiator.rs",
+        "sha256": "3beb902f50be95c07b581c4e3a3948320552ad828457150872065d7efe8472d2"
+      },
+      {
+        "path": "crates/pb-runtime-secure/src/lib.rs",
+        "sha256": "c85e25e0cca1e10d91c3bc959ec789c6bb94f7abf06fa9cc6351cac9daec49c4"
+      },
+      {
+        "path": "crates/pb-runtime-secure/src/runtime.rs",
+        "sha256": "9689aa3991443d3b679fdcae9e4158fa3f143a6e0827fd2f0314bfb7be4563cc"
+      },
+      {
+        "path": "crates/pb-runtime-secure/src/wire.rs",
+        "sha256": "76d76266406329755be8e8c8ad174438ae4aa670cda79e80a66f980818c6a707"
+      },
+      {
+        "path": "crates/pb-types/Cargo.toml",
+        "sha256": "b005257f04414d59e818fb8fac89f47513f7eb50a8c71f5f33fc90443ccde582"
+      },
+      {
+        "path": "crates/pb-types/src/lib.rs",
+        "sha256": "550c26d23f6a1a126bf8d8d467e1c5fb05e58d15c2bb3c72af335232e0ae9b4d"
+      },
+      {
+        "path": "crates/pb-worker-core/Cargo.toml",
+        "sha256": "e2a414f9327c3055fc30879f4d2547757e6d4ce00991eb3b41973c4b8f6a4cc7"
+      },
+      {
+        "path": "crates/pb-worker-core/src/lib.rs",
+        "sha256": "48b200371391ae860645bad35135961a04da463d55bab43eb97b1b045d46c359"
+      },
+      {
+        "path": "crates/pb-worker-core/src/remote_buffer.rs",
+        "sha256": "f91f16589db7e14f6c547e7f663d23088e37b798060a8b248d93b51305f9cc01"
+      },
+      {
+        "path": "scripts/build_multicore_spike_android",
+        "sha256": "2a616449da12e55bcde1a944fa736fe9f6b9c32c58975c9988e829417c63faab"
+      }
+    ]
+  },
+  "device": {
+    "utc": "2026-11-15T12:12:34.880882+00:00",
+    "model": "SM-A155F",
+    "android": "16",
+    "api": "36",
+    "build": "samsung/a15nseea/a15:16/BP4A.251205.006/A155FXXSBEZG1:user/release-keys",
+    "battery_saver_initial": true
+  },
+  "input": {
+    "bytes": 67108864,
+    "pattern": "byte[i] = (31*i + 7) % 256",
+    "sha256": "601fc533f64b11042a9ae821c272064871306a99496652afb5758c8979d8834d",
+    "blake3": "7b2def9fc609feb94905bd0cdb0772743544d6564b8d73cf2bba66c4759116a4"
+  },
+  "transport": "Existing authenticated PBMUX/Noise TCP through ADB USB forward; loopback host endpoint",
+  "import_filesystem": "tmpfs (same /tmp cache arrangement as previous multicore campaign); not a physical SSD write benchmark",
+  "clock_policy": "Local monotonic durations only. Linux and Android epochs are never subtracted. Android snapshots include bounded extra idle time around the CLI; native compute retains its existing device-local BOOTTIME measurement.",
+  "runs": [
+    {
+      "label": "run02",
+      "utc": "2026-11-15T12:19:09.045456+00:00",
+      "valid": true,
+      "returncode": 0,
+      "digest_exact": true,
+      "input_bytes": 67108864,
+      "execution_source": "REMOTE_SUCCESS",
+      "cli_process_ms": 26112.151222,
+      "host_process_cpu_ms": 24000.0,
+      "android_counter_window_extra_upper_bound_ms": 216.982725,
+      "android_control_roundtrip_ms": 99.878889,
+      "android_capture_roundtrip_ms": 116.021013,
+      "metrics": {
+        "cli": {
+          "CliTotal": {
+            "calls": 1,
+            "ns": 26109840678,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 1,
+            "ns": 33693,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 1,
+            "ns": 405588,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 1,
+            "ns": 50922317,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 3,
+            "ns": 718584,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 2,
+            "ns": 50178285,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 1,
+            "ns": 26058432389,
+            "bytes": 67108864
+          },
+          "CliResult": {
+            "calls": 1,
+            "ns": 10829,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Encrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadPrefix": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadBody": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Decrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameDecode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "SessionPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "host": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 1,
+            "ns": 26058164555,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 1,
+            "ns": 79430,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 1025,
+            "ns": 14864297,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 1024,
+            "ns": 26206709,
+            "bytes": 67108864
+          },
+          "ImportFlush": {
+            "calls": 1,
+            "ns": 301,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 1,
+            "ns": 4251,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 1,
+            "ns": 38125,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 1,
+            "ns": 44731,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 1,
+            "ns": 26049259376,
+            "bytes": 67108864
+          },
+          "HostLock": {
+            "calls": 1,
+            "ns": 1498,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 1,
+            "ns": 5868,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 1,
+            "ns": 97560723,
+            "bytes": 67108864
+          },
+          "BufferAlloc": {
+            "calls": 1,
+            "ns": 101706413,
+            "bytes": 67108864
+          },
+          "PutLoop": {
+            "calls": 1,
+            "ns": 25563253074,
+            "bytes": 67108864
+          },
+          "PutPrepare": {
+            "calls": 17,
+            "ns": 25911927,
+            "bytes": 67108864
+          },
+          "PutFull": {
+            "calls": 16,
+            "ns": 25475145460,
+            "bytes": 67107840
+          },
+          "PutTail": {
+            "calls": 1,
+            "ns": 62090425,
+            "bytes": 1024
+          },
+          "BufferStat": {
+            "calls": 1,
+            "ns": 61294446,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 1,
+            "ns": 83147496,
+            "bytes": 8388608
+          },
+          "ComputeSubmit": {
+            "calls": 1,
+            "ns": 101052455,
+            "bytes": 67108864
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 1,
+            "ns": 41205945,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 26,
+            "ns": 51452,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 26,
+            "ns": 27514339828,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 26,
+            "ns": 38587238,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 1123,
+            "ns": 36797516,
+            "bytes": 67110434
+          },
+          "Encrypt": {
+            "calls": 1123,
+            "ns": 23950994095,
+            "bytes": 67155354
+          },
+          "WireWrite": {
+            "calls": 1123,
+            "ns": 132936966,
+            "bytes": 67175568
+          },
+          "WireReadPrefix": {
+            "calls": 48,
+            "ns": 141897,
+            "bytes": 96
+          },
+          "WireReadBody": {
+            "calls": 48,
+            "ns": 142646785,
+            "bytes": 6592
+          },
+          "Decrypt": {
+            "calls": 48,
+            "ns": 12931741,
+            "bytes": 6592
+          },
+          "FrameDecode": {
+            "calls": 48,
+            "ns": 382924,
+            "bytes": 5824
+          },
+          "TxFrame": {
+            "calls": 1123,
+            "ns": 72587,
+            "bytes": 67155354
+          },
+          "RxFrame": {
+            "calls": 48,
+            "ns": 3405,
+            "bytes": 5824
+          },
+          "TxControl": {
+            "calls": 10,
+            "ns": 1115,
+            "bytes": 446
+          },
+          "RxControl": {
+            "calls": 23,
+            "ns": 1416,
+            "bytes": 2448
+          },
+          "SessionPoll": {
+            "calls": 87,
+            "ns": 1749593576,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 1,
+            "ns": 1491974956,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 20,
+            "ns": 13894,
+            "bytes": 2000
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "android": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 48,
+            "ns": 229925,
+            "bytes": 3904
+          },
+          "Encrypt": {
+            "calls": 48,
+            "ns": 848608,
+            "bytes": 5824
+          },
+          "WireWrite": {
+            "calls": 48,
+            "ns": 28803922,
+            "bytes": 6688
+          },
+          "WireReadPrefix": {
+            "calls": 1123,
+            "ns": 13251633,
+            "bytes": 2246
+          },
+          "WireReadBody": {
+            "calls": 1123,
+            "ns": 146882862,
+            "bytes": 67173322
+          },
+          "Decrypt": {
+            "calls": 1123,
+            "ns": 1477259411,
+            "bytes": 67173322
+          },
+          "FrameDecode": {
+            "calls": 1123,
+            "ns": 50837775,
+            "bytes": 67155354
+          },
+          "TxFrame": {
+            "calls": 48,
+            "ns": 19311,
+            "bytes": 5824
+          },
+          "RxFrame": {
+            "calls": 1123,
+            "ns": 268226,
+            "bytes": 67155354
+          },
+          "TxControl": {
+            "calls": 23,
+            "ns": 6462,
+            "bytes": 2448
+          },
+          "RxControl": {
+            "calls": 10,
+            "ns": 2309,
+            "bytes": 446
+          },
+          "SessionPoll": {
+            "calls": 1163,
+            "ns": 23619993155,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 20,
+            "ns": 424589078,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 20,
+            "ns": 407075999,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 1,
+            "ns": 64128307,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 3,
+            "ns": 63099385,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 39,
+            "ns": 34157,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 20,
+            "ns": 32574536,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 1,
+            "ns": 6909230,
+            "bytes": 67108864
+          },
+          "WorkerPutCopy": {
+            "calls": 17,
+            "ns": 24774305,
+            "bytes": 67108864
+          },
+          "WorkerCompute": {
+            "calls": 1,
+            "ns": 50883692,
+            "bytes": 67108864
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 1108,
+            "ns": 45525085,
+            "bytes": 67110112
+          },
+          "BufferRequestParse": {
+            "calls": 20,
+            "ns": 40261078,
+            "bytes": 67110112
+          }
+        }
+      },
+      "native": {
+        "sequence": 2,
+        "configured_threads": 2,
+        "input_bytes": 67108864,
+        "wall_ns": 50733847,
+        "cpu_ns": 98257998,
+        "peak_hash_scopes": 2,
+        "executed_threads": 2,
+        "cpu_mask": 192,
+        "refusal": 0,
+        "outcome": 0,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864,
+        "safety_before": 0,
+        "safety_after": 0,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "age_before_ms": 1157,
+        "age_after_ms": 1208,
+        "available_bytes": 1025323008,
+        "charging": 1,
+        "power_save": 0,
+        "budget_bytes": 122113024,
+        "battery_percent": 100,
+        "threads": [
+          {
+            "tid": 13661,
+            "begin_ns": 1118505683750412,
+            "end_ns": 1118505734142950,
+            "cpu_ns": 49785076,
+            "cpu_mask": 64,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 0
+          },
+          {
+            "tid": 13662,
+            "begin_ns": 1118505684157104,
+            "end_ns": 1118505733276566,
+            "cpu_ns": 48472922,
+            "cpu_mask": 128,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 1
+          }
+        ],
+        "coherent": true
+      },
+      "health": {
+        "before": {
+          "observed_boottime_ms": 1118478960,
+          "effective_sample_age_ms": 534,
+          "sample": {
+            "count": "83",
+            "at_ms": "1118478431",
+            "sample_worker_ms": "164725",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "963",
+            "memory_bytes": "1010225152",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "118338560"
+          },
+          "ready": true,
+          "natural_recovery_window": [
+            {
+              "count": "77",
+              "at_ms": "1118466385",
+              "sample_worker_ms": "152680",
+              "age_ms": "4",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "982",
+              "memory_bytes": "1030250496",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "123344896"
+            },
+            {
+              "count": "78",
+              "at_ms": "1118468391",
+              "sample_worker_ms": "154686",
+              "age_ms": "4",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "976",
+              "memory_bytes": "1024417792",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "121886720"
+            },
+            {
+              "count": "79",
+              "at_ms": "1118470399",
+              "sample_worker_ms": "156693",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "965",
+              "memory_bytes": "1012678656",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "118951936"
+            },
+            {
+              "count": "80",
+              "at_ms": "1118472406",
+              "sample_worker_ms": "158700",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "971",
+              "memory_bytes": "1018687488",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "120454144"
+            },
+            {
+              "count": "81",
+              "at_ms": "1118474413",
+              "sample_worker_ms": "160708",
+              "age_ms": "4",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "962",
+              "memory_bytes": "1009655808",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "118196224"
+            },
+            {
+              "count": "82",
+              "at_ms": "1118476423",
+              "sample_worker_ms": "162717",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "961",
+              "memory_bytes": "1008013312",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "117785600"
+            },
+            {
+              "count": "83",
+              "at_ms": "1118478431",
+              "sample_worker_ms": "164725",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "963",
+              "memory_bytes": "1010225152",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "118338560"
+            }
+          ],
+          "recovery_observed": true,
+          "hal_ready": true,
+          "no_thermal_override": true,
+          "usb_powered": true,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "requested_profile": 2
+        },
+        "after": {
+          "observed_boottime_ms": 1118507090,
+          "effective_sample_age_ms": 554,
+          "sample": {
+            "count": "97",
+            "at_ms": "1118506540",
+            "sample_worker_ms": "192835",
+            "age_ms": "4",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "973",
+            "memory_bytes": "1020653568",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "120945664"
+          },
+          "ready": true
+        },
+        "samples_during": [
+          {
+            "count": "84",
+            "at_ms": "1118480441",
+            "sample_worker_ms": "166734",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "957",
+            "memory_bytes": "1004179456",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "116827136"
+          },
+          {
+            "count": "85",
+            "at_ms": "1118482449",
+            "sample_worker_ms": "168742",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "954",
+            "memory_bytes": "1000615936",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "115936256"
+          },
+          {
+            "count": "86",
+            "at_ms": "1118484461",
+            "sample_worker_ms": "170754",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "951",
+            "memory_bytes": "997859328",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "115247104"
+          },
+          {
+            "count": "87",
+            "at_ms": "1118486466",
+            "sample_worker_ms": "172762",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "951",
+            "memory_bytes": "997703680",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "115208192"
+          },
+          {
+            "count": "88",
+            "at_ms": "1118488474",
+            "sample_worker_ms": "174768",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "964",
+            "memory_bytes": "1011224576",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "118588416"
+          },
+          {
+            "count": "89",
+            "at_ms": "1118490481",
+            "sample_worker_ms": "176777",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "963",
+            "memory_bytes": "1010257920",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "118346752"
+          },
+          {
+            "count": "90",
+            "at_ms": "1118492484",
+            "sample_worker_ms": "178780",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "970",
+            "memory_bytes": "1017520128",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "120162304"
+          },
+          {
+            "count": "91",
+            "at_ms": "1118494492",
+            "sample_worker_ms": "180786",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "968",
+            "memory_bytes": "1015816192",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "119736320"
+          },
+          {
+            "count": "92",
+            "at_ms": "1118496497",
+            "sample_worker_ms": "182793",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "950",
+            "memory_bytes": "996339712",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "114867200"
+          },
+          {
+            "count": "93",
+            "at_ms": "1118498508",
+            "sample_worker_ms": "184799",
+            "age_ms": "8",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "947",
+            "memory_bytes": "994045952",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "114293760"
+          },
+          {
+            "count": "94",
+            "at_ms": "1118500515",
+            "sample_worker_ms": "186808",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "960",
+            "memory_bytes": "1007329280",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "117614592"
+          },
+          {
+            "count": "95",
+            "at_ms": "1118502523",
+            "sample_worker_ms": "188817",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "960",
+            "memory_bytes": "1006952448",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "117520384"
+          },
+          {
+            "count": "96",
+            "at_ms": "1118504533",
+            "sample_worker_ms": "190825",
+            "age_ms": "7",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "977",
+            "memory_bytes": "1025323008",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "122113024"
+          },
+          {
+            "count": "97",
+            "at_ms": "1118506540",
+            "sample_worker_ms": "192835",
+            "age_ms": "4",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "973",
+            "memory_bytes": "1020653568",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "120945664"
+          }
+        ]
+      }
+    },
+    {
+      "label": "run03",
+      "utc": "2026-11-15T12:20:27.163388+00:00",
+      "valid": true,
+      "returncode": 0,
+      "digest_exact": true,
+      "input_bytes": 67108864,
+      "execution_source": "REMOTE_SUCCESS",
+      "cli_process_ms": 26502.267245,
+      "host_process_cpu_ms": 24420.0,
+      "android_counter_window_extra_upper_bound_ms": 195.23929,
+      "android_control_roundtrip_ms": 98.936613,
+      "android_capture_roundtrip_ms": 95.604188,
+      "metrics": {
+        "cli": {
+          "CliTotal": {
+            "calls": 1,
+            "ns": 26500604665,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 1,
+            "ns": 40067,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 1,
+            "ns": 442853,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 1,
+            "ns": 51695231,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 3,
+            "ns": 1459557,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 2,
+            "ns": 50192729,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 1,
+            "ns": 26448366939,
+            "bytes": 67108864
+          },
+          "CliResult": {
+            "calls": 1,
+            "ns": 11468,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Encrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadPrefix": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadBody": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Decrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameDecode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "SessionPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "host": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 1,
+            "ns": 26447920038,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 1,
+            "ns": 104763,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 1025,
+            "ns": 14552100,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 1024,
+            "ns": 23987450,
+            "bytes": 67108864
+          },
+          "ImportFlush": {
+            "calls": 1,
+            "ns": 412,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 1,
+            "ns": 4272,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 1,
+            "ns": 36912,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 1,
+            "ns": 56076,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 1,
+            "ns": 26439374152,
+            "bytes": 67108864
+          },
+          "HostLock": {
+            "calls": 1,
+            "ns": 2057,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 1,
+            "ns": 6050,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 1,
+            "ns": 62542389,
+            "bytes": 67108864
+          },
+          "BufferAlloc": {
+            "calls": 1,
+            "ns": 61011979,
+            "bytes": 67108864
+          },
+          "PutLoop": {
+            "calls": 1,
+            "ns": 25967340949,
+            "bytes": 67108864
+          },
+          "PutPrepare": {
+            "calls": 17,
+            "ns": 32821398,
+            "bytes": 67108864
+          },
+          "PutFull": {
+            "calls": 16,
+            "ns": 25872231002,
+            "bytes": 67107840
+          },
+          "PutTail": {
+            "calls": 1,
+            "ns": 62120092,
+            "bytes": 1024
+          },
+          "BufferStat": {
+            "calls": 1,
+            "ns": 61213107,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 1,
+            "ns": 124175668,
+            "bytes": 8388608
+          },
+          "ComputeSubmit": {
+            "calls": 1,
+            "ns": 82042587,
+            "bytes": 67108864
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 1,
+            "ns": 81007144,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 27,
+            "ns": 56451,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 27,
+            "ns": 27901379611,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 27,
+            "ns": 41862809,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 1124,
+            "ns": 38794066,
+            "bytes": 67110480
+          },
+          "Encrypt": {
+            "calls": 1124,
+            "ns": 24413523321,
+            "bytes": 67155440
+          },
+          "WireWrite": {
+            "calls": 1124,
+            "ns": 137098254,
+            "bytes": 67175672
+          },
+          "WireReadPrefix": {
+            "calls": 50,
+            "ns": 150518,
+            "bytes": 100
+          },
+          "WireReadBody": {
+            "calls": 50,
+            "ns": 71326468,
+            "bytes": 6912
+          },
+          "Decrypt": {
+            "calls": 50,
+            "ns": 14405201,
+            "bytes": 6912
+          },
+          "FrameDecode": {
+            "calls": 50,
+            "ns": 424356,
+            "bytes": 6112
+          },
+          "TxFrame": {
+            "calls": 1124,
+            "ns": 76072,
+            "bytes": 67155440
+          },
+          "RxFrame": {
+            "calls": 50,
+            "ns": 3932,
+            "bytes": 6112
+          },
+          "TxControl": {
+            "calls": 11,
+            "ns": 735,
+            "bytes": 532
+          },
+          "RxControl": {
+            "calls": 25,
+            "ns": 1395,
+            "bytes": 2736
+          },
+          "SessionPoll": {
+            "calls": 86,
+            "ns": 1730263937,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 2,
+            "ns": 1496053104,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 20,
+            "ns": 21469,
+            "bytes": 2000
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "android": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 50,
+            "ns": 302078,
+            "bytes": 4112
+          },
+          "Encrypt": {
+            "calls": 50,
+            "ns": 904384,
+            "bytes": 6112
+          },
+          "WireWrite": {
+            "calls": 50,
+            "ns": 33845313,
+            "bytes": 7012
+          },
+          "WireReadPrefix": {
+            "calls": 1124,
+            "ns": 16647759,
+            "bytes": 2248
+          },
+          "WireReadBody": {
+            "calls": 1124,
+            "ns": 191402384,
+            "bytes": 67173424
+          },
+          "Decrypt": {
+            "calls": 1124,
+            "ns": 1679513917,
+            "bytes": 67173424
+          },
+          "FrameDecode": {
+            "calls": 1124,
+            "ns": 58140088,
+            "bytes": 67155440
+          },
+          "TxFrame": {
+            "calls": 50,
+            "ns": 20079,
+            "bytes": 6112
+          },
+          "RxFrame": {
+            "calls": 1124,
+            "ns": 308324,
+            "bytes": 67155440
+          },
+          "TxControl": {
+            "calls": 25,
+            "ns": 9000,
+            "bytes": 2736
+          },
+          "RxControl": {
+            "calls": 11,
+            "ns": 2230,
+            "bytes": 532
+          },
+          "SessionPoll": {
+            "calls": 1164,
+            "ns": 23705366076,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 20,
+            "ns": 427754771,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 20,
+            "ns": 407322305,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 1,
+            "ns": 62376077,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 3,
+            "ns": 61394077,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 41,
+            "ns": 38847,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 20,
+            "ns": 32776156,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 1,
+            "ns": 6908231,
+            "bytes": 67108864
+          },
+          "WorkerPutCopy": {
+            "calls": 17,
+            "ns": 25322460,
+            "bytes": 67108864
+          },
+          "WorkerCompute": {
+            "calls": 1,
+            "ns": 51684846,
+            "bytes": 67108864
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 1108,
+            "ns": 48188791,
+            "bytes": 67110112
+          },
+          "BufferRequestParse": {
+            "calls": 20,
+            "ns": 42254079,
+            "bytes": 67110112
+          }
+        }
+      },
+      "native": {
+        "sequence": 3,
+        "configured_threads": 2,
+        "input_bytes": 67108864,
+        "wall_ns": 51486154,
+        "cpu_ns": 100060466,
+        "peak_hash_scopes": 2,
+        "executed_threads": 2,
+        "cpu_mask": 192,
+        "refusal": 0,
+        "outcome": 0,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864,
+        "safety_before": 0,
+        "safety_after": 0,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "age_before_ms": 1279,
+        "age_after_ms": 1331,
+        "available_bytes": 1127071744,
+        "charging": 1,
+        "power_save": 0,
+        "budget_bytes": 134217728,
+        "battery_percent": 100,
+        "threads": [
+          {
+            "tid": 14197,
+            "begin_ns": 1118584158017416,
+            "end_ns": 1118584208754955,
+            "cpu_ns": 50134309,
+            "cpu_mask": 64,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 0
+          },
+          {
+            "tid": 14198,
+            "begin_ns": 1118584158407878,
+            "end_ns": 1118584208735647,
+            "cpu_ns": 49926157,
+            "cpu_mask": 128,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 1
+          }
+        ],
+        "coherent": true
+      },
+      "health": {
+        "before": {
+          "observed_boottime_ms": 1118557060,
+          "effective_sample_age_ms": 288,
+          "sample": {
+            "count": "122",
+            "at_ms": "1118556776",
+            "sample_worker_ms": "243071",
+            "age_ms": "4",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1053",
+            "memory_bytes": "1104871424",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          "ready": true,
+          "natural_recovery_window": [
+            {
+              "count": "116",
+              "at_ms": "1118544729",
+              "sample_worker_ms": "231025",
+              "age_ms": "3",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "905",
+              "memory_bytes": "949080064",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "103052288"
+            },
+            {
+              "count": "117",
+              "at_ms": "1118546736",
+              "sample_worker_ms": "233031",
+              "age_ms": "4",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1021",
+              "memory_bytes": "1071517696",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "133661696"
+            },
+            {
+              "count": "118",
+              "at_ms": "1118548743",
+              "sample_worker_ms": "235037",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1050",
+              "memory_bytes": "1101369344",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "119",
+              "at_ms": "1118550751",
+              "sample_worker_ms": "237045",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1045",
+              "memory_bytes": "1096552448",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "120",
+              "at_ms": "1118552759",
+              "sample_worker_ms": "239053",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1044",
+              "memory_bytes": "1094856704",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "121",
+              "at_ms": "1118554769",
+              "sample_worker_ms": "241062",
+              "age_ms": "6",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1052",
+              "memory_bytes": "1103912960",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "122",
+              "at_ms": "1118556776",
+              "sample_worker_ms": "243071",
+              "age_ms": "4",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1053",
+              "memory_bytes": "1104871424",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            }
+          ],
+          "recovery_observed": true,
+          "hal_ready": true,
+          "no_thermal_override": true,
+          "usb_powered": true,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "requested_profile": 2
+        },
+        "after": {
+          "observed_boottime_ms": 1118585600,
+          "effective_sample_age_ms": 715,
+          "sample": {
+            "count": "136",
+            "at_ms": "1118584891",
+            "sample_worker_ms": "271184",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1087",
+            "memory_bytes": "1140482048",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          "ready": true
+        },
+        "samples_during": [
+          {
+            "count": "123",
+            "at_ms": "1118558785",
+            "sample_worker_ms": "245077",
+            "age_ms": "7",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1048",
+            "memory_bytes": "1099636736",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "124",
+            "at_ms": "1118560794",
+            "sample_worker_ms": "247087",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1046",
+            "memory_bytes": "1097367552",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "125",
+            "at_ms": "1118562802",
+            "sample_worker_ms": "249096",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1069",
+            "memory_bytes": "1121955840",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "126",
+            "at_ms": "1118564808",
+            "sample_worker_ms": "251104",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1082",
+            "memory_bytes": "1134694400",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "127",
+            "at_ms": "1118566816",
+            "sample_worker_ms": "253110",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1096",
+            "memory_bytes": "1150255104",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "128",
+            "at_ms": "1118568823",
+            "sample_worker_ms": "255117",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1094",
+            "memory_bytes": "1147752448",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "129",
+            "at_ms": "1118570832",
+            "sample_worker_ms": "257125",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1084",
+            "memory_bytes": "1137610752",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "130",
+            "at_ms": "1118572843",
+            "sample_worker_ms": "259136",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1084",
+            "memory_bytes": "1137553408",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "131",
+            "at_ms": "1118574852",
+            "sample_worker_ms": "261145",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1055",
+            "memory_bytes": "1107230720",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "132",
+            "at_ms": "1118576860",
+            "sample_worker_ms": "263154",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1056",
+            "memory_bytes": "1107415040",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "133",
+            "at_ms": "1118578867",
+            "sample_worker_ms": "265160",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1081",
+            "memory_bytes": "1133842432",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "134",
+            "at_ms": "1118580875",
+            "sample_worker_ms": "267169",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1079",
+            "memory_bytes": "1132220416",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "135",
+            "at_ms": "1118582883",
+            "sample_worker_ms": "269177",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1074",
+            "memory_bytes": "1127071744",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "136",
+            "at_ms": "1118584891",
+            "sample_worker_ms": "271184",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1087",
+            "memory_bytes": "1140482048",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          }
+        ]
+      }
+    },
+    {
+      "label": "run04",
+      "utc": "2026-11-15T12:20:56.215606+00:00",
+      "valid": true,
+      "returncode": 0,
+      "digest_exact": true,
+      "input_bytes": 67108864,
+      "execution_source": "REMOTE_SUCCESS",
+      "cli_process_ms": 28085.95483,
+      "host_process_cpu_ms": 25879.999999999996,
+      "android_counter_window_extra_upper_bound_ms": 253.294883,
+      "android_control_roundtrip_ms": 111.207402,
+      "android_capture_roundtrip_ms": 141.229739,
+      "metrics": {
+        "cli": {
+          "CliTotal": {
+            "calls": 1,
+            "ns": 28084174098,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 1,
+            "ns": 47358,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 1,
+            "ns": 492864,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 1,
+            "ns": 51296793,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 3,
+            "ns": 1080502,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 2,
+            "ns": 50185975,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 1,
+            "ns": 28032286182,
+            "bytes": 67108864
+          },
+          "CliResult": {
+            "calls": 1,
+            "ns": 10490,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Encrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadPrefix": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WireReadBody": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Decrypt": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameDecode": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxFrame": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "TxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RxControl": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "SessionPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "host": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 1,
+            "ns": 28032035349,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 1,
+            "ns": 110842,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 1025,
+            "ns": 15635116,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 1024,
+            "ns": 24328064,
+            "bytes": 67108864
+          },
+          "ImportFlush": {
+            "calls": 1,
+            "ns": 358,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 1,
+            "ns": 4593,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 1,
+            "ns": 35583,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 1,
+            "ns": 66900,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 1,
+            "ns": 28024857944,
+            "bytes": 67108864
+          },
+          "HostLock": {
+            "calls": 1,
+            "ns": 2249,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 1,
+            "ns": 5244,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 1,
+            "ns": 70599990,
+            "bytes": 67108864
+          },
+          "BufferAlloc": {
+            "calls": 1,
+            "ns": 61956183,
+            "bytes": 67108864
+          },
+          "PutLoop": {
+            "calls": 1,
+            "ns": 27546860732,
+            "bytes": 67108864
+          },
+          "PutPrepare": {
+            "calls": 17,
+            "ns": 29346377,
+            "bytes": 67108864
+          },
+          "PutFull": {
+            "calls": 16,
+            "ns": 27455703999,
+            "bytes": 67107840
+          },
+          "PutTail": {
+            "calls": 1,
+            "ns": 61674989,
+            "bytes": 1024
+          },
+          "BufferStat": {
+            "calls": 1,
+            "ns": 61140778,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 1,
+            "ns": 81596359,
+            "bytes": 8388608
+          },
+          "ComputeSubmit": {
+            "calls": 1,
+            "ns": 141183403,
+            "bytes": 67108864
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 1,
+            "ns": 61487223,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 26,
+            "ns": 58312,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 26,
+            "ns": 29710764641,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 26,
+            "ns": 50778429,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 1123,
+            "ns": 35717768,
+            "bytes": 67110434
+          },
+          "Encrypt": {
+            "calls": 1123,
+            "ns": 25958191271,
+            "bytes": 67155354
+          },
+          "WireWrite": {
+            "calls": 1123,
+            "ns": 127642922,
+            "bytes": 67175568
+          },
+          "WireReadPrefix": {
+            "calls": 49,
+            "ns": 129853,
+            "bytes": 98
+          },
+          "WireReadBody": {
+            "calls": 49,
+            "ns": 155837942,
+            "bytes": 6758
+          },
+          "Decrypt": {
+            "calls": 49,
+            "ns": 12213942,
+            "bytes": 6758
+          },
+          "FrameDecode": {
+            "calls": 49,
+            "ns": 344626,
+            "bytes": 5974
+          },
+          "TxFrame": {
+            "calls": 1123,
+            "ns": 77982,
+            "bytes": 67155354
+          },
+          "RxFrame": {
+            "calls": 49,
+            "ns": 3432,
+            "bytes": 5974
+          },
+          "TxControl": {
+            "calls": 10,
+            "ns": 832,
+            "bytes": 446
+          },
+          "RxControl": {
+            "calls": 24,
+            "ns": 2886,
+            "bytes": 2598
+          },
+          "SessionPoll": {
+            "calls": 84,
+            "ns": 1687500422,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerPutCopy": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "WorkerCompute": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 1,
+            "ns": 1716413286,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 20,
+            "ns": 15697,
+            "bytes": 2000
+          },
+          "BufferRequestParse": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          }
+        },
+        "android": {
+          "CliTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliConnect": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliCreate": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliReadyWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPoll": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliPollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "CliResult": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LocalRequest": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportStart": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportRead": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportWrite": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFlush": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFsync": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportFinalize": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ImportConsume": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostTotal": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "HostPlacement": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferAlloc": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutLoop": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutPrepare": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutFull": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "PutTail": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "BufferStat": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ScratchReserveCommit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeSubmit": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputeStatus": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ComputePollSleep": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RemoteCleanup": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientQueueLock": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "ClientResponseWait": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "RequestBuild": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "FrameEncode": {
+            "calls": 49,
+            "ns": 219000,
+            "bytes": 4014
+          },
+          "Encrypt": {
+            "calls": 49,
+            "ns": 789540,
+            "bytes": 5974
+          },
+          "WireWrite": {
+            "calls": 49,
+            "ns": 32337776,
+            "bytes": 6856
+          },
+          "WireReadPrefix": {
+            "calls": 1123,
+            "ns": 14045741,
+            "bytes": 2246
+          },
+          "WireReadBody": {
+            "calls": 1123,
+            "ns": 192776310,
+            "bytes": 67173322
+          },
+          "Decrypt": {
+            "calls": 1123,
+            "ns": 1435880994,
+            "bytes": 67173322
+          },
+          "FrameDecode": {
+            "calls": 1123,
+            "ns": 53339838,
+            "bytes": 67155354
+          },
+          "TxFrame": {
+            "calls": 49,
+            "ns": 17307,
+            "bytes": 5974
+          },
+          "RxFrame": {
+            "calls": 1123,
+            "ns": 247996,
+            "bytes": 67155354
+          },
+          "TxControl": {
+            "calls": 24,
+            "ns": 6075,
+            "bytes": 2598
+          },
+          "RxControl": {
+            "calls": 10,
+            "ns": 2229,
+            "bytes": 446
+          },
+          "SessionPoll": {
+            "calls": 1258,
+            "ns": 25581062925,
+            "bytes": 0
+          },
+          "BufferHandlerWait": {
+            "calls": 20,
+            "ns": 423604232,
+            "bytes": 0
+          },
+          "BufferHandlerPoll": {
+            "calls": 20,
+            "ns": 407174232,
+            "bytes": 0
+          },
+          "ComputeHandlerWait": {
+            "calls": 1,
+            "ns": 62798538,
+            "bytes": 0
+          },
+          "ComputeHandlerPoll": {
+            "calls": 3,
+            "ns": 61198000,
+            "bytes": 0
+          },
+          "JniLock": {
+            "calls": 40,
+            "ns": 28696,
+            "bytes": 0
+          },
+          "WorkerBuffer": {
+            "calls": 20,
+            "ns": 29040151,
+            "bytes": 0
+          },
+          "WorkerAlloc": {
+            "calls": 1,
+            "ns": 6768923,
+            "bytes": 67108864
+          },
+          "WorkerPutCopy": {
+            "calls": 17,
+            "ns": 21746075,
+            "bytes": 67108864
+          },
+          "WorkerCompute": {
+            "calls": 1,
+            "ns": 49933538,
+            "bytes": 67108864
+          },
+          "LeaseAcquire": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "LeaseRenew": {
+            "calls": 0,
+            "ns": 0,
+            "bytes": 0
+          },
+          "Reassembly": {
+            "calls": 1108,
+            "ns": 47045415,
+            "bytes": 67110112
+          },
+          "BufferRequestParse": {
+            "calls": 20,
+            "ns": 46165849,
+            "bytes": 67110112
+          }
+        }
+      },
+      "native": {
+        "sequence": 4,
+        "configured_threads": 2,
+        "input_bytes": 67108864,
+        "wall_ns": 49784923,
+        "cpu_ns": 96728923,
+        "peak_hash_scopes": 2,
+        "executed_threads": 2,
+        "cpu_mask": 192,
+        "refusal": 0,
+        "outcome": 0,
+        "scratch_bytes": 8388608,
+        "held_before": 75497472,
+        "held_after": 67108864,
+        "safety_before": 0,
+        "safety_after": 0,
+        "thermal_before": 0,
+        "thermal_after": 0,
+        "age_before_ms": 1779,
+        "age_after_ms": 1829,
+        "available_bytes": 1093300224,
+        "charging": 1,
+        "power_save": 0,
+        "budget_bytes": 134217728,
+        "battery_percent": 100,
+        "threads": [
+          {
+            "tid": 14568,
+            "begin_ns": 1118614772200803,
+            "end_ns": 1118614821177495,
+            "cpu_ns": 48526461,
+            "cpu_mask": 64,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 0
+          },
+          {
+            "tid": 14569,
+            "begin_ns": 1118614772663264,
+            "end_ns": 1118614821314111,
+            "cpu_ns": 48202462,
+            "cpu_mask": 128,
+            "observed_migrations": 0,
+            "bytes": 33554432,
+            "cpu_id_overflow": 0,
+            "worker_index": 1
+          }
+        ],
+        "coherent": true
+      },
+      "health": {
+        "before": {
+          "observed_boottime_ms": 1118586140,
+          "effective_sample_age_ms": 1255,
+          "sample": {
+            "count": "136",
+            "at_ms": "1118584891",
+            "sample_worker_ms": "271184",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1087",
+            "memory_bytes": "1140482048",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          "ready": true,
+          "natural_recovery_window": [
+            {
+              "count": "130",
+              "at_ms": "1118572843",
+              "sample_worker_ms": "259136",
+              "age_ms": "6",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1084",
+              "memory_bytes": "1137553408",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "131",
+              "at_ms": "1118574852",
+              "sample_worker_ms": "261145",
+              "age_ms": "6",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1055",
+              "memory_bytes": "1107230720",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "132",
+              "at_ms": "1118576860",
+              "sample_worker_ms": "263154",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1056",
+              "memory_bytes": "1107415040",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "133",
+              "at_ms": "1118578867",
+              "sample_worker_ms": "265160",
+              "age_ms": "6",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1081",
+              "memory_bytes": "1133842432",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "134",
+              "at_ms": "1118580875",
+              "sample_worker_ms": "267169",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1079",
+              "memory_bytes": "1132220416",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "135",
+              "at_ms": "1118582883",
+              "sample_worker_ms": "269177",
+              "age_ms": "5",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1074",
+              "memory_bytes": "1127071744",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            },
+            {
+              "count": "136",
+              "at_ms": "1118584891",
+              "sample_worker_ms": "271184",
+              "age_ms": "6",
+              "result": "0",
+              "safety": "0",
+              "thermal": "0",
+              "battery": "0",
+              "charging": "true",
+              "power_save": "false",
+              "low_memory": "false",
+              "memory_mib": "1087",
+              "memory_bytes": "1140482048",
+              "total_memory_bytes": "3848155136",
+              "thermal_code": "0",
+              "battery_pct": "100",
+              "budget_bytes": "134217728"
+            }
+          ],
+          "recovery_observed": true,
+          "hal_ready": true,
+          "no_thermal_override": true,
+          "usb_powered": true,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "requested_profile": 2
+        },
+        "after": {
+          "observed_boottime_ms": 1118616250,
+          "effective_sample_age_ms": 1251,
+          "sample": {
+            "count": "151",
+            "at_ms": "1118615005",
+            "sample_worker_ms": "301298",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1037",
+            "memory_bytes": "1087500288",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          "ready": true
+        },
+        "samples_during": [
+          {
+            "count": "137",
+            "at_ms": "1118586897",
+            "sample_worker_ms": "273192",
+            "age_ms": "4",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1085",
+            "memory_bytes": "1138626560",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "138",
+            "at_ms": "1118588905",
+            "sample_worker_ms": "275199",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1082",
+            "memory_bytes": "1134837760",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "139",
+            "at_ms": "1118590914",
+            "sample_worker_ms": "277207",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1081",
+            "memory_bytes": "1133867008",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "140",
+            "at_ms": "1118592924",
+            "sample_worker_ms": "279216",
+            "age_ms": "7",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "947",
+            "memory_bytes": "993480704",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "114152448"
+          },
+          {
+            "count": "141",
+            "at_ms": "1118594929",
+            "sample_worker_ms": "281224",
+            "age_ms": "4",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "964",
+            "memory_bytes": "1011122176",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "118562816"
+          },
+          {
+            "count": "142",
+            "at_ms": "1118596938",
+            "sample_worker_ms": "283231",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "879",
+            "memory_bytes": "922210304",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "96334848"
+          },
+          {
+            "count": "143",
+            "at_ms": "1118598943",
+            "sample_worker_ms": "285239",
+            "age_ms": "3",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "946",
+            "memory_bytes": "992620544",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "113937408"
+          },
+          {
+            "count": "144",
+            "at_ms": "1118600951",
+            "sample_worker_ms": "287245",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "964",
+            "memory_bytes": "1011572736",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "118675456"
+          },
+          {
+            "count": "145",
+            "at_ms": "1118602960",
+            "sample_worker_ms": "289253",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "973",
+            "memory_bytes": "1020280832",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "120852480"
+          },
+          {
+            "count": "146",
+            "at_ms": "1118604967",
+            "sample_worker_ms": "291261",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "976",
+            "memory_bytes": "1023459328",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "121647104"
+          },
+          {
+            "count": "147",
+            "at_ms": "1118606971",
+            "sample_worker_ms": "293268",
+            "age_ms": "2",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "976",
+            "memory_bytes": "1024376832",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "121876480"
+          },
+          {
+            "count": "148",
+            "at_ms": "1118608979",
+            "sample_worker_ms": "295273",
+            "age_ms": "5",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1050",
+            "memory_bytes": "1101201408",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "149",
+            "at_ms": "1118610989",
+            "sample_worker_ms": "297281",
+            "age_ms": "7",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1048",
+            "memory_bytes": "1099714560",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "150",
+            "at_ms": "1118612998",
+            "sample_worker_ms": "299291",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1042",
+            "memory_bytes": "1093300224",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          },
+          {
+            "count": "151",
+            "at_ms": "1118615005",
+            "sample_worker_ms": "301298",
+            "age_ms": "6",
+            "result": "0",
+            "safety": "0",
+            "thermal": "0",
+            "battery": "0",
+            "charging": "true",
+            "power_save": "false",
+            "low_memory": "false",
+            "memory_mib": "1037",
+            "memory_bytes": "1087500288",
+            "total_memory_bytes": "3848155136",
+            "thermal_code": "0",
+            "battery_pct": "100",
+            "budget_bytes": "134217728"
+          }
+        ]
+      }
+    }
+  ],
+  "excluded_calibration": {
+    "label": "run01",
+    "remote_success": true,
+    "digest_exact": true,
+    "reason": "First absent native record returned -1; operator incorrectly expected next sequence 0. Exact raw result/counters retained privately; no complete process timing record, excluded from all summary statistics."
+  },
+  "overhead": {
+    "host_counter_iterations": 1000000,
+    "off_ns": 30470752,
+    "on_ns": 137616733,
+    "incremental_ns_per_span": 107.145981,
+    "scope": "Linux debug microbenchmark; Android counter overhead not separately isolated; not an on/off physical A/B"
+  },
+  "cleanup": {
+    "verified_utc": "2026-11-15T12:24:56.440538+00:00",
+    "battery_saver_initial": true,
+    "battery_saver_restored": true,
+    "health_verification": {
+      "observed_boottime_ms": 1118826790,
+      "effective_sample_age_ms": 986,
+      "sample": {
+        "count": "256",
+        "at_ms": "1118825809",
+        "sample_worker_ms": "512103",
+        "age_ms": "5",
+        "result": "0",
+        "safety": "1",
+        "thermal": "0",
+        "battery": "0",
+        "charging": "true",
+        "power_save": "true",
+        "low_memory": "false",
+        "memory_mib": "923",
+        "memory_bytes": "967852032",
+        "total_memory_bytes": "3848155136",
+        "thermal_code": "0",
+        "battery_pct": "100",
+        "budget_bytes": "107745280"
+      },
+      "ready": false
+    },
+    "timing_collection": false,
+    "experimental_profile": 1,
+    "product_unchanged": true,
+    "experimental_app_stopped": true,
+    "host_auto_use": "OFF",
+    "host_daemon_absent": true,
+    "owned_forward_absent": true,
+    "apk_sha256": {
+      "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "org.phoneboost.app.multicore": "7ece5cb887986d5408492915489432065c19c352efae19b0c228fef104bf0ce4"
+    }
+  },
+  "summary": {
+    "valid_runs": 3,
+    "representative": "run03",
+    "total_ms": 26502.267245,
+    "total_range_ms": [
+      26112.151222,
+      28085.95483
+    ],
+    "useful_mib_s": 2.414887730485566,
+    "critical_partition_ms": {
+      "CliConnect": 0.040067,
+      "CliCreate": 0.442853,
+      "CliReadyWait": 51.695231,
+      "ImportConsume": 0.056076,
+      "HostLock": 0.002057,
+      "HostPlacement": 0.00605,
+      "BufferReserveCommit": 62.542389,
+      "BufferAlloc": 61.011979,
+      "PutLoop": 25967.340949,
+      "BufferStat": 61.213107,
+      "ScratchReserveCommit": 124.175668,
+      "ComputeSubmit": 82.042587,
+      "ComputeStatus": 0.0,
+      "ComputePollSleep": 0.0,
+      "RemoteCleanup": 81.007144,
+      "CliResult": 0.011468,
+      "UnattributedLocalAndProcess": 10.679619999998977
+    },
+    "residual_ms": 10.679619999998977,
+    "host_session_residual_ms": 52.73426599999948,
+    "encrypt_share_percent": 92.11862175907207,
+    "encrypt_share_range_percent": [
+      91.72355770833931,
+      92.42410104310491
+    ],
+    "native_median_ms": 50.733847
+  },
+  "next_action": "Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.",
+  "private_archive": {
+    "path": "/var/tmp/phoneboost-c12-timing-v0-1-evidence-20261115-81df7e2",
+    "access": "0700; private host state and raw logs are not published; transient Unix socket excluded",
+    "manifest_sha256": "d7d3cfc49f0eeda86228621bfd67181f5aeaa24e7cca2d7d6ea2665f17599381",
+    "artifacts": {
+      "host-env.sh": {
+        "bytes": 315,
+        "sha256": "9e852ba953c944989db23879d3818b32d8be05457e7dfe627f9e02c989b7dde6"
+      },
+      "run03-preflight.json": {
+        "bytes": 4213,
+        "sha256": "b189d36467f2f0554409b09fec979a997b94b45651c52ff8b689d7cb3dac5c6b"
+      },
+      "startup.private.log": {
+        "bytes": 7816,
+        "sha256": "fce50f3a2744d71106349ca9ee8706d44768b1edd76667c641e53cd5eedde662"
+      },
+      "overhead.log": {
+        "bytes": 665,
+        "sha256": "4dc5175dc966ca9a8b45bc9a089c0a23dfc63065fdb9b2546779b28368e82084"
+      },
+      "c12-existing.log": {
+        "bytes": 254,
+        "sha256": "c382282d0018cc7cb2d41b3e9afab49f3f10044c23c0d5fe2f627095b707b47f"
+      },
+      "run03-operator.log": {
+        "bytes": 713,
+        "sha256": "46dcc58d2de69d7593c642edb80c95a6b2c2c43f687e90f014dd67cb841f352c"
+      },
+      "run01-preflight-thermal.txt": {
+        "bytes": 1495,
+        "sha256": "77f83a2bbb2235819b5679f5efef2810a9804bae99d6ae408973b5ff2060625a"
+      },
+      "apk-badging.txt": {
+        "bytes": 1178,
+        "sha256": "78bc3dc6f0a3859337951f6b59cafa91fcf937a5ffd9327f906e9b1c7ae8494b"
+      },
+      "power-before.private.txt": {
+        "bytes": 466371,
+        "sha256": "0b5aa90286a9ce269f20252cde14d128cc9de04255cdbe738908e471533f8329"
+      },
+      "run01-preflight-health.log": {
+        "bytes": 23897,
+        "sha256": "3fbd79ecc3f57946c1dc4ec7d835c1c2c65568024c86eb1e1b254eb5fecd9c9d"
+      },
+      "process-off-on.log": {
+        "bytes": 102,
+        "sha256": "d5efd8e532f49d4d641a26b7761dc7d82997135e6f523c6242e1061af8ca3ca5"
+      },
+      "build-host.log": {
+        "bytes": 355,
+        "sha256": "c91c2a1a0f86767f186cd79098d65d633d938b1912f27c421f4abc6fd28f6cba"
+      },
+      "run02-preflight-health.log": {
+        "bytes": 52919,
+        "sha256": "810349c429ac3456cefb2a351b28b815027ac7b4c35fb3a41bf8eaec95ccb844"
+      },
+      "run02-preflight-thermal.txt": {
+        "bytes": 1495,
+        "sha256": "af7380f83839fd4838c2d7f425644514240ae9d95324259c33c84c32f0ab8c3b"
+      },
+      "run04-preflight-health.log": {
+        "bytes": 79817,
+        "sha256": "b26e36298650d292a76a3354a4c9cdd87af0950bfd6ad49137fcd71db15dc268"
+      },
+      "run02-preflight.json": {
+        "bytes": 4199,
+        "sha256": "01e8bf67f6341769d1ad0974bd180d75b75c4d13d2605bbad4786b7476c84397"
+      },
+      "cleanup.py": {
+        "bytes": 2898,
+        "sha256": "f0c98296fd2d7991a7c8d35193beca71e6a89ff6d9d22d9a1aa1ee4984dfcd7f"
+      },
+      "input-64mib.bin": {
+        "bytes": 67108864,
+        "sha256": "601fc533f64b11042a9ae821c272064871306a99496652afb5758c8979d8834d"
+      },
+      "build-host-final.log": {
+        "bytes": 626,
+        "sha256": "0fa03a071dff66a7cd0bd05375546e2ee42db28d3f91bff47a59b71d5678e6d7"
+      },
+      "apk-native.so": {
+        "bytes": 968824,
+        "sha256": "768a719a111bf2f9cd5d5e0f8b13ca9e0dbec00c24ace85449df2c7f0081c2d5"
+      },
+      "android-build.log": {
+        "bytes": 3845,
+        "sha256": "ca575f776de1b98c7b6af78b1e2be07617ce0953025d8210697997c07a1308aa"
+      },
+      "clippy-diagnostic-policy.log": {
+        "bytes": 4766,
+        "sha256": "00eb31f47f7dec87a686816778cad34a53a418077b69612858fb9bd9eff706bb"
+      },
+      "tests-final-hooks.log": {
+        "bytes": 4206,
+        "sha256": "9f6d3166ba836d5a01558004ef0cab4e3a5bddba805af80b8b2313aeb687bc11"
+      },
+      "build-identity.json": {
+        "bytes": 10882,
+        "sha256": "053f3ffb96090ca361b203201e554f6c17e4aaf6dfe1f30e79ce95c64272e748"
+      },
+      "tests-diagnostic.log": {
+        "bytes": 39823,
+        "sha256": "4022cb74884a87790dfe26bd16bc8aeca464557037274d1d6852ba89ea86dbe3"
+      },
+      "check.log": {
+        "bytes": 830,
+        "sha256": "688adbcac69a9a44294a07b570cd40376a9c74a2835ff43eb2f215e9c69cb417"
+      },
+      "instrument.py": {
+        "bytes": 12087,
+        "sha256": "0f0f15ce246b6a2d52d4f912399a6e081b5e2fc8afaafcf030f3e17f16a8e619"
+      },
+      "run01-operator.log": {
+        "bytes": 1821,
+        "sha256": "f1c8f69ea0e0bbbe94b5fa1310ce8ac702d9917e57c61caa800b1e4b715fd7b6"
+      },
+      "preflight.py": {
+        "bytes": 3838,
+        "sha256": "03a2155a091806fd5b60057dad0c1bceed9234ff9cd999e9532a1d5bbada4716"
+      },
+      "run04-operator.log": {
+        "bytes": 712,
+        "sha256": "05b967b9eb4addf71690445a1b4986fcf50986a7ea54a5d3e875e290f069c402"
+      },
+      "run01-preflight.json": {
+        "bytes": 4200,
+        "sha256": "4a2aac07f4c3d7c2202f0837487ad1de72bf9bdbdd5b03b3761b00dc210dd4c8"
+      },
+      "host.pid": {
+        "bytes": 6,
+        "sha256": "a7548aa50c0cec831ce1028988b176f92013484ec999db2c8e45690135f4e2d5"
+      },
+      "host.log": {
+        "bytes": 7072,
+        "sha256": "cb06837c150b38e3bad93a136dbb74ef216398e2695dc06cbcb11395cb8518e3"
+      },
+      "tested-experimental.apk": {
+        "bytes": 3610659,
+        "sha256": "7ece5cb887986d5408492915489432065c19c352efae19b0c228fef104bf0ce4"
+      },
+      "clippy-diagnostic.log": {
+        "bytes": 847,
+        "sha256": "94b96a6fbe22f8519adcd68767adf8052a0fc850c9f7c6b98ae392e5812ebf8e"
+      },
+      "installed-apk-hashes.json": {
+        "bytes": 197,
+        "sha256": "d67a87011cc6e53c898d734c53f8577ed77987e45804850ae888a97ba3ba360e"
+      },
+      "summary.json": {
+        "bytes": 1000,
+        "sha256": "0ae9d9b2ec50241f09d1b8ffa1ec2efde4021a1c351bccae12a51c189d612bd4"
+      },
+      "owned-forward-port": {
+        "bytes": 6,
+        "sha256": "fa6a397b1b7cb24ab64639eaab1ffb371fed3a3270164aeb4b9279fc22fe10f5"
+      },
+      "check-default.log": {
+        "bytes": 1943,
+        "sha256": "347cffe70937311bcb01794df317be5a18aee98568d5e8921001f6adf600b74e"
+      },
+      "run03-preflight-health.log": {
+        "bytes": 72691,
+        "sha256": "39c84cbbc63b7793814b3c22fc9d7927b8531880b7f35cd94611fd99172b74a9"
+      },
+      "measure.py": {
+        "bytes": 6562,
+        "sha256": "b024041134b6817f023061f7e57eff2dbdbade4a6cf54e389172dba4aab4202c"
+      },
+      "device-before.json": {
+        "bytes": 442,
+        "sha256": "cf0cb541cfd7aeddaeee3d6a818f70677d85ef42c4a30c2bac7d5a2498a43e4e"
+      },
+      "STATE.json": {
+        "bytes": 966,
+        "sha256": "8140d352ad428e8846ceb95f32a660b610e0e14fa29b25aa754c67bef7a24d89"
+      },
+      "run04-preflight-thermal.txt": {
+        "bytes": 1495,
+        "sha256": "1f97d615a92f0f13331ec20cf8d161d1d7c00fe76deb419a29a893ab377ff37c"
+      },
+      "run04-preflight.json": {
+        "bytes": 4216,
+        "sha256": "b5eed0128533aa0cc3f68e522ecc0c7dbfd8036a5b396ea3c86abc82ca8a66e3"
+      },
+      "run02-operator.log": {
+        "bytes": 706,
+        "sha256": "d782edbece7ee6d60ac36891976f8ae70a2177a3ce6e46c708d6215e97a88063"
+      },
+      "run03-preflight-thermal.txt": {
+        "bytes": 1495,
+        "sha256": "15ca9792803b6ff7be25d58258097a945fceafd57e0e23708e1e5bf7dd10f0b1"
+      },
+      "run02/postflight.json": {
+        "bytes": 566,
+        "sha256": "e7fb8c42cd2f173abfaef0aaefbeac12344f2ae679a1b1629d05779492856a54"
+      },
+      "run02/host-window.private.log": {
+        "bytes": 1767,
+        "sha256": "62c4cfd78e951a5daef665d465019ea366b26883aae36fbf1cf0d1a8fbf592ac"
+      },
+      "run02/cli-process.json": {
+        "bytes": 125,
+        "sha256": "f290d7c85edda63310d23d1d52cb687a10857de286b7e9d8c30fa94c2b179ab4"
+      },
+      "run02/auto-use-before.txt": {
+        "bytes": 282,
+        "sha256": "da938c9a009b86a50399b8519e7087c0e43117a52d1446059207774b1ddc438b"
+      },
+      "run02/stdout.txt": {
+        "bytes": 190,
+        "sha256": "4e5a9039eb3f2102b9da19f3a8a1a1fb04b3cc7442e4be2798ece7ff9b51b820"
+      },
+      "run02/native.private.log": {
+        "bytes": 3509,
+        "sha256": "45e1e5fbdb6f7ac7c86bd570a5f2b70d943dea0553538c7ea49c62a439e3991b"
+      },
+      "run02/android-timing.private.log": {
+        "bytes": 1675,
+        "sha256": "509c1097cd0437eb194a9dfb02dbf4348c98888468d3e2cf9fbce5bbc42fbaf6"
+      },
+      "run02/native-before.json": {
+        "bytes": 1175,
+        "sha256": "3ce91e4e9c7b57f638484a75c0a91151fe8ff89fdad4db9a73fe1fc3d1506edf"
+      },
+      "run02/health.private.log": {
+        "bytes": 59999,
+        "sha256": "ef0e1ea5e38a4a0a8fbb9ab6b34dc0072ee46f3c85e97d848191d36674371290"
+      },
+      "run02/thermal-after.txt": {
+        "bytes": 1495,
+        "sha256": "086c3a37f80a6002c3a58cb0a9e90fb5fa6c05f9f281db638750dd06f069d372"
+      },
+      "run02/measurement.json": {
+        "bytes": 31103,
+        "sha256": "3c61973c5c1f14d624e44ad6ab9b4bbf2f2ed7dd86524cdd961f84394b95136c"
+      },
+      "run02/stderr.txt": {
+        "bytes": 1438,
+        "sha256": "ffc21922a70c23849eb136ab7b0c875f48e9c7f417d75f672f945f3e71cb2300"
+      },
+      "cleanup/power.private.txt": {
+        "bytes": 455459,
+        "sha256": "128854b35dedd6aabdce02a01871fc4cab296122f2839ddba052ca3b733df390"
+      },
+      "cleanup/profile.txt": {
+        "bytes": 188,
+        "sha256": "02e6eed5171e9c4cf20f91b246fb1e65111324aa23d5c1d2ff5427b2a72afafb"
+      },
+      "cleanup/auto-use-verified.txt": {
+        "bytes": 33,
+        "sha256": "651811df2c476890ee43a1b6127b3c142d4aa766299564f13835a842c812869c"
+      },
+      "cleanup/verification.json": {
+        "bytes": 1196,
+        "sha256": "303aaf0776c234d6bcbcbe24fa3a8fd68828d489974fc29d37e6a7fc923bfd91"
+      },
+      "cleanup/health.private.log": {
+        "bytes": 157588,
+        "sha256": "0855d3ca52345ae273f09a31010f2cd6f28785d397062b288d61bf4b3bcd9593"
+      },
+      "cleanup/auto-use-off.txt": {
+        "bytes": 33,
+        "sha256": "651811df2c476890ee43a1b6127b3c142d4aa766299564f13835a842c812869c"
+      },
+      "run01/qualification.json": {
+        "bytes": 273,
+        "sha256": "10a23eb7aff7d6c8b903bbb5100166af4e6cd2e48e1840a8063a09ef71329043"
+      },
+      "run01/auto-use-before.txt": {
+        "bytes": 290,
+        "sha256": "84611bef893d0dc703fb53025af035e95d1514dd595967a61b0ced6a44d80651"
+      },
+      "run01/stdout.txt": {
+        "bytes": 190,
+        "sha256": "4e5a9039eb3f2102b9da19f3a8a1a1fb04b3cc7442e4be2798ece7ff9b51b820"
+      },
+      "run01/native.private.log": {
+        "bytes": 1603,
+        "sha256": "14319b15dcc3b7ea19df84b3887e831d011819588159d6532615f992f146cfd5"
+      },
+      "run01/android-timing.private.log": {
+        "bytes": 852,
+        "sha256": "d50e828bc36308dce5ca92614ca76054ce344e04b429a777f2ecd3bcd02ca015"
+      },
+      "run01/stderr.txt": {
+        "bytes": 1441,
+        "sha256": "1fb169941fc05f1d0955492285a4c84fb90b46b1073fbd5b22f8477365582893"
+      },
+      "bin/phoneboostctl": {
+        "bytes": 10365504,
+        "sha256": "37c076cf50ff9c8e549d82af549dd7dd4dabdb2bbae4a78792122eee2a77297b"
+      },
+      "bin/phoneboostd": {
+        "bytes": 36465848,
+        "sha256": "34b0f3a51cabd9e8a51feacc802c40be9e3dead57d20a1e47dd50a7e627f9e22"
+      },
+      "run04/postflight.json": {
+        "bytes": 569,
+        "sha256": "f31af77a0ad8a10ae3fcec90f415002fe0eb22bc1a1fffaef31005d79b27b780"
+      },
+      "run04/host-window.private.log": {
+        "bytes": 1766,
+        "sha256": "e2dee6669d8a5bfa85a48ef76568f635604164435eb4754d35a166b66c9483b5"
+      },
+      "run04/cli-process.json": {
+        "bytes": 135,
+        "sha256": "9024476d000532af4da377f284dcd53021132c865838dbf4a754182f187af623"
+      },
+      "run04/auto-use-before.txt": {
+        "bytes": 282,
+        "sha256": "da938c9a009b86a50399b8519e7087c0e43117a52d1446059207774b1ddc438b"
+      },
+      "run04/stdout.txt": {
+        "bytes": 190,
+        "sha256": "4e5a9039eb3f2102b9da19f3a8a1a1fb04b3cc7442e4be2798ece7ff9b51b820"
+      },
+      "run04/native.private.log": {
+        "bytes": 7323,
+        "sha256": "f374471264339f0d33d5b62f72e30582e862be5d84343399521a26c2c570ecf6"
+      },
+      "run04/android-timing.private.log": {
+        "bytes": 3321,
+        "sha256": "265f70f1675beca00f6ec9c195e577874c80f55c0afcfa886842bdaf125e53f4"
+      },
+      "run04/native-before.json": {
+        "bytes": 1176,
+        "sha256": "e9e34d6700c9da19eba59d2b29ec22aec495d2cb70c8f10c4a20aaeaf7197c29"
+      },
+      "run04/health.private.log": {
+        "bytes": 88909,
+        "sha256": "4f56dad8390272b03ac533615b251f66853560e1d1368bb3c9ba60958dce6407"
+      },
+      "run04/thermal-after.txt": {
+        "bytes": 1495,
+        "sha256": "f023771f36053e9c605d621a0883f574d33a445123a06ad33d34035fb1e2d988"
+      },
+      "run04/measurement.json": {
+        "bytes": 31678,
+        "sha256": "58b515391eacf4892f5728c322669949e8b34c2289704c87afbd3aa615f6cf64"
+      },
+      "run04/stderr.txt": {
+        "bytes": 1439,
+        "sha256": "098e936653e894cadc9d756f3ee4dabed2a66b492c038790d1ac394d46fbecea"
+      },
+      "run03/postflight.json": {
+        "bytes": 568,
+        "sha256": "480e06641831d60352c143c7555d2bbde62e31aa70bba8854cccff48089fc1a0"
+      },
+      "run03/host-window.private.log": {
+        "bytes": 1766,
+        "sha256": "6cc5ec1b186b40417406190eb328f24fa9c21790933ba065e9ebdf3a7f6e3c80"
+      },
+      "run03/cli-process.json": {
+        "bytes": 125,
+        "sha256": "3ab18fe6467ac714a58d89b98047c9e8f29561736fd02f150dde3093556387c5"
+      },
+      "run03/auto-use-before.txt": {
+        "bytes": 282,
+        "sha256": "da938c9a009b86a50399b8519e7087c0e43117a52d1446059207774b1ddc438b"
+      },
+      "run03/stdout.txt": {
+        "bytes": 190,
+        "sha256": "4e5a9039eb3f2102b9da19f3a8a1a1fb04b3cc7442e4be2798ece7ff9b51b820"
+      },
+      "run03/native.private.log": {
+        "bytes": 5416,
+        "sha256": "f9fdfbb76b36f845f0d197f0d64e55e75fe02289087b4a1482210dd97055a9e3"
+      },
+      "run03/android-timing.private.log": {
+        "bytes": 2498,
+        "sha256": "6527c3540291e9b24528c3be4bd9b95e6b6d424ce0d8e8abbd645d8577f37598"
+      },
+      "run03/native-before.json": {
+        "bytes": 1175,
+        "sha256": "48672ef24b2b7c7d68c6815d1521e90a3f3cd1a45685b343c31afc87b79018e4"
+      },
+      "run03/health.private.log": {
+        "bytes": 79817,
+        "sha256": "b26e36298650d292a76a3354a4c9cdd87af0950bfd6ad49137fcd71db15dc268"
+      },
+      "run03/thermal-after.txt": {
+        "bytes": 1495,
+        "sha256": "1f97d615a92f0f13331ec20cf8d161d1d7c00fe76deb419a29a893ab377ff37c"
+      },
+      "run03/measurement.json": {
+        "bytes": 31150,
+        "sha256": "094cb6b1a954989c640fafcd02b7b3fecae9bdd783f162205377906099e2ccc6"
+      },
+      "run03/stderr.txt": {
+        "bytes": 1439,
+        "sha256": "b51641c2cfea22d59e8a8ce27dfe406eaff28342ace864f55d48f8b17a68c077"
+      }
+    }
+  }
+}

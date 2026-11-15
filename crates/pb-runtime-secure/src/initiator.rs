@@ -286,11 +286,14 @@ impl InitiatorSessionClient {
         request_id: Option<u64>,
         request: InitiatorRequest,
     ) -> Result<InitiatorResponse, InitiatorClientError> {
-        let admission = self
-            .shared
-            .admission
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let admission = pb_types::timed!(
+            ClientQueueLock,
+            0,
+            self.shared
+                .admission
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+        );
         let generation = {
             let state = self
                 .shared
@@ -314,12 +317,15 @@ impl InitiatorSessionClient {
             mpsc::TrySendError::Disconnected(_) => InitiatorClientError::SessionLost,
         })?;
         drop(admission);
-        receiver
-            .recv_timeout(INITIATOR_REQUEST_TIMEOUT)
-            .map_err(|error| match error {
-                mpsc::RecvTimeoutError::Timeout => InitiatorClientError::Timeout,
-                mpsc::RecvTimeoutError::Disconnected => InitiatorClientError::SessionLost,
-            })?
+        pb_types::timed!(
+            ClientResponseWait,
+            0,
+            receiver.recv_timeout(INITIATOR_REQUEST_TIMEOUT)
+        )
+        .map_err(|error| match error {
+            mpsc::RecvTimeoutError::Timeout => InitiatorClientError::Timeout,
+            mpsc::RecvTimeoutError::Disconnected => InitiatorClientError::SessionLost,
+        })?
     }
 }
 

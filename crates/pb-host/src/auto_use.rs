@@ -636,11 +636,16 @@ impl AutoUseController {
         input: &mut R,
         input_bytes: u64,
     ) -> io::Result<Blake3Execution> {
-        let _operation = self
-            .shared
-            .operation
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        pb_types::timing_scope!(_timing_scope, HostTotal, input_bytes);
+
+        let _operation = pb_types::timed!(
+            HostLock,
+            0,
+            self.shared
+                .operation
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+        );
         let (enabled, status, active) = {
             let data = lock_data(&self.shared);
             (data.enabled, data.status, data.active.clone())
@@ -669,7 +674,11 @@ impl AutoUseController {
                 ExecutionSource::LocalFallbackAfterRemoteUnavailable,
             );
         };
-        let decision = capacity_placement_decision_for_length(status, &active, input_bytes);
+        let decision = pb_types::timed!(
+            HostPlacement,
+            0,
+            capacity_placement_decision_for_length(status, &active, input_bytes)
+        );
         if decision.target() == PlacementTarget::LocalOnly {
             return local_execution_reader(
                 input,
@@ -1645,6 +1654,8 @@ impl SessionAccess<'_> {
 }
 
 fn acquire_lease(access: &SessionAccess<'_>) -> Result<LeaseContext, RemoteFailure> {
+    pb_types::timing_scope!(_timing_scope, LeaseAcquire, 0);
+
     let sent_at = Instant::now();
     let ack = access.command(controller_command(1, None, 0))?;
     lease_from_ack(ack, None, sent_at)
@@ -1654,6 +1665,8 @@ fn renew_lease(
     access: &SessionAccess<'_>,
     lease: LeaseContext,
 ) -> Result<LeaseContext, RemoteFailure> {
+    pb_types::timing_scope!(_timing_scope, LeaseRenew, 0);
+
     let sent_at = Instant::now();
     let ack = access.command(controller_command(
         2,
@@ -2201,21 +2214,29 @@ fn execute_remote_blake3_reader<R: Read>(
         scratch_reservation: None,
     };
     let result: Result<[u8; 32], RemoteStreamFailure> = (|| {
-        let class_one = reserve_and_commit(
-            access,
-            peer_id,
-            lease,
-            WireResourceClass::RemoteBufferBytes,
+        let class_one = pb_types::timed!(
+            BufferReserveCommit,
             input_bytes,
+            reserve_and_commit(
+                access,
+                peer_id,
+                lease,
+                WireResourceClass::RemoteBufferBytes,
+                input_bytes,
+            )
         )?;
         resources.class_one_reservation = Some(class_one);
-        let allocation = match access.remote_buffer(RemoteBufferRequest::Alloc {
-            lease_id: lease.lease_id,
-            worker_incarnation_id: lease.incarnation,
-            reservation_id: class_one,
-            size_bytes: input_bytes,
-            allocation_flags: AllocationFlags::NONE,
-        }) {
+        let allocation = match pb_types::timed!(
+            BufferAlloc,
+            input_bytes,
+            access.remote_buffer(RemoteBufferRequest::Alloc {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id: class_one,
+                size_bytes: input_bytes,
+                allocation_flags: AllocationFlags::NONE,
+            })
+        ) {
             Ok(allocation) => allocation,
             Err(failure) => {
                 mark_cleanup_ambiguous(
@@ -2252,38 +2273,52 @@ fn execute_remote_blake3_reader<R: Read>(
             access.identity,
         );
         let mut offset = 0_u64;
-        while offset < input_bytes {
-            let chunk_len = usize::try_from((input_bytes - offset).min(MAX_PUT_BODY as u64))
-                .map_err(|_| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
-            let mut chunk = vec![0_u8; chunk_len];
-            input
-                .read_exact(&mut chunk)
-                .map_err(RemoteStreamFailure::Input)?;
-            let put = access.remote_buffer(RemoteBufferRequest::Put {
+        pb_types::timed!(PutLoop, input_bytes, {
+            while offset < input_bytes {
+                let chunk_len = usize::try_from((input_bytes - offset).min(MAX_PUT_BODY as u64))
+                    .map_err(|_| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
+                let chunk = pb_types::timed!(PutPrepare, chunk_len, {
+                    let mut chunk = vec![0_u8; chunk_len];
+                    input
+                        .read_exact(&mut chunk)
+                        .map_err(RemoteStreamFailure::Input)?;
+                    chunk
+                });
+                let request = RemoteBufferRequest::Put {
+                    lease_id: lease.lease_id,
+                    worker_incarnation_id: lease.incarnation,
+                    buffer_id: buffer,
+                    offset,
+                    data: chunk,
+                };
+                let put = if chunk_len == MAX_PUT_BODY {
+                    pb_types::timed!(PutFull, chunk_len, access.remote_buffer(request))
+                } else {
+                    pb_types::timed!(PutTail, chunk_len, access.remote_buffer(request))
+                }?;
+                if !put.completed
+                    || put.lease_id != lease.lease_id
+                    || put.worker_incarnation_id != lease.incarnation
+                    || put.buffer.is_none_or(|entry| entry.buffer_id != buffer)
+                    || put.offset != offset
+                    || put.data_len != chunk_len as u32
+                {
+                    return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
+                }
+                offset = offset
+                    .checked_add(chunk_len as u64)
+                    .ok_or_else(|| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
+            }
+        });
+        let ready = pb_types::timed!(
+            BufferStat,
+            0,
+            access.remote_buffer(RemoteBufferRequest::Stat {
                 lease_id: lease.lease_id,
                 worker_incarnation_id: lease.incarnation,
                 buffer_id: buffer,
-                offset,
-                data: chunk,
-            })?;
-            if !put.completed
-                || put.lease_id != lease.lease_id
-                || put.worker_incarnation_id != lease.incarnation
-                || put.buffer.is_none_or(|entry| entry.buffer_id != buffer)
-                || put.offset != offset
-                || put.data_len != chunk_len as u32
-            {
-                return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
-            }
-            offset = offset
-                .checked_add(chunk_len as u64)
-                .ok_or_else(|| RemoteFailure::known(AutoUseReason::ResourceRefused))?;
-        }
-        let ready = access.remote_buffer(RemoteBufferRequest::Stat {
-            lease_id: lease.lease_id,
-            worker_incarnation_id: lease.incarnation,
-            buffer_id: buffer,
-        })?;
+            })
+        )?;
         if !ready.completed
             || ready.lease_id != lease.lease_id
             || ready.worker_incarnation_id != lease.incarnation
@@ -2293,25 +2328,33 @@ fn execute_remote_blake3_reader<R: Read>(
         {
             return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
         }
-        let scratch = reserve_and_commit(
-            access,
-            peer_id,
-            lease,
-            WireResourceClass::NativeOpScratchBytes,
+        let scratch = pb_types::timed!(
+            ScratchReserveCommit,
             SCRATCH_BYTES,
+            reserve_and_commit(
+                access,
+                peer_id,
+                lease,
+                WireResourceClass::NativeOpScratchBytes,
+                SCRATCH_BYTES,
+            )
         )?;
         resources.scratch_reservation = Some(scratch);
-        let mut response = match access.compute(ComputeRequest::Submit(ComputeSubmit {
-            lease_id: lease.lease_id,
-            worker_incarnation_id: lease.incarnation,
-            reservation_id: scratch,
-            provider_id: BLAKE3_PROVIDER_ID,
-            provider_version: BLAKE3_PROVIDER_VERSION,
-            input_kind: REMOTE_BUFFER_INPUT_KIND,
-            buffer_id: buffer,
-            input_offset: 0,
-            input_length: input_bytes,
-        })) {
+        let mut response = match pb_types::timed!(
+            ComputeSubmit,
+            input_bytes,
+            access.compute(ComputeRequest::Submit(ComputeSubmit {
+                lease_id: lease.lease_id,
+                worker_incarnation_id: lease.incarnation,
+                reservation_id: scratch,
+                provider_id: BLAKE3_PROVIDER_ID,
+                provider_version: BLAKE3_PROVIDER_VERSION,
+                input_kind: REMOTE_BUFFER_INPUT_KIND,
+                buffer_id: buffer,
+                input_offset: 0,
+                input_length: input_bytes,
+            }))
+        ) {
             Ok(response) => response,
             Err(failure) => {
                 mark_cleanup_ambiguous(
@@ -2394,12 +2437,16 @@ fn execute_remote_blake3_reader<R: Read>(
                     if Instant::now() >= deadline {
                         return Err(RemoteFailure::ambiguous().into());
                     }
-                    thread::sleep(COMPUTE_STATUS_POLL);
-                    response = access.compute(ComputeRequest::Status(ComputeJobRequest {
-                        lease_id: lease.lease_id,
-                        worker_incarnation_id: lease.incarnation,
-                        job_id: job.job_id,
-                    }))?;
+                    pb_types::timed!(ComputePollSleep, 0, thread::sleep(COMPUTE_STATUS_POLL));
+                    response = pb_types::timed!(
+                        ComputeStatus,
+                        0,
+                        access.compute(ComputeRequest::Status(ComputeJobRequest {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.incarnation,
+                            job_id: job.job_id,
+                        }))
+                    )?;
                 }
                 ComputeResponse::Cancel(_) => {
                     return Err(RemoteFailure::known(AutoUseReason::ResourceRefused).into());
@@ -2409,7 +2456,11 @@ fn execute_remote_blake3_reader<R: Read>(
     })();
     match (
         result,
-        cleanup_remote(access, peer_id, lease, &mut resources),
+        pb_types::timed!(
+            RemoteCleanup,
+            0,
+            cleanup_remote(access, peer_id, lease, &mut resources)
+        ),
     ) {
         (Err(RemoteStreamFailure::Input(error)), _) => Err(RemoteStreamFailure::Input(error)),
         (result, Ok(())) => result,

@@ -7,6 +7,7 @@ license.workspace = true
 publish = false
 
 [features]
+diagnostic-timing = ["pb-types/diagnostic-timing", "pb-runtime-secure/diagnostic-timing"]
 default = []
 c04-test-probe = []
 experimental-multicore = []

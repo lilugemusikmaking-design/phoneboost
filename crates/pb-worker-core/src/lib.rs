@@ -640,6 +640,8 @@ impl WorkerCore {
         verified_session: &VerifiedPeerSession<'_>,
         request: RemoteBufferRequest,
     ) -> (RemoteBufferResponseKind, BufferResult) {
+        pb_types::timing_scope!(_timing_scope, WorkerBuffer, 0);
+
         let now_ms = self.clock.now_ms();
         self.reconcile_expired_controller_lease(now_ms);
         let kind = remote_buffer_response_kind(&request);
@@ -742,6 +744,8 @@ impl WorkerCore {
         submit: ComputeSubmit,
         now_ms: u64,
     ) -> ComputeResponse {
+        pb_types::timing_scope!(_timing_scope, WorkerCompute, submit.input_length);
+
         match self
             .compute_jobs
             .check_submit(proof.lease_id, request_id, session_id, submit, now_ms)

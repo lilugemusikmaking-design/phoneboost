@@ -77,7 +77,7 @@ impl fmt::Display for ImportedComputeView {
 /// No paths, payload copies, remote destinations or placement overrides enter
 /// this client. Readiness and terminal response each have a 60-second bound.
 pub fn compute_blake3_import(source: BorrowedFd<'_>) -> Result<ImportedComputeView, CliError> {
-    let stream = connect_local_api(IO_TIMEOUT)?;
+    let stream = pb_types::timed!(CliConnect, 0, connect_local_api(IO_TIMEOUT))?;
     compute_over_stream(stream, source, IO_TIMEOUT)
 }
 
@@ -87,12 +87,16 @@ fn compute_over_stream(
     timeout: Duration,
 ) -> Result<ImportedComputeView, CliError> {
     let ready_deadline = Instant::now() + timeout;
-    let created = request(
-        &mut stream,
-        "imports.create",
-        json!({}),
-        Some(source),
-        ready_deadline,
+    let created = pb_types::timed!(
+        CliCreate,
+        0,
+        request(
+            &mut stream,
+            "imports.create",
+            json!({}),
+            Some(source),
+            ready_deadline,
+        )
     )?;
     let created = created.as_object().ok_or(CliError::MalformedResponse)?;
     let handle = required_string(created, "import_handle")?;
@@ -102,61 +106,79 @@ fn compute_over_stream(
     {
         return Err(CliError::MalformedResponse);
     }
-    let input_bytes = loop {
-        if Instant::now() >= ready_deadline {
-            return Err(CliError::ImportTimedOut);
-        }
-        let response = request(
-            &mut stream,
-            "imports.get",
-            json!({"import_handle": handle}),
-            None,
-            ready_deadline,
-        )
-        .map_err(|error| {
+    let input_bytes = pb_types::timed!(
+        CliReadyWait,
+        0,
+        loop {
             if Instant::now() >= ready_deadline {
-                CliError::ImportTimedOut
-            } else {
-                error
+                return Err(CliError::ImportTimedOut);
             }
-        })?;
-        let status = response.as_object().ok_or(CliError::MalformedResponse)?;
-        match status.get("state").and_then(Value::as_str) {
-            Some("RECEIVING") if status.len() == 1 => {
-                std::thread::sleep(
-                    POLL_INTERVAL.min(ready_deadline.saturating_duration_since(Instant::now())),
-                );
-            }
-            Some("READY") if status.len() == 2 => {
-                let bytes = status
-                    .get("input_bytes")
-                    .and_then(Value::as_u64)
-                    .ok_or(CliError::MalformedResponse)?;
-                if !(1..=MAX_IMPORT_BYTES).contains(&bytes) {
+            let response = pb_types::timed!(
+                CliPoll,
+                0,
+                request(
+                    &mut stream,
+                    "imports.get",
+                    json!({"import_handle": handle}),
+                    None,
+                    ready_deadline,
+                )
+            )
+            .map_err(|error| {
+                if Instant::now() >= ready_deadline {
+                    CliError::ImportTimedOut
+                } else {
+                    error
+                }
+            })?;
+            let status = response.as_object().ok_or(CliError::MalformedResponse)?;
+            match status.get("state").and_then(Value::as_str) {
+                Some("RECEIVING") if status.len() == 1 => {
+                    pb_types::timed!(
+                        CliPollSleep,
+                        0,
+                        std::thread::sleep(
+                            POLL_INTERVAL
+                                .min(ready_deadline.saturating_duration_since(Instant::now())),
+                        )
+                    );
+                }
+                Some("READY") if status.len() == 2 => {
+                    let bytes = status
+                        .get("input_bytes")
+                        .and_then(Value::as_u64)
+                        .ok_or(CliError::MalformedResponse)?;
+                    if !(1..=MAX_IMPORT_BYTES).contains(&bytes) {
+                        return Err(CliError::ImportNotReady);
+                    }
+                    break bytes;
+                }
+                Some("CANCELLED" | "CONSUMED" | "EXPIRED") if status.len() == 1 => {
                     return Err(CliError::ImportNotReady);
                 }
-                break bytes;
+                _ => return Err(CliError::MalformedResponse),
             }
-            Some("CANCELLED" | "CONSUMED" | "EXPIRED") if status.len() == 1 => {
-                return Err(CliError::ImportNotReady);
-            }
-            _ => return Err(CliError::MalformedResponse),
         }
-    };
+    );
     // A lost or malformed terminal reply cannot tell us whether the single-use
     // consume point was crossed. Never re-import, resubmit or synthesize success.
-    let result = request(
-        &mut stream,
-        "compute.submit_import",
-        json!({"op_id": BLAKE3_OP_ID, "import_handle": handle}),
-        None,
-        Instant::now() + timeout,
+    let result = pb_types::timed!(
+        CliSubmit,
+        input_bytes,
+        request(
+            &mut stream,
+            "compute.submit_import",
+            json!({"op_id": BLAKE3_OP_ID, "import_handle": handle}),
+            None,
+            Instant::now() + timeout,
+        )
     )
     .map_err(|error| match error {
         CliError::Remote { .. } => error,
         _ => CliError::OutcomeUnknown,
     })?;
-    terminal_view(result, input_bytes).map_err(|_| CliError::OutcomeUnknown)
+    pb_types::timed!(CliResult, 0, terminal_view(result, input_bytes))
+        .map_err(|_| CliError::OutcomeUnknown)
 }
 
 fn lower_hex_64(value: &str) -> bool {

@@ -7,6 +7,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
+pb-types = { path = "../pb-types" }
 serde.workspace = true
 serde_json.workspace = true
 rustix = { workspace = true, features = ["net"] }
+
+[features]
+default = []
+diagnostic-timing = ["pb-types/diagnostic-timing"]

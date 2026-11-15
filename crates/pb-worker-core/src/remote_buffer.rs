@@ -323,6 +323,8 @@ impl RemoteBufferStore {
     }
 
     fn stage_buffer(&self, size_bytes: u64) -> Result<StagedBuffer, ()> {
+        pb_types::timing_scope!(_timing_scope, WorkerAlloc, size_bytes);
+
         let size = usize::try_from(size_bytes).map_err(|_| ())?;
         let mut backing = Vec::new();
         backing.try_reserve_exact(size).map_err(|_| ())?;
@@ -389,11 +391,15 @@ impl RemoteBufferStore {
         merge_range(&mut staged_ranges, (offset, end));
         let start = offset as usize;
         let end = end as usize;
-        record
-            .backing
-            .as_mut()
-            .expect("nonterminal buffer has backing")[start..end]
-            .copy_from_slice(&data);
+        pb_types::timed!(
+            WorkerPutCopy,
+            data.len(),
+            record
+                .backing
+                .as_mut()
+                .expect("nonterminal buffer has backing")[start..end]
+                .copy_from_slice(&data)
+        );
         record.initialized_ranges = staged_ranges;
         record.state = if record.initialized_ranges == [(0, record.size_bytes)] {
             BufferState::Ready

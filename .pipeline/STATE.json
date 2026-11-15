@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "branch": "spike/android-multicore-v0-2",
-  "head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+  "branch": "spike/c12-end-to-end-timing-v0-1",
+  "head": "31ecca48a347a95c1650cf08822e82cf82889e88",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
-  "task": "Explicit experimental Android CPU profiles1/2/4 under unchanged ResourceGuard ceilings",
-  "status": "MULTICORE_CONFIRMED_BENEFICIAL",
-  "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md",
-  "evidence": "docs/evidence/android-multicore-v0-2.json",
+  "task": "Quantify C12 end-to-end latency without behavior change",
+  "status": "RELEASE_VS_DEV_ABAB_MEASURED",
+  "report": "docs/architecture/C12_RELEASE_VS_DEV_V0_1.md",
+  "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json",
   "previous_checkpoint": {
-    "commit": "edad4ffc90c6143d1a4f43dfa6096be21cb97cfa",
-    "merged_pr": 31,
-    "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md"
+    "commit": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+    "merged_pr": 32,
+    "report": "docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md"
   },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
@@ -32,53 +32,166 @@
     "docs(cpu): confirm profile 2 scheduler overlap and bound capture duration",
     "docs(cpu): verify Battery Saver restoration and close cleanup",
     "docs(cpu): qualify paired physical 1 vs 2 benefit",
-    "docs(cpu): close physical profile 4 qualification"
+    "docs(cpu): close physical profile 4 qualification",
+    "docs(diag): scope C12 end-to-end timing measurements",
+    "feat(diag): measure C12 end-to-end timing without behavior changes",
+    "docs(diag): qualify standard release host with physical ABAB evidence"
   ],
   "last_tests": [
     {
       "command": [
-        "python3",
-        "scripts/test_measure_android_multicore.py"
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--release",
+        "-p",
+        "pb-types",
+        "-p",
+        "pb-cli",
+        "-p",
+        "pb-host",
+        "-p",
+        "pb-runtime-secure",
+        "--features",
+        "pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing",
+        "--",
+        "--test-threads=2"
       ],
       "returncode": 0,
-      "tests": 6,
-      "scope": "Operator fixture tests; actual preceding tool command passed, not a phone run",
-      "recorded_utc": "2026-11-15T10:33:53.832629+00:00",
-      "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      "scope": "300 tests + 4 doctests passed; ignored microbenchmark run separately",
+      "log": "tests-release.log",
+      "log_sha256": "e0c411c4139e3519fa7965dc25f694fb72b1c4999cff0a3b0ffe6e71b2c2b163",
+      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+      "date": "2026-11-15T13:03:56.195946+00:00",
+      "basis": "Already executed and passed this mission; log retained, not rerun"
     },
     {
       "command": [
         "python3",
-        "py_compile.compile",
-        "<nine archived operator scripts>"
+        "scripts/test_c12_timing.py",
+        "--daemon",
+        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
+        "--client",
+        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl",
+        "--reference-daemon",
+        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostd",
+        "--reference-client",
+        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostctl"
       ],
       "returncode": 0,
-      "scope": "Syntax only; actual preceding command passed before publication audit",
-      "recorded_utc": "2026-11-15T10:33:53.832651+00:00",
-      "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      "scope": "OFF/ON and dev/release stdout, errors, digest, exit and fallback equivalence",
+      "log": "cli-equivalence.log",
+      "log_sha256": "e86f336d77b5b7a6d56c4042c4e3f793b88bac9f71e58f954dfbc40849bb5017",
+      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+      "date": "2026-11-15T12:59:39.731409+00:00",
+      "basis": "Already executed and passed this mission; log retained, not rerun"
     },
     {
       "command": [
         "python3",
-        "/tmp/phoneboost-profile4-20261115/validate_publication.py"
+        "scripts/test_c12_import_cli.py",
+        "--daemon",
+        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
+        "--client",
+        "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl"
       ],
       "returncode": 0,
-      "log_sha256": "86f40321f7579f6258835bc285f866670938f9a0a4802ded8fdf6a8f2705bca9",
-      "scope": "Offline evidence/instrumentation checks only",
-      "recorded_utc": "2026-11-15T10:33:53.832656+00:00",
-      "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      "scope": "Existing C12 real-process tests; diagnostic env 0",
+      "log": "c12-existing-release.log",
+      "log_sha256": "c382282d0018cc7cb2d41b3e9afab49f3f10044c23c0d5fe2f627095b707b47f",
+      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+      "date": "2026-11-15T12:59:40.175426+00:00",
+      "basis": "Already executed and passed this mission; log retained, not rerun"
     },
     {
       "command": [
-        "bash",
-        "-n",
-        "phoneboost_perfetto_bench/run_campaign.sh"
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--release",
+        "-p",
+        "pb-types",
+        "--features",
+        "diagnostic-timing",
+        "measure_counter_overhead",
+        "--",
+        "--ignored",
+        "--nocapture"
       ],
       "returncode": 0,
+      "scope": "One million OFF/ON counter spans",
+      "log": "overhead-release.log",
+      "log_sha256": "3ec235cf26777ec400d12bf4270c7d37b9e0e657339204076aa40edd9dc573d8",
+      "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+      "date": "2026-11-15T13:04:40.401169+00:00",
+      "basis": "Already executed and passed this mission; log retained, not rerun"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test_compare_c12_build_timing.py"
+      ],
+      "returncode": 0,
+      "log": "proof-tests-final.log",
+      "log_sha256": "02c3f750e6900e2de15c1678788d6010f762cf3a28bd25e14c1ce5eacbb20966",
+      "date": "2026-11-15T13:37:45.668921+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/compare_c12_build_timing.py",
+        "--dev",
+        "docs/evidence/c12-end-to-end-timing-v0-1.json",
+        "--release",
+        "docs/evidence/c12-release-vs-dev-v0-1.json"
+      ],
+      "returncode": 0,
+      "log": "proof-comparison-final.log",
+      "log_sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c",
+      "date": "2026-11-15T13:37:45.761967+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/analyze_c12_timing.py",
+        "docs/evidence/c12-end-to-end-timing-v0-1.json"
+      ],
+      "returncode": 0,
+      "log": "historical-proof-final.log",
+      "log_sha256": "0ae9d9b2ec50241f09d1b8ffa1ec2efde4021a1c351bccae12a51c189d612bd4",
+      "date": "2026-11-15T13:37:45.837106+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "py_compile",
+        "scripts/analyze_c12_timing.py",
+        "scripts/compare_c12_build_timing.py",
+        "scripts/test_c12_timing.py",
+        "scripts/test_compare_c12_build_timing.py"
+      ],
+      "returncode": 0,
+      "log": "python-syntax-final.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "scope": "Offline evidence/instrumentation checks only",
-      "recorded_utc": "2026-11-15T10:33:53.832658+00:00",
-      "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      "date": "2026-11-15T13:37:45.906571+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
+    },
+    {
+      "command": [
+        "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
+        ".github/workflows/pipeline.yml"
+      ],
+      "returncode": 0,
+      "log": "actionlint-final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "date": "2026-11-15T13:37:45.910118+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
     },
     {
       "command": [
@@ -87,21 +200,21 @@
         "--check"
       ],
       "returncode": 0,
+      "log": "diff-final.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "scope": "Offline evidence/instrumentation checks only",
-      "recorded_utc": "2026-11-15T10:33:53.832661+00:00",
-      "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      "date": "2026-11-15T13:37:45.917020+00:00",
+      "scope": "Offline diagnostic validation; no new physical workload"
     }
   ],
-  "physical_proof": "Profile 4 exact 64 MiB: 4 TIDs, peak 4, 25.824309 ms four-way Running. Five complete 2/4 pairs plus isolated sixth 4: median paired native ratio 1.065364x, 3/5 above 1.05; incremental benefit not qualified. Operator 120 s preflight stops final 2 after C08 recovered. Profile 2 retained; no product or end-to-end benefit claimed.",
-  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en d\u00e9composant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
+  "physical_proof": "Two warmups then three exact ABAB dev/release pairs: median 34.855s to 3.586s, 9.720x paired, Noise 32.490s to 90.160ms. Three initial release runs preserved separately versus historical dev (7.439x). Session wait dominates; no product logic, APK, protocol or ResourceGuard change.",
+  "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T10:36:15.003873+00:00",
-    "commit": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+    "date": "2026-11-15T13:38:36.994255+00:00",
+    "commit": "31ecca48a347a95c1650cf08822e82cf82889e88",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -178,16 +291,29 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json#cleanup",
-    "verified_utc": "2026-11-15T10:24:50.470464+00:00",
+    "verified_utc": "2026-11-15T13:34:08.195808+00:00",
+    "battery_saver_initial": true,
     "battery_saver_restored": true,
+    "timing_collection": false,
     "experimental_profile": 1,
+    "product_unchanged": true,
     "experimental_app_stopped": true,
+    "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "apks_unchanged": true
+    "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json#cleanup"
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
-  "previous_comparison_evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json"
+  "previous_comparison_evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
+  "diagnostic": {
+    "base_master": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+    "plan": "docs/architecture/C12_END_TO_END_TIMING_DIAGNOSTIC_V0_1.md",
+    "status": "STANDARD_RELEASE_QUALIFIED_ABAB",
+    "physical_measurements": "6 exact ABAB measured runs + 2 warmups; 3 initial release measurements and original dev evidence preserved",
+    "scope": "C12 import, copies, PBMUX transport, readiness/lease, RemoteBuffer and compute; no optimization",
+    "evidence": "docs/evidence/c12-release-vs-dev-v0-1.json",
+    "report": "docs/architecture/C12_RELEASE_VS_DEV_V0_1.md",
+    "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9."
+  }
 }
