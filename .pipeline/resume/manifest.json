@@ -1,9 +1,9 @@
 {
-  "next_action": "Compiler l\u2019h\u00f4te diagnostique en release et remesurer le m\u00eame run 64 MiB pour r\u00e9duire et v\u00e9rifier le co\u00fbt dominant du chiffrement Noise.",
+  "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9.",
   "writer": "Codex",
-  "parent_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-  "date": "2026-11-15T12:31:50.090028+00:00",
+  "parent_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+  "date": "2026-11-15T13:38:36.995142+00:00",
   "branch": "spike/c12-end-to-end-timing-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "Three complete exact 64 MiB REMOTE_SUCCESS runs; 26.112\u201328.086 s, host Noise encryption 91.72\u201392.42%, native 49.785\u201351.486 ms. No optimization; dev host/release Android. One calibration excluded due operator initial sequence assertion."
+  "physical_proof": "Two warmups then three exact ABAB dev/release pairs: median 34.855s to 3.586s, 9.720x paired, Noise 32.490s to 90.160ms. Three initial release runs preserved separately versus historical dev (7.439x). Session wait dominates; no product logic, APK, protocol or ResourceGuard change."
 }

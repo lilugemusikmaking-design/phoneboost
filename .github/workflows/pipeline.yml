@@ -64,6 +64,31 @@ jobs:
           python3 scripts/test_auto_use_control_cli.py
       - if: always()
         run: .tooling/p1/bin/sccache --show-stats || true
+  release-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PHONEBOOST_TIMING_DIAGNOSTIC: '1'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - name: Standard release functional tests
+        run: cargo test --locked --release -p pb-types -p pb-cli -p pb-host -p pb-runtime-secure --features pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing -- --test-threads=2
+      - name: Build both diagnostic profiles without custom optimization flags
+        run: |
+          cargo build --locked --release -p pb-host -p pb-cli --features pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing
+          cargo build --locked -p pb-host -p pb-cli --features pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing
+      - name: C12 profile and collection equivalence
+        run: |
+          python3 scripts/test_c12_timing.py --daemon target/release/phoneboostd --client target/release/phoneboostctl --reference-daemon target/debug/phoneboostd --reference-client target/debug/phoneboostctl
+          PHONEBOOST_TIMING_DIAGNOSTIC=0 python3 scripts/test_c12_import_cli.py --daemon target/release/phoneboostd --client target/release/phoneboostctl
+      - name: Validate recorded physical comparison (no hardware workload)
+        run: |
+          python3 scripts/test_compare_c12_build_timing.py
+          python3 scripts/compare_c12_build_timing.py --dev docs/evidence/c12-end-to-end-timing-v0-1.json --release docs/evidence/c12-release-vs-dev-v0-1.json
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

@@ -1,20 +1,28 @@
-# Reprise : diagnostic C12 physiquement terminé
+# Reprise : comparaison C12 release/dev ABAB terminée
 
-Branche : `spike/c12-end-to-end-timing-v0-1`. Base master `524d0065f5609919c61e37c242771ee3bf61eb9b`.
-HEAD exact à résoudre par `scripts/project-pipeline status` / GitHub.
+Branche `spike/c12-end-to-end-timing-v0-1`, PR #33 ouverte, non fusionnée.
+Source produit mesurée : `31ecca48a347a95c1650cf08822e82cf82889e88`.
+Base master : `524d0065f5609919c61e37c242771ee3bf61eb9b`.
+Résoudre le HEAD publié et ses checks sur GitHub ; ne pas reprendre l'ancien
+NEXT_ACTION demandant de compiler en release.
 
-[Résultats](../../docs/architecture/C12_END_TO_END_TIMING_RESULTS_V0_1.md) et
-[preuves](../../docs/evidence/c12-end-to-end-timing-v0-1.json) : 3 runs complets
-64 MiB distants exacts. Médiane end-to-end 26,502 s ; chiffrement Noise sur hôte
-dev non optimisé 92,12 % ; compute Android environ 51 ms. Pas d'optimisation.
-Le plan initial est exécuté, ne pas refaire les campagnes CPU ou le diagnostic.
+[Rapport](../../docs/architecture/C12_RELEASE_VS_DEV_V0_1.md) —
+[preuves](../../docs/evidence/c12-release-vs-dev-v0-1.json).
 
-Battery Saver ON, profil 1, collecte OFF, app/daemon/forward expérimentaux arrêtés,
-produit inchangé. Les preuves multicœur historiques restent valides et conservées.
-Le premier run exact de mise au point est exclu des statistiques car le script
-opérateur attendait le mauvais numéro après une trace native antérieure absente.
+Deux warmups puis trois paires dev/release exactes : **34,855 → 3,586 s**,
+**9,720×**, 3/3 favorables. Noise **32,490 s → 90,160 ms**. Le profil Cargo
+release standard est la seule différence logicielle. Environnement Cargo,
+resolver/features snow et état CPU/alimentation host sont enregistrés.
+Trois premières mesures release groupées et trois dev historiques conservées
+séparément : 26,502 → 3,563 s (7,439×). Ne pas refaire ces campagnes closes.
 
-NEXT_ACTION : Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.
+Le nouveau poste dominant est **SessionPoll host, 3,325 s médian**. Il contient
+les sleeps inconditionnels de 20 ms et l'attente de traitement/réponse Android.
+Ce n'est pas un RTT USB. La part évitable n'est pas encore isolée.
 
-Une seule optimisation ciblée ensuite. Aucun chantier RAM/GPU/NPU/C13, aucune
-politique CPU dynamique, aucun changement de protection ou de protocole.
+Battery Saver ON, profil 1, collecte OFF, app/daemon/forward expérimentaux
+arrêtés, APK produit et expérimental inchangés ; restauration finale vérifiée.
+Aucune modification Noise/PBMUX/chunks/protocole/ResourceGuard. Pas de chantier
+RAM/GPU/NPU/C13, d'affinité, ni de suppression de worktree historique.
+
+NEXT_ACTION : Réduire la latence du polling de session à 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchangé.

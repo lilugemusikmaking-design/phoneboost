@@ -244,4 +244,6 @@ La contribution précise réseau/ACK/ordonnancement aux ~1,7 s d'attente n'est
 pas isolée. Aucun gain produit, coût disque réel ou mérite comparé d'un nouvel
 algorithme cryptographique n'est déduit de ce diagnostic.
 
-**NEXT_ACTION : Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.**
+Comparaison release désormais réalisée : [résultats](C12_RELEASE_VS_DEV_V0_1.md).
+
+**NEXT_ACTION : Réduire la latence du polling de session à 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchangé.**

@@ -56,4 +56,6 @@ comparer les durées par phase et leur variabilité avant de nommer un goulot.
 Sans appareil, le verdict reste **NON MESURÉ**. Aucun seuil, politique, affinité,
 workload ou optimisation n'est modifié dans ce checkpoint.
 
-**NEXT_ACTION : Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.**
+Comparaison release désormais réalisée : [résultats](C12_RELEASE_VS_DEV_V0_1.md).
+
+**NEXT_ACTION : Réduire la latence du polling de session à 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchangé.**

@@ -5,6 +5,7 @@
       "test",
       "--offline",
       "--locked",
+      "--release",
       "-p",
       "pb-types",
       "-p",
@@ -13,163 +14,56 @@
       "pb-host",
       "-p",
       "pb-runtime-secure",
-      "-p",
-      "pb-worker-core",
-      "-p",
-      "phoneboost-core-jni",
       "--features",
-      "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing",
+      "pb-host/experimental-multicore,pb-host/diagnostic-timing,pb-cli/diagnostic-timing",
       "--",
       "--test-threads=2"
     ],
     "returncode": 0,
-    "scope": "384 tests + 6 doctests; one ignored microbenchmark executed separately",
-    "log": "tests-diagnostic.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324779+00:00",
-    "environment": {
-      "PHONEBOOST_TIMING_DIAGNOSTIC": "1",
-      "CARGO_BUILD_JOBS": "1"
-    }
-  },
-  {
-    "command": [
-      "cargo",
-      "test",
-      "--offline",
-      "--locked",
-      "-p",
-      "pb-types",
-      "-p",
-      "pb-runtime-secure",
-      "--features",
-      "pb-types/diagnostic-timing,pb-runtime-secure/diagnostic-timing",
-      "--",
-      "--test-threads=2"
-    ],
-    "returncode": 0,
-    "scope": "30 tests + 4 doctests",
-    "log": "tests-final-hooks.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324870+00:00",
-    "environment": {
-      "PHONEBOOST_TIMING_DIAGNOSTIC": "1",
-      "CARGO_BUILD_JOBS": "1"
-    }
-  },
-  {
-    "command": [
-      "cargo",
-      "clippy",
-      "--offline",
-      "--locked",
-      "-p",
-      "pb-types",
-      "-p",
-      "pb-cli",
-      "-p",
-      "pb-host",
-      "-p",
-      "pb-runtime-secure",
-      "-p",
-      "pb-worker-core",
-      "-p",
-      "phoneboost-core-jni",
-      "--all-targets",
-      "--features",
-      "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing"
-    ],
-    "returncode": 0,
-    "scope": "CI policy, existing warnings",
-    "log": "clippy-diagnostic-policy.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324880+00:00"
-  },
-  {
-    "command": [
-      "cargo",
-      "clippy",
-      "--offline",
-      "--locked",
-      "-p",
-      "pb-types",
-      "-p",
-      "pb-cli",
-      "-p",
-      "pb-host",
-      "-p",
-      "pb-runtime-secure",
-      "-p",
-      "pb-worker-core",
-      "-p",
-      "phoneboost-core-jni",
-      "--all-targets",
-      "--features",
-      "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing",
-      "--",
-      "-D",
-      "warnings"
-    ],
-    "returncode": 101,
-    "scope": "Stricter non-CI attempt; existing pb-pbmux manual_range_patterns warning; not changed",
-    "log": "clippy-diagnostic.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324886+00:00"
-  },
-  {
-    "command": [
-      "cargo",
-      "check",
-      "--offline",
-      "--locked",
-      "--workspace",
-      "--all-targets"
-    ],
-    "returncode": 0,
-    "scope": "product paths compile",
-    "log": "check-default.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324892+00:00"
-  },
-  {
-    "command": [
-      "python3",
-      "scripts/test_c12_import_cli.py",
-      "--daemon",
-      "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostd",
-      "--client",
-      "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostctl"
-    ],
-    "returncode": 0,
-    "scope": "existing real-process C12 outcomes/cleanup",
-    "log": "c12-existing.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324898+00:00",
-    "environment": {
-      "PHONEBOOST_TIMING_DIAGNOSTIC": "0"
-    }
+    "scope": "300 tests + 4 doctests passed; ignored microbenchmark run separately",
+    "log": "tests-release.log",
+    "log_sha256": "e0c411c4139e3519fa7965dc25f694fb72b1c4999cff0a3b0ffe6e71b2c2b163",
+    "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+    "date": "2026-11-15T13:03:56.195946+00:00",
+    "basis": "Already executed and passed this mission; log retained, not rerun"
   },
   {
     "command": [
       "python3",
       "scripts/test_c12_timing.py",
       "--daemon",
-      "/home/mimir/phoneboost-dev-pipeline-v1/target/debug/phoneboostd",
+      "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
       "--client",
-      "/home/mimir/phoneboost-dev-pipeline-v1/target/debug/phoneboostctl"
+      "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl",
+      "--reference-daemon",
+      "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostd",
+      "--reference-client",
+      "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostctl"
     ],
     "returncode": 0,
-    "scope": "OFF/ON output, exit/fallback/error equivalence",
-    "log": "process-off-on.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324903+00:00"
+    "scope": "OFF/ON and dev/release stdout, errors, digest, exit and fallback equivalence",
+    "log": "cli-equivalence.log",
+    "log_sha256": "e86f336d77b5b7a6d56c4042c4e3f793b88bac9f71e58f954dfbc40849bb5017",
+    "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+    "date": "2026-11-15T12:59:39.731409+00:00",
+    "basis": "Already executed and passed this mission; log retained, not rerun"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/test_c12_import_cli.py",
+      "--daemon",
+      "/tmp/phoneboost-c12-release-20261115/bin/phoneboostd",
+      "--client",
+      "/tmp/phoneboost-c12-release-20261115/bin/phoneboostctl"
+    ],
+    "returncode": 0,
+    "scope": "Existing C12 real-process tests; diagnostic env 0",
+    "log": "c12-existing-release.log",
+    "log_sha256": "c382282d0018cc7cb2d41b3e9afab49f3f10044c23c0d5fe2f627095b707b47f",
+    "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+    "date": "2026-11-15T12:59:40.175426+00:00",
+    "basis": "Already executed and passed this mission; log retained, not rerun"
   },
   {
     "command": [
@@ -177,6 +71,7 @@
       "test",
       "--offline",
       "--locked",
+      "--release",
       "-p",
       "pb-types",
       "--features",
@@ -187,24 +82,38 @@
       "--nocapture"
     ],
     "returncode": 0,
-    "scope": "one million OFF/ON spans",
-    "log": "overhead.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324908+00:00"
+    "scope": "One million OFF/ON counter spans",
+    "log": "overhead-release.log",
+    "log_sha256": "3ec235cf26777ec400d12bf4270c7d37b9e0e657339204076aa40edd9dc573d8",
+    "source_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
+    "date": "2026-11-15T13:04:40.401169+00:00",
+    "basis": "Already executed and passed this mission; log retained, not rerun"
   },
   {
     "command": [
-      "bash",
-      "scripts/build_multicore_spike_android",
-      "--timing-diagnostic"
+      "python3",
+      "scripts/test_compare_c12_build_timing.py"
     ],
     "returncode": 0,
-    "scope": "ARM64 isolated diagnostic APK + Gradle lintDebug",
-    "log": "android-build.log",
-    "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
-    "source_state": "instrumented worktree; hashes in evidence",
-    "date": "2026-11-15T12:30:03.324914+00:00"
+    "log": "proof-tests-final.log",
+    "log_sha256": "02c3f750e6900e2de15c1678788d6010f762cf3a28bd25e14c1ce5eacbb20966",
+    "date": "2026-11-15T13:37:45.668921+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/compare_c12_build_timing.py",
+      "--dev",
+      "docs/evidence/c12-end-to-end-timing-v0-1.json",
+      "--release",
+      "docs/evidence/c12-release-vs-dev-v0-1.json"
+    ],
+    "returncode": 0,
+    "log": "proof-comparison-final.log",
+    "log_sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c",
+    "date": "2026-11-15T13:37:45.761967+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
   },
   {
     "command": [
@@ -213,31 +122,37 @@
       "docs/evidence/c12-end-to-end-timing-v0-1.json"
     ],
     "returncode": 0,
-    "scope": "three physical partitions, frame and byte concordance; no new workload",
-    "date": "2026-11-15T12:30:03.324939+00:00"
+    "log": "historical-proof-final.log",
+    "log_sha256": "0ae9d9b2ec50241f09d1b8ffa1ec2efde4021a1c351bccae12a51c189d612bd4",
+    "date": "2026-11-15T13:37:45.837106+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
   },
   {
     "command": [
       "python3",
-      "inline",
-      "evidence",
-      "negative",
-      "fixtures"
+      "-m",
+      "py_compile",
+      "scripts/analyze_c12_timing.py",
+      "scripts/compare_c12_build_timing.py",
+      "scripts/test_c12_timing.py",
+      "scripts/test_compare_c12_build_timing.py"
     ],
     "returncode": 0,
-    "scope": "7 corrupt/fallback/stale variants rejected; all measured source hashes match",
-    "date": "2026-11-15T12:30:03.324959+00:00"
+    "log": "python-syntax-final.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "date": "2026-11-15T13:37:45.906571+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
   },
   {
     "command": [
-      "cargo",
-      "fmt",
-      "--all",
-      "--check"
+      "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
+      ".github/workflows/pipeline.yml"
     ],
     "returncode": 0,
-    "scope": "formatting",
-    "date": "2026-11-15T12:30:03.324968+00:00"
+    "log": "actionlint-final.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "date": "2026-11-15T13:37:45.910118+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
   },
   {
     "command": [
@@ -246,28 +161,9 @@
       "--check"
     ],
     "returncode": 0,
-    "scope": "whitespace",
-    "date": "2026-11-15T12:30:03.324976+00:00"
-  },
-  {
-    "command": [
-      "python3",
-      "-m",
-      "py_compile",
-      "scripts/analyze_c12_timing.py",
-      "scripts/test_c12_timing.py"
-    ],
-    "returncode": 0,
-    "scope": "Python syntax",
-    "date": "2026-11-15T12:30:03.324983+00:00"
-  },
-  {
-    "command": [
-      "actionlint",
-      ".github/workflows/pipeline.yml"
-    ],
-    "returncode": 0,
-    "scope": "workflow syntax",
-    "date": "2026-11-15T12:30:03.324990+00:00"
+    "log": "diff-final.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "date": "2026-11-15T13:37:45.917020+00:00",
+    "scope": "Offline diagnostic validation; no new physical workload"
   }
 ]
