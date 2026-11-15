@@ -2,7 +2,9 @@
 
 Base : `master` après fusion de la PR #32, `524d0065f5609919c61e37c242771ee3bf61eb9b`.
 Branche : `spike/c12-end-to-end-timing-v0-1`.
-État de ce checkpoint : **périmètre défini ; instrumentation et mesures non commencées**.
+État au checkpoint `81df7e2` : périmètre défini. Plan désormais exécuté ;
+[réalisation et résultats physiques](C12_END_TO_END_TIMING_RESULTS_V0_1.md).
+Les bornes ci-dessous restent le plan historique validé, sans redéfinition.
 
 La [campagne CPU physique](ANDROID_MULTICORE_SPIKE_V0_2.md) mesure environ 28 s
 entre l'appel CLI et son résultat exact, alors que le compute natif dure des
@@ -54,4 +56,4 @@ comparer les durées par phase et leur variabilité avant de nommer un goulot.
 Sans appareil, le verdict reste **NON MESURÉ**. Aucun seuil, politique, affinité,
 workload ou optimisation n'est modifié dans ce checkpoint.
 
-**NEXT_ACTION : Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.**
+**NEXT_ACTION : Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.**

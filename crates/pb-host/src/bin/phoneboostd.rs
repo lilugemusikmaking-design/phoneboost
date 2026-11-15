@@ -20,6 +20,8 @@ struct DaemonArguments {
 }
 
 fn main() {
+    #[cfg(feature = "diagnostic-timing")]
+    pb_types::diagnostic_timing::initialize_from_environment();
     let Some(arguments) = parse_arguments(std::env::args_os().skip(1)) else {
         eprintln!("usage: phoneboostd --foreground [--manual-endpoint <literal-ip:port>]");
         std::process::exit(2);

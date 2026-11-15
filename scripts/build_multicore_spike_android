@@ -8,13 +8,20 @@ ndk="$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin"
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ndk/aarch64-linux-android29-clang"
 export CC_aarch64_linux_android="$CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
 export AR_aarch64_linux_android="$ndk/llvm-ar"
-cargo build --locked --release --target aarch64-linux-android -p phoneboost-core-jni --features experimental-multicore
+features=experimental-multicore
+gradle_diagnostic=()
+case "${1:-}" in
+    "") ;;
+    --timing-diagnostic) features=diagnostic-timing; gradle_diagnostic=(-PphoneboostTimingDiagnostic=true) ;;
+    *) printf '%s\n' 'Unknown experiment build option' >&2; exit 2 ;;
+esac
+cargo build --locked --release --target aarch64-linux-android -p phoneboost-core-jni --features "$features"
 library="${CARGO_TARGET_DIR:-target}/aarch64-linux-android/release/libphoneboost_core_jni.so"
 mkdir -p .work/multicore/jniLibs/arm64-v8a
 readelf --dyn-syms --wide "$library" > .work/multicore/native-symbols.txt
 grep -q Java_org_phoneboost_app_MulticoreNative_configure .work/multicore/native-symbols.txt
 cp "$library" .work/multicore/jniLibs/arm64-v8a/
-gradle --no-daemon -p android -PphoneboostMulticoreSpike=true :app:assembleDebug :app:lintDebug
+gradle --no-daemon -p android -PphoneboostMulticoreSpike=true "${gradle_diagnostic[@]}" :app:assembleDebug :app:lintDebug
 test -f android/app/build-multicore/outputs/apk/debug/app-debug.apk
 python3 - <<'PY'
 import zipfile
@@ -26,3 +33,7 @@ with zipfile.ZipFile('android/app/build-multicore/outputs/apk/debug/app-debug.ap
     assert b'Java_org_phoneboost_app_MulticoreNative_configure' in native
 PY
 printf '%s\n' 'EXPERIMENT ONLY: org.phoneboost.app.multicore; no physical claim from this build.'
+
+if [[ "$features" == diagnostic-timing ]]; then
+    grep -q Java_org_phoneboost_app_TimingNative_capture .work/multicore/native-symbols.txt
+fi

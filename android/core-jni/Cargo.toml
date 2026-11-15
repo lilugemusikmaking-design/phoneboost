@@ -9,6 +9,7 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [features]
+diagnostic-timing = ["experimental-multicore", "pb-worker-core/diagnostic-timing", "pb-runtime-secure/diagnostic-timing"]
 default = []
 jni-test-probes = []
 experimental-multicore = ["pb-worker-core/experimental-multicore"]

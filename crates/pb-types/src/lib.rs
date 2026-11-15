@@ -322,3 +322,41 @@ mod tests {
         assert!(ComputeType::try_from(5).is_err());
     }
 }
+
+#[cfg(feature = "diagnostic-timing")]
+pub mod diagnostic_timing;
+
+#[cfg(feature = "diagnostic-timing")]
+#[macro_export]
+macro_rules! timed {
+    ($phase:ident, $bytes:expr, $body:expr) => {{
+        let _span = $crate::diagnostic_timing::Span::new(
+            $crate::diagnostic_timing::Phase::$phase,
+            $bytes as u64,
+        );
+        $body
+    }};
+}
+#[cfg(not(feature = "diagnostic-timing"))]
+#[macro_export]
+macro_rules! timed {
+    ($phase:ident, $bytes:expr, $body:expr) => {
+        $body
+    };
+}
+
+#[cfg(feature = "diagnostic-timing")]
+#[macro_export]
+macro_rules! timing_scope {
+    ($name:ident, $phase:ident, $bytes:expr) => {
+        let $name = $crate::diagnostic_timing::Span::new(
+            $crate::diagnostic_timing::Phase::$phase,
+            $bytes as u64,
+        );
+    };
+}
+#[cfg(not(feature = "diagnostic-timing"))]
+#[macro_export]
+macro_rules! timing_scope {
+    ($name:ident, $phase:ident, $bytes:expr) => {};
+}

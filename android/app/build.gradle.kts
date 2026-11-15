@@ -5,6 +5,8 @@ plugins {
 // Explicit experiment: separate APK identity, output directory and JNI input.
 // The product source sets never include the control receiver or JNI bridge.
 val multicoreSpike = providers.gradleProperty("phoneboostMulticoreSpike").orNull == "true"
+val timingDiagnostic = providers.gradleProperty("phoneboostTimingDiagnostic").orNull == "true"
+require(!timingDiagnostic || multicoreSpike) { "Timing diagnostics require the isolated experimental APK" }
 if (multicoreSpike) layout.buildDirectory.set(file("build-multicore"))
 
 android {
@@ -29,7 +31,8 @@ android {
         }
         if (multicoreSpike) getByName("debug") {
             kotlin.directories.add("../multicore-spike/java")
-            manifest.srcFile("../multicore-spike/AndroidManifest.xml")
+            manifest.srcFile(if (timingDiagnostic) "../timing-diagnostic/AndroidManifest.xml" else "../multicore-spike/AndroidManifest.xml")
+            if (timingDiagnostic) kotlin.directories.add("../timing-diagnostic/java")
         }
     }
 

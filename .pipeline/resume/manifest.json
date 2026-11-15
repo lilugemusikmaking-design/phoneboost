@@ -1,9 +1,9 @@
 {
-  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en d\u00e9composant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
+  "next_action": "Compiler l\u2019h\u00f4te diagnostique en release et remesurer le m\u00eame run 64 MiB pour r\u00e9duire et v\u00e9rifier le co\u00fbt dominant du chiffrement Noise.",
   "writer": "Codex",
-  "parent_head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
-  "date": "2026-11-15T11:22:38.665732+00:00",
+  "parent_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+  "date": "2026-11-15T12:31:50.090028+00:00",
   "branch": "spike/c12-end-to-end-timing-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "Profile 4 exact 64 MiB: 4 TIDs, peak 4, 25.824309 ms four-way Running. Five complete 2/4 pairs plus isolated sixth 4: median paired native ratio 1.065364x, 3/5 above 1.05; incremental benefit not qualified. Operator 120 s preflight stops final 2 after C08 recovered. Profile 2 retained; no product or end-to-end benefit claimed."
+  "physical_proof": "Three complete exact 64 MiB REMOTE_SUCCESS runs; 26.112\u201328.086 s, host Noise encryption 91.72\u201392.42%, native 49.785\u201351.486 ms. No optimization; dev host/release Android. One calibration excluded due operator initial sequence assertion."
 }

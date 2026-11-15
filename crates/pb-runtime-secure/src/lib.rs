@@ -22,3 +22,8 @@ pub use runtime::{
 };
 pub use storage::{Identity, PeerRecord, StateStore, StorageError};
 pub use wire::{RECORD_PREFIX_BYTES, SecureWireError};
+
+#[cfg(feature = "diagnostic-timing")]
+pub use pb_types::diagnostic_timing;
+
+pub use pb_types::timed;

@@ -49,6 +49,14 @@ jobs:
           cargo test --locked -p phoneboost-core-jni --features experimental-multicore -- --test-threads=1
           cargo test --locked -p pb-host --features experimental-multicore
           python3 scripts/test_measure_android_multicore.py
+      - name: Explicit diagnostic timing tests
+        env:
+          PHONEBOOST_TIMING_DIAGNOSTIC: '1'
+        run: |
+          cargo test --locked -p pb-types -p pb-cli -p pb-host -p pb-runtime-secure -p pb-worker-core -p phoneboost-core-jni --features pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing -- --test-threads=2
+          cargo build --locked -p pb-host -p pb-cli --features pb-host/diagnostic-timing,pb-cli/diagnostic-timing
+          python3 scripts/test_c12_timing.py --daemon target/debug/phoneboostd --client target/debug/phoneboostctl
+          python3 scripts/analyze_c12_timing.py docs/evidence/c12-end-to-end-timing-v0-1.json
       - name: Native C12 import client real-process proof
         run: |
           scripts/pipeline-with-sccache cargo build --locked -p pb-host --bin phoneboostd -p pb-cli --bin phoneboostctl -p pb-web-bridge --bin phoneboost-web-bridge
@@ -135,3 +143,5 @@ jobs:
       - run: scripts/pipeline-android
       - name: Build isolated multicore experiment APK
         run: bash scripts/build_multicore_spike_android
+      - name: Build isolated timing diagnostic APK
+        run: bash scripts/build_multicore_spike_android --timing-diagnostic

@@ -1,3 +1,5 @@
+#[cfg(feature = "diagnostic-timing")]
+mod diagnostic_timing;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::net::{Shutdown, TcpStream};
@@ -193,8 +195,7 @@ impl AuthenticatedCommandHandler for AndroidAuthenticatedCommandHandler {
 fn with_worker<T>(
     apply: impl FnOnce(&mut WorkerCore) -> Result<T, AuthenticatedCommandHandlerError>,
 ) -> Result<T, AuthenticatedCommandHandlerError> {
-    let mut slot = worker_slot()
-        .lock()
+    let mut slot = pb_runtime_secure::timed!(JniLock, 0, worker_slot().lock())
         .map_err(|_| AuthenticatedCommandHandlerError::Failed)?;
     let worker = slot
         .as_mut()

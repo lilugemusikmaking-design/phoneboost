@@ -11,3 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 sha2.workspace = true
+
+[features]
+default = []
+diagnostic-timing = []

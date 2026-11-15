@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "branch": "spike/c12-end-to-end-timing-v0-1",
-  "head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+  "head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Quantify C12 end-to-end latency without behavior change",
-  "status": "MULTICORE_CONFIRMED_BENEFICIAL",
-  "report": "docs/architecture/C12_END_TO_END_TIMING_DIAGNOSTIC_V0_1.md",
-  "evidence": "docs/evidence/android-multicore-v0-2.json",
+  "status": "TIMING_DIAGNOSTIC_MEASURED",
+  "report": "docs/architecture/C12_END_TO_END_TIMING_RESULTS_V0_1.md",
+  "evidence": "docs/evidence/c12-end-to-end-timing-v0-1.json",
   "previous_checkpoint": {
     "commit": "524d0065f5609919c61e37c242771ee3bf61eb9b",
     "merged_pr": 32,
@@ -33,9 +33,250 @@
     "docs(cpu): verify Battery Saver restoration and close cleanup",
     "docs(cpu): qualify paired physical 1 vs 2 benefit",
     "docs(cpu): close physical profile 4 qualification",
-    "docs(diag): scope C12 end-to-end timing measurements"
+    "docs(diag): scope C12 end-to-end timing measurements",
+    "feat(diag): measure C12 end-to-end timing without behavior changes"
   ],
   "last_tests": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "pb-types",
+        "-p",
+        "pb-cli",
+        "-p",
+        "pb-host",
+        "-p",
+        "pb-runtime-secure",
+        "-p",
+        "pb-worker-core",
+        "-p",
+        "phoneboost-core-jni",
+        "--features",
+        "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing",
+        "--",
+        "--test-threads=2"
+      ],
+      "returncode": 0,
+      "scope": "384 tests + 6 doctests; one ignored microbenchmark executed separately",
+      "log": "tests-diagnostic.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324779+00:00",
+      "environment": {
+        "PHONEBOOST_TIMING_DIAGNOSTIC": "1",
+        "CARGO_BUILD_JOBS": "1"
+      }
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "pb-types",
+        "-p",
+        "pb-runtime-secure",
+        "--features",
+        "pb-types/diagnostic-timing,pb-runtime-secure/diagnostic-timing",
+        "--",
+        "--test-threads=2"
+      ],
+      "returncode": 0,
+      "scope": "30 tests + 4 doctests",
+      "log": "tests-final-hooks.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324870+00:00",
+      "environment": {
+        "PHONEBOOST_TIMING_DIAGNOSTIC": "1",
+        "CARGO_BUILD_JOBS": "1"
+      }
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "-p",
+        "pb-types",
+        "-p",
+        "pb-cli",
+        "-p",
+        "pb-host",
+        "-p",
+        "pb-runtime-secure",
+        "-p",
+        "pb-worker-core",
+        "-p",
+        "phoneboost-core-jni",
+        "--all-targets",
+        "--features",
+        "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing"
+      ],
+      "returncode": 0,
+      "scope": "CI policy, existing warnings",
+      "log": "clippy-diagnostic-policy.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324880+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "-p",
+        "pb-types",
+        "-p",
+        "pb-cli",
+        "-p",
+        "pb-host",
+        "-p",
+        "pb-runtime-secure",
+        "-p",
+        "pb-worker-core",
+        "-p",
+        "phoneboost-core-jni",
+        "--all-targets",
+        "--features",
+        "pb-host/diagnostic-timing,pb-cli/diagnostic-timing,phoneboost-core-jni/diagnostic-timing",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 101,
+      "scope": "Stricter non-CI attempt; existing pb-pbmux manual_range_patterns warning; not changed",
+      "log": "clippy-diagnostic.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324886+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "check",
+        "--offline",
+        "--locked",
+        "--workspace",
+        "--all-targets"
+      ],
+      "returncode": 0,
+      "scope": "product paths compile",
+      "log": "check-default.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324892+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test_c12_import_cli.py",
+        "--daemon",
+        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostd",
+        "--client",
+        "/tmp/phoneboost-c12-timing-20261115/bin/phoneboostctl"
+      ],
+      "returncode": 0,
+      "scope": "existing real-process C12 outcomes/cleanup",
+      "log": "c12-existing.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324898+00:00",
+      "environment": {
+        "PHONEBOOST_TIMING_DIAGNOSTIC": "0"
+      }
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test_c12_timing.py",
+        "--daemon",
+        "/home/mimir/phoneboost-dev-pipeline-v1/target/debug/phoneboostd",
+        "--client",
+        "/home/mimir/phoneboost-dev-pipeline-v1/target/debug/phoneboostctl"
+      ],
+      "returncode": 0,
+      "scope": "OFF/ON output, exit/fallback/error equivalence",
+      "log": "process-off-on.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324903+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "pb-types",
+        "--features",
+        "diagnostic-timing",
+        "measure_counter_overhead",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "returncode": 0,
+      "scope": "one million OFF/ON spans",
+      "log": "overhead.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324908+00:00"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/build_multicore_spike_android",
+        "--timing-diagnostic"
+      ],
+      "returncode": 0,
+      "scope": "ARM64 isolated diagnostic APK + Gradle lintDebug",
+      "log": "android-build.log",
+      "source_head": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
+      "source_state": "instrumented worktree; hashes in evidence",
+      "date": "2026-11-15T12:30:03.324914+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/analyze_c12_timing.py",
+        "docs/evidence/c12-end-to-end-timing-v0-1.json"
+      ],
+      "returncode": 0,
+      "scope": "three physical partitions, frame and byte concordance; no new workload",
+      "date": "2026-11-15T12:30:03.324939+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "inline",
+        "evidence",
+        "negative",
+        "fixtures"
+      ],
+      "returncode": 0,
+      "scope": "7 corrupt/fallback/stale variants rejected; all measured source hashes match",
+      "date": "2026-11-15T12:30:03.324959+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "returncode": 0,
+      "scope": "formatting",
+      "date": "2026-11-15T12:30:03.324968+00:00"
+    },
     {
       "command": [
         "git",
@@ -43,30 +284,40 @@
         "--check"
       ],
       "returncode": 0,
-      "scope": "tracked documentation and state",
-      "source_head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
-      "date": "2026-11-15T11:22:24.267507+00:00"
+      "scope": "whitespace",
+      "date": "2026-11-15T12:30:03.324976+00:00"
     },
     {
       "command": [
         "python3",
-        "<inline diagnostic checkpoint consistency check>"
+        "-m",
+        "py_compile",
+        "scripts/analyze_c12_timing.py",
+        "scripts/test_c12_timing.py"
       ],
       "returncode": 0,
-      "scope": "new plan whitespace, branch/base, valid references, exact NEXT_ACTION, no measurement claim",
-      "source_head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
-      "date": "2026-11-15T11:22:24.267545+00:00"
+      "scope": "Python syntax",
+      "date": "2026-11-15T12:30:03.324983+00:00"
+    },
+    {
+      "command": [
+        "actionlint",
+        ".github/workflows/pipeline.yml"
+      ],
+      "returncode": 0,
+      "scope": "workflow syntax",
+      "date": "2026-11-15T12:30:03.324990+00:00"
     }
   ],
-  "physical_proof": "Profile 4 exact 64 MiB: 4 TIDs, peak 4, 25.824309 ms four-way Running. Five complete 2/4 pairs plus isolated sixth 4: median paired native ratio 1.065364x, 3/5 above 1.05; incremental benefit not qualified. Operator 120 s preflight stops final 2 after C08 recovered. Profile 2 retained; no product or end-to-end benefit claimed.",
-  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en d\u00e9composant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
+  "physical_proof": "Three complete exact 64 MiB REMOTE_SUCCESS runs; 26.112\u201328.086 s, host Noise encryption 91.72\u201392.42%, native 49.785\u201351.486 ms. No optimization; dev host/release Android. One calibration excluded due operator initial sequence assertion.",
+  "next_action": "Compiler l\u2019h\u00f4te diagnostique en release et remesurer le m\u00eame run 64 MiB pour r\u00e9duire et v\u00e9rifier le co\u00fbt dominant du chiffrement Noise.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T11:22:38.664692+00:00",
-    "commit": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+    "date": "2026-11-15T12:31:50.088948+00:00",
+    "commit": "81df7e20dc010fe1d8256cfebccf847dc27a639f",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -143,14 +394,17 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json#cleanup",
-    "verified_utc": "2026-11-15T10:24:50.470464+00:00",
+    "verified_utc": "2026-11-15T12:24:56.440538+00:00",
+    "battery_saver_initial": true,
     "battery_saver_restored": true,
+    "timing_collection": false,
     "experimental_profile": 1,
+    "product_unchanged": true,
     "experimental_app_stopped": true,
+    "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "apks_unchanged": true
+    "evidence": "docs/evidence/c12-end-to-end-timing-v0-1.json#cleanup"
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
@@ -158,8 +412,10 @@
   "diagnostic": {
     "base_master": "524d0065f5609919c61e37c242771ee3bf61eb9b",
     "plan": "docs/architecture/C12_END_TO_END_TIMING_DIAGNOSTIC_V0_1.md",
-    "status": "PLANNED_NOT_INSTRUMENTED",
-    "physical_measurements": "NOT_RUN",
-    "scope": "C12 import, copies, PBMUX transport, readiness/lease, RemoteBuffer and compute; no optimization"
+    "status": "MEASURED_NO_OPTIMIZATION",
+    "physical_measurements": "3 complete valid; one exact calibration excluded",
+    "scope": "C12 import, copies, PBMUX transport, readiness/lease, RemoteBuffer and compute; no optimization",
+    "evidence": "docs/evidence/c12-end-to-end-timing-v0-1.json",
+    "report": "docs/architecture/C12_END_TO_END_TIMING_RESULTS_V0_1.md"
   }
 }

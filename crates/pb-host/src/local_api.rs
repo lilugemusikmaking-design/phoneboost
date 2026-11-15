@@ -222,7 +222,20 @@ enum ResponseSerializationError {
 
 /// Serve one authenticated connection until clean close, timeout, or transport failure.
 pub fn serve_local_client(client: AuthenticatedLocalClient, context: Arc<LocalApiContext>) {
-    serve_local_client_observed(client, context, |_| {});
+    #[cfg(feature = "diagnostic-timing")]
+    let timing = pb_types::diagnostic_timing::Snapshot::take();
+    #[cfg(feature = "diagnostic-timing")]
+    let mut submitted = false;
+    serve_local_client_observed(client, context, |_event| {
+        #[cfg(feature = "diagnostic-timing")]
+        {
+            submitted |= _event.method == Some(LocalMethod::ComputeSubmitImport);
+        }
+    });
+    #[cfg(feature = "diagnostic-timing")]
+    if submitted {
+        timing.emit_delta("host");
+    }
 }
 
 fn serve_local_client_observed(
@@ -448,6 +461,8 @@ fn compute_submit_import(
     context: &LocalApiContext,
     requester: ImportRequester,
 ) -> C12Response {
+    pb_types::timing_scope!(_timing_scope, LocalRequest, 0);
+
     let Some(handle) = compute_submit_import_handle(request.params()) else {
         return C12Response::error(
             request.id().clone(),

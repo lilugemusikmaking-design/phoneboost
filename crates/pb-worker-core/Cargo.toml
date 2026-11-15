@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [features]
+diagnostic-timing = ["pb-types/diagnostic-timing", "pb-runtime-secure/diagnostic-timing"]
 default = []
 experimental-multicore = ["dep:rustix", "rustix/thread"]
 

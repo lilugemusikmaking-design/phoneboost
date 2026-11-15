@@ -1529,7 +1529,8 @@ fn run_authenticated_loop(
                         return Err(RuntimeError::Pbmux);
                     }
                     if let Some(payload) =
-                        reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)?
+                        pb_types::timed!(Reassembly, frame.payload.len(), reassembler.accept(frame))
+                            .map_err(|_| RuntimeError::Pbmux)?
                     {
                         let kind = remote_response_kind(message_type)?;
                         let result = parse_remote_buffer_result_payload(kind, &payload)
@@ -1547,10 +1548,15 @@ fn run_authenticated_loop(
                     let message_type = frame.header.message_type;
                     let request_id = frame.header.request_id;
                     if let Some(payload) =
-                        reassembler.accept(frame).map_err(|_| RuntimeError::Pbmux)?
+                        pb_types::timed!(Reassembly, frame.payload.len(), reassembler.accept(frame))
+                            .map_err(|_| RuntimeError::Pbmux)?
                     {
-                        let request = parse_remote_buffer_request_payload(message_type, &payload)
-                            .map_err(|_| RuntimeError::Pbmux)?;
+                        let request = pb_types::timed!(
+                            BufferRequestParse,
+                            payload.len(),
+                            parse_remote_buffer_request_payload(message_type, &payload)
+                        )
+                        .map_err(|_| RuntimeError::Pbmux)?;
                         let expected_kind = match &request {
                             RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
                             RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
@@ -1659,7 +1665,7 @@ fn run_authenticated_loop(
             // Poll only while input is unavailable (including a partial record
             // prefix). Queued frames must not each pay this idle delay. Keep the
             // outer loop so cancellation and heartbeats are checked between frames.
-            wait_for_input(SESSION_POLL);
+            pb_types::timed!(SessionPoll, 0, wait_for_input(SESSION_POLL));
         }
     }
 }
@@ -1743,50 +1749,54 @@ fn start_initiator_request(
         Some(request_id) => request_id,
         None => random_nonzero_u64()?,
     };
-    let built = match request {
-        InitiatorRequest::Command(request) => {
-            build_command_frame(&request, request_id, *send_sequence).map(|frame| {
-                (
-                    vec![frame],
-                    ExpectedInitiatorResponse::Command(request.command_seq),
-                )
-            })
+    let built = pb_types::timed!(
+        RequestBuild,
+        0,
+        match request {
+            InitiatorRequest::Command(request) => {
+                build_command_frame(&request, request_id, *send_sequence).map(|frame| {
+                    (
+                        vec![frame],
+                        ExpectedInitiatorResponse::Command(request.command_seq),
+                    )
+                })
+            }
+            InitiatorRequest::Resource(request) => {
+                let expected = match &request {
+                    ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
+                    ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
+                    ResourceRequest::Release { .. } => ResourceResponseKind::Release,
+                };
+                build_resource_request_frame(&request, request_id, *send_sequence)
+                    .map(|frame| (vec![frame], ExpectedInitiatorResponse::Resource(expected)))
+            }
+            InitiatorRequest::RemoteBuffer(request) => {
+                let expected = match &request {
+                    RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
+                    RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
+                    RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
+                    RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
+                    RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
+                    RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
+                };
+                build_remote_buffer_request_frames(&request, request_id, *send_sequence)
+                    .map(|frames| (frames, ExpectedInitiatorResponse::RemoteBuffer(expected)))
+            }
+            InitiatorRequest::Compute(request) => {
+                let expected = match &request {
+                    ComputeRequest::Submit(_) => ExpectedInitiatorResponse::ComputeSubmit,
+                    ComputeRequest::Status(request) => {
+                        ExpectedInitiatorResponse::ComputeStatus(request.job_id)
+                    }
+                    ComputeRequest::Cancel(request) => {
+                        ExpectedInitiatorResponse::ComputeCancel(request.job_id)
+                    }
+                };
+                build_compute_request_frame(&request, request_id, *send_sequence)
+                    .map(|frame| (vec![frame], expected))
+            }
         }
-        InitiatorRequest::Resource(request) => {
-            let expected = match &request {
-                ResourceRequest::Reserve { .. } => ResourceResponseKind::ReserveAck,
-                ResourceRequest::Commit { .. } => ResourceResponseKind::Commit,
-                ResourceRequest::Release { .. } => ResourceResponseKind::Release,
-            };
-            build_resource_request_frame(&request, request_id, *send_sequence)
-                .map(|frame| (vec![frame], ExpectedInitiatorResponse::Resource(expected)))
-        }
-        InitiatorRequest::RemoteBuffer(request) => {
-            let expected = match &request {
-                RemoteBufferRequest::Alloc { .. } => RemoteBufferResponseKind::AllocAck,
-                RemoteBufferRequest::Put { .. } => RemoteBufferResponseKind::Put,
-                RemoteBufferRequest::Get { .. } => RemoteBufferResponseKind::Data,
-                RemoteBufferRequest::Free { .. } => RemoteBufferResponseKind::Free,
-                RemoteBufferRequest::Stat { .. } => RemoteBufferResponseKind::Stat,
-                RemoteBufferRequest::Touch { .. } => RemoteBufferResponseKind::Touch,
-            };
-            build_remote_buffer_request_frames(&request, request_id, *send_sequence)
-                .map(|frames| (frames, ExpectedInitiatorResponse::RemoteBuffer(expected)))
-        }
-        InitiatorRequest::Compute(request) => {
-            let expected = match &request {
-                ComputeRequest::Submit(_) => ExpectedInitiatorResponse::ComputeSubmit,
-                ComputeRequest::Status(request) => {
-                    ExpectedInitiatorResponse::ComputeStatus(request.job_id)
-                }
-                ComputeRequest::Cancel(request) => {
-                    ExpectedInitiatorResponse::ComputeCancel(request.job_id)
-                }
-            };
-            build_compute_request_frame(&request, request_id, *send_sequence)
-                .map(|frame| (vec![frame], expected))
-        }
-    };
+    );
     let (frames, expected) = match built {
         Ok(built) => built,
         Err(_) => {
@@ -1845,6 +1855,8 @@ fn handle_remote_buffer_with_transport_liveness(
     request: RemoteBufferRequest,
     last_authenticated_traffic: Instant,
 ) -> Result<(RemoteBufferResponseKind, BufferResult), RuntimeError> {
+    pb_types::timing_scope!(_timing_scope, BufferHandlerWait, 0);
+
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     std::thread::scope(|scope| {
         scope.spawn(move || {
@@ -1865,7 +1877,7 @@ fn handle_remote_buffer_with_transport_liveness(
             match receiver.try_recv() {
                 Ok(result) => return result.map_err(handler_runtime_error),
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    std::thread::sleep(SESSION_POLL);
+                    pb_types::timed!(BufferHandlerPoll, 0, std::thread::sleep(SESSION_POLL));
                 }
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     return Err(RuntimeError::CommandHandlerFailed);
@@ -1883,6 +1895,8 @@ fn handle_compute_with_transport_liveness(
     request: ComputeRequest,
     last_authenticated_traffic: Instant,
 ) -> Result<ComputeResponse, RuntimeError> {
+    pb_types::timing_scope!(_timing_scope, ComputeHandlerWait, 0);
+
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     std::thread::scope(|scope| {
         scope.spawn(move || {
@@ -1903,7 +1917,7 @@ fn handle_compute_with_transport_liveness(
             match receiver.try_recv() {
                 Ok(result) => return result.map_err(handler_runtime_error),
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    std::thread::sleep(SESSION_POLL);
+                    pb_types::timed!(ComputeHandlerPoll, 0, std::thread::sleep(SESSION_POLL));
                 }
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     return Err(RuntimeError::CommandHandlerFailed);
@@ -1994,9 +2008,14 @@ fn receive_frame_if_available(
         .and_then(|()| stream.set_nonblocking(true))
         .map_err(|_| RuntimeError::SessionLost)?;
     let plaintext = plaintext?;
-    decode(&plaintext)
-        .map(Some)
-        .map_err(|_| RuntimeError::Pbmux)
+    let frame = pb_types::timed!(FrameDecode, plaintext.len(), decode(&plaintext))
+        .map_err(|_| RuntimeError::Pbmux)?;
+    pb_types::timed!(RxFrame, plaintext.len(), ());
+    #[cfg(feature = "diagnostic-timing")]
+    if matches!(frame.header.channel, Channel::Control | Channel::Metrics) {
+        pb_types::timed!(RxControl, plaintext.len(), ());
+    }
+    Ok(Some(frame))
 }
 
 fn send_frame(
@@ -2004,7 +2023,13 @@ fn send_frame(
     transport: &mut TransportState,
     frame: &Frame,
 ) -> Result<(), RuntimeError> {
-    let plaintext = encode(frame).map_err(|_| RuntimeError::Pbmux)?;
+    let plaintext = pb_types::timed!(FrameEncode, frame.payload.len(), encode(frame))
+        .map_err(|_| RuntimeError::Pbmux)?;
+    pb_types::timed!(TxFrame, plaintext.len(), ());
+    #[cfg(feature = "diagnostic-timing")]
+    if matches!(frame.header.channel, Channel::Control | Channel::Metrics) {
+        pb_types::timed!(TxControl, plaintext.len(), ());
+    }
     // The authenticated loop polls reads in nonblocking mode. A PBMUX logical
     // message can, however, contain many near-maximum encrypted records. Using
     // `write_all` while the socket is still nonblocking turns ordinary TCP

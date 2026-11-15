@@ -1,19 +1,20 @@
-# Reprise : diagnostic quantitatif du temps end-to-end C12
+# Reprise : diagnostic C12 physiquement terminé
 
-Base : `master` après fusion de #32, `524d0065f5609919c61e37c242771ee3bf61eb9b`.
-Branche : `spike/c12-end-to-end-timing-v0-1`.
-La PR #32 est fusionnée. Le verdict CPU expérimental antérieur reste dans
-[son rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md).
+Branche : `spike/c12-end-to-end-timing-v0-1`. Base master `524d0065f5609919c61e37c242771ee3bf61eb9b`.
+HEAD exact à résoudre par `scripts/project-pipeline status` / GitHub.
 
-Le [plan de mesure](../../docs/architecture/C12_END_TO_END_TIMING_DIAGNOSTIC_V0_1.md)
-repère les bornes CLI, import asynchrone, copies, PBMUX, RemoteBuffer et compute,
-ainsi que l'état de readiness/lease. Le nouveau chantier est **préparé seulement** :
-aucune instrumentation codée ni nouvelle mesure physique n'a encore eu lieu.
-Ne pas déduire le goulot des ~28 s du seul temps natif déjà mesuré.
+[Résultats](../../docs/architecture/C12_END_TO_END_TIMING_RESULTS_V0_1.md) et
+[preuves](../../docs/evidence/c12-end-to-end-timing-v0-1.json) : 3 runs complets
+64 MiB distants exacts. Médiane end-to-end 26,502 s ; chiffrement Noise sur hôte
+dev non optimisé 92,12 % ; compute Android environ 51 ms. Pas d'optimisation.
+Le plan initial est exécuté, ne pas refaire les campagnes CPU ou le diagnostic.
 
-NEXT_ACTION : Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.
+Battery Saver ON, profil 1, collecte OFF, app/daemon/forward expérimentaux arrêtés,
+produit inchangé. Les preuves multicœur historiques restent valides et conservées.
+Le premier run exact de mise au point est exclu des statistiques car le script
+opérateur attendait le mauvais numéro après une trace native antérieure absente.
 
-Commencer par instrumenter ces bornes dans le seul diagnostic, valider les
-mesures sans changement de réponse ni de protocole, puis faire les runs
-physiques exacts. Garder les horloges hôte et Android séparées. Aucun chantier
-RAM/GPU/NPU/C13, aucune optimisation ni décision de politique CPU à ce stade.
+NEXT_ACTION : Compiler l’hôte diagnostique en release et remesurer le même run 64 MiB pour réduire et vérifier le coût dominant du chiffrement Noise.
+
+Une seule optimisation ciblée ensuite. Aucun chantier RAM/GPU/NPU/C13, aucune
+politique CPU dynamique, aucun changement de protection ou de protocole.

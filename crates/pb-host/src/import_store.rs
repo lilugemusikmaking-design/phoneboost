@@ -357,6 +357,8 @@ impl ImportStore {
         requester: ImportRequester,
         source: OwnedFd,
     ) -> Result<ImportHandle, ImportStoreError> {
+        pb_types::timing_scope!(_timing_scope, ImportStart, 0);
+
         validate_source(&source, requester.peer_uid)?;
         let mut source = File::from(source);
         source
@@ -463,7 +465,8 @@ impl ImportStore {
             if started.elapsed() >= self.policy.receiving_timeout {
                 return Err(ImportStoreError::ReceivingTimedOut.into());
             }
-            let read = source.read(&mut chunk).map_err(|_| ImportStoreError::Io)?;
+            let read = pb_types::timed!(ImportRead, 0, source.read(&mut chunk))
+                .map_err(|_| ImportStoreError::Io)?;
             if !self.policy.receiver_chunk_pause.is_zero() {
                 thread::sleep(self.policy.receiver_chunk_pause);
             }
@@ -482,12 +485,11 @@ impl ImportStore {
                 }
                 return Err(error.into());
             }
-            destination
-                .write_all(&chunk[..read])
+            pb_types::timed!(ImportWrite, read, destination.write_all(&chunk[..read]))
                 .map_err(|_| ImportStoreError::Io)?;
         }
-        destination.flush().map_err(|_| ImportStoreError::Io)?;
-        fsync(&*destination).map_err(|_| ImportStoreError::Io)?;
+        pb_types::timed!(ImportFlush, 0, destination.flush()).map_err(|_| ImportStoreError::Io)?;
+        pb_types::timed!(ImportFsync, 0, fsync(&*destination)).map_err(|_| ImportStoreError::Io)?;
         if self.receiver_cancelled(handle, requester)? {
             return Err(AsyncReceiveError::Cancelled);
         }
@@ -510,6 +512,8 @@ impl ImportStore {
     }
 
     fn finish_async_ready(&self, handle: &str, requester: ImportRequester) {
+        pb_types::timing_scope!(_timing_scope, ImportFinalize, 0);
+
         let mut state = match self.state.lock() {
             Ok(state) => state,
             Err(_) => return,
@@ -792,6 +796,8 @@ impl ImportStore {
         requester: ImportRequester,
         handle: &ImportHandle,
     ) -> Result<ConsumedImport, ImportStoreError> {
+        pb_types::timing_scope!(_timing_scope, ImportConsume, 0);
+
         self.expire_ready_at(Instant::now())?;
         let mut state = self.state.lock().map_err(|_| ImportStoreError::Io)?;
         let Some(entry) = state.live.get(&handle.0) else {
