@@ -21,3 +21,11 @@ The diagnostic legacy responder observes readiness once with bounded poll, then 
 Keep Battery SaverON throughout, profile1 for BOTH variants: existing guard allows one thread in Throttle;128MiB budget observed. No forced OFF, no synthetic Health, no threshold changes. Same NEON config/dependencies/Noise/PBMUX/input64MiB/host release/USB, identical probes. Two warmups + at least3 alternating pairs after software tests. Historical profile2/OFF measurements are context only, not the new baseline.
 
 NEXT_ACTION = build the instrumented legacy baseline, implement/test only the two waits, then compare physically with unchanged phone power state.
+
+## Candidate implementation
+
+The existing input_wait now serves both roles. Both existing sync_channels use recv_timeout(20ms). Shared wait_for_handler preserves liveness checks before receiving and after non-timeout notifications, including disconnected channels. No protocol/crypto/guard/lease/heartbeat constants changed. No new synchronization primitive or thread was introduced.
+
+36 runtime tests +4 doctests pass, including queued/delayed notifications, bounded repeated timeouts/no-spin, completion racing shutdown/deadline, channel disconnect, and both real scoped handlers with cooperative EOF/error mappings. Existing partial prefix/payload, cancellation and heartbeat tests remain green.60 worker tests +2 doctests also pass. Clippy passes under repository policy (pre-existing warnings unchanged).
+
+Baseline source checkpoint:a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f. It retains legacy waits and only adds observation. Candidate removes the unused legacy observation/sleep function; WAIT_READY/WAIT_FINISHED schema and active observer code stay identical. No Kotlin/JNI ABI/phase registry change.

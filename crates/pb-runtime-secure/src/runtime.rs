@@ -1324,17 +1324,7 @@ fn enter_authenticated_loop(
         initiator,
         initiator_driver.as_deref_mut(),
         initiator_generation,
-        |stream, duration| {
-            if initiator {
-                crate::input_wait::wait(stream, duration).map(|_| ())
-            } else {
-                #[cfg(feature = "diagnostic-timing")]
-                crate::wait_diagnostics::legacy_sleep(stream, duration);
-                #[cfg(not(feature = "diagnostic-timing"))]
-                std::thread::sleep(duration);
-                Ok(())
-            }
-        },
+        |stream, duration| crate::input_wait::wait(stream, duration).map(|_| ()),
     );
     verified_peer.revoke();
     if let Some(driver) = initiator_driver.as_deref_mut() {
@@ -1959,30 +1949,14 @@ fn handle_remote_buffer_with_transport_liveness(
             }
             let _ = sender.send(result);
         });
-        loop {
-            if transport_loss_observed(stream)
-                || last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT
-            {
-                verified_peer.revoke();
-                let _ = stream.shutdown(Shutdown::Both);
-                return Err(RuntimeError::SessionLost);
-            }
-            match receiver.try_recv() {
-                Ok(result) => {
-                    #[cfg(feature = "diagnostic-timing")]
-                    if timing_put {
-                        put_trace::mark(put_trace::HANDLER_OBSERVED, timing_tag, 0);
-                    }
-                    return result.map_err(handler_runtime_error);
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    pb_types::timed!(BufferHandlerPoll, 0, std::thread::sleep(SESSION_POLL));
-                }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    return Err(RuntimeError::CommandHandlerFailed);
-                }
-            }
+        let result = wait_for_handler(stream, verified_peer, last_authenticated_traffic, || {
+            pb_types::timed!(BufferHandlerPoll, 0, receiver.recv_timeout(SESSION_POLL))
+        })?;
+        #[cfg(feature = "diagnostic-timing")]
+        if timing_put {
+            put_trace::mark(put_trace::HANDLER_OBSERVED, timing_tag, 0);
         }
+        result.map_err(handler_runtime_error)
     })
 }
 
@@ -2005,25 +1979,44 @@ fn handle_compute_with_transport_liveness(
                 request,
             ));
         });
-        loop {
-            if transport_loss_observed(stream)
-                || last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT
-            {
-                verified_peer.revoke();
-                let _ = stream.shutdown(Shutdown::Both);
-                return Err(RuntimeError::SessionLost);
-            }
-            match receiver.try_recv() {
-                Ok(result) => return result.map_err(handler_runtime_error),
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    pb_types::timed!(ComputeHandlerPoll, 0, std::thread::sleep(SESSION_POLL));
-                }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    return Err(RuntimeError::CommandHandlerFailed);
-                }
+        wait_for_handler(stream, verified_peer, last_authenticated_traffic, || {
+            pb_types::timed!(ComputeHandlerPoll, 0, receiver.recv_timeout(SESSION_POLL))
+        })?
+        .map_err(handler_runtime_error)
+    })
+}
+
+// Reuse the existing channel notification, retaining the same liveness quantum.
+// A notification racing EOF/deadline must not turn a lost session into success.
+fn wait_for_handler<T>(
+    stream: &TcpStream,
+    verified_peer: &VerifiedPeerSession<'_>,
+    last_authenticated_traffic: Instant,
+    mut receive: impl FnMut() -> Result<T, std::sync::mpsc::RecvTimeoutError>,
+) -> Result<T, RuntimeError> {
+    let check_liveness = || {
+        if transport_loss_observed(stream)
+            || last_authenticated_traffic.elapsed() >= DEVICE_OFFLINE_TIMEOUT
+        {
+            verified_peer.revoke();
+            let _ = stream.shutdown(Shutdown::Both);
+            Err(RuntimeError::SessionLost)
+        } else {
+            Ok(())
+        }
+    };
+    loop {
+        check_liveness()?;
+        match receive() {
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+            outcome => {
+                // Old polling checked this before consuming completion on the
+                // next loop. Preserve that fail-closed precedence after wake.
+                check_liveness()?;
+                return outcome.map_err(|_| RuntimeError::CommandHandlerFailed);
             }
         }
-    })
+    }
 }
 
 fn transport_loss_observed(stream: &TcpStream) -> bool {
@@ -2563,6 +2556,225 @@ mod tests {
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => false,
             Err(error) => panic!("test queue failed: {error}"),
         });
+    }
+
+    #[test]
+    fn handler_notification_before_or_during_wait_is_not_lost() {
+        for delayed in [false, true] {
+            with_authenticated_poll_test(|_, _, stream, _, _, peer| {
+                let (tx, rx) = std::sync::mpsc::sync_channel(1);
+                let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
+                if !delayed {
+                    tx.send(41).unwrap();
+                }
+                let sender = std::thread::spawn(move || {
+                    if delayed {
+                        entered_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+                        tx.send(41).unwrap();
+                    }
+                });
+                let mut entries = 0;
+                let result = wait_for_handler(stream, peer, Instant::now(), || {
+                    entries += 1;
+                    let _ = entered_tx.try_send(());
+                    rx.recv_timeout(SESSION_POLL)
+                });
+                sender.join().unwrap();
+                assert_eq!(result, Ok(41));
+                if !delayed {
+                    assert_eq!(
+                        entries, 1,
+                        "queued completion must be consumed on first receive"
+                    );
+                }
+                assert!(peer.is_live());
+            });
+        }
+    }
+
+    #[test]
+    fn handler_timeouts_block_and_periodically_recheck_transport() {
+        with_authenticated_poll_test(|_, _, stream, _, _, peer| {
+            let (_tx, rx) = std::sync::mpsc::sync_channel::<()>(1);
+            let started = Instant::now();
+            let mut checks = 0;
+            let result = wait_for_handler(stream, peer, started, || {
+                checks += 1;
+                if checks == 4 {
+                    stream.shutdown(Shutdown::Both).unwrap();
+                    return Ok(());
+                }
+                rx.recv_timeout(SESSION_POLL)
+            });
+            assert_eq!(result, Err(RuntimeError::SessionLost));
+            assert!(!peer.is_live());
+            assert_eq!(checks, 4);
+            assert!(
+                started.elapsed() >= SESSION_POLL * 3,
+                "empty waits must block"
+            );
+        });
+    }
+
+    #[test]
+    fn handler_completion_racing_shutdown_or_disconnect_remains_fail_closed() {
+        for disconnected in [false, true] {
+            with_authenticated_poll_test(|_, _, stream, _, _, peer| {
+                let result: Result<(), _> = wait_for_handler(stream, peer, Instant::now(), || {
+                    stream.shutdown(Shutdown::Both).unwrap();
+                    if disconnected {
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected)
+                    } else {
+                        Ok(())
+                    }
+                });
+                assert_eq!(result, Err(RuntimeError::SessionLost));
+                assert!(!peer.is_live());
+            });
+        }
+    }
+
+    #[test]
+    fn handler_offline_deadline_and_closed_channel_never_produce_success() {
+        with_authenticated_poll_test(|_, _, stream, _, _, peer| {
+            let result: Result<(), _> = wait_for_handler(
+                stream,
+                peer,
+                Instant::now() - DEVICE_OFFLINE_TIMEOUT,
+                || panic!("expired session must not consume a completion"),
+            );
+            assert_eq!(result, Err(RuntimeError::SessionLost));
+            assert!(!peer.is_live());
+        });
+        with_authenticated_poll_test(|_, _, stream, _, _, peer| {
+            let (tx, rx) = std::sync::mpsc::sync_channel::<()>(1);
+            drop(tx);
+            assert_eq!(
+                wait_for_handler(stream, peer, Instant::now(), || rx
+                    .recv_timeout(SESSION_POLL)),
+                Err(RuntimeError::CommandHandlerFailed)
+            );
+        });
+    }
+
+    struct NotificationTestHandler {
+        started: std::sync::mpsc::SyncSender<()>,
+        wait_for_revoke: bool,
+        error: AuthenticatedCommandHandlerError,
+    }
+
+    impl NotificationTestHandler {
+        fn work(&self, peer: &VerifiedPeerSession<'_>) {
+            self.started.send(()).unwrap();
+            if self.wait_for_revoke {
+                let deadline = Instant::now() + Duration::from_secs(2);
+                while peer.is_live() {
+                    assert!(
+                        Instant::now() < deadline,
+                        "session must revoke cooperative handler"
+                    );
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            }
+        }
+    }
+
+    impl AuthenticatedCommandHandler for NotificationTestHandler {
+        fn handle_authenticated_command(
+            &self,
+            _: &VerifiedPeerSession<'_>,
+            _: u64,
+            _: CommandPayload,
+        ) -> Result<AckPayload, AuthenticatedCommandHandlerError> {
+            Err(self.error)
+        }
+        fn handle_authenticated_remote_buffer(
+            &self,
+            peer: &VerifiedPeerSession<'_>,
+            _: u64,
+            _: RemoteBufferRequest,
+        ) -> Result<(RemoteBufferResponseKind, BufferResult), AuthenticatedCommandHandlerError>
+        {
+            self.work(peer);
+            Err(self.error)
+        }
+        fn handle_authenticated_compute(
+            &self,
+            peer: &VerifiedPeerSession<'_>,
+            _: u64,
+            _: ComputeRequest,
+        ) -> Result<ComputeResponse, AuthenticatedCommandHandlerError> {
+            self.work(peer);
+            Err(self.error)
+        }
+    }
+
+    #[test]
+    fn both_scoped_handlers_preserve_errors_and_cooperate_with_remote_eof() {
+        for compute in [false, true] {
+            for eof in [false, true] {
+                for error in [
+                    AuthenticatedCommandHandlerError::Unavailable,
+                    AuthenticatedCommandHandlerError::Failed,
+                ] {
+                    with_authenticated_poll_test(|host, _, stream, _, _, peer| {
+                        let (started, receive) = std::sync::mpsc::sync_channel(1);
+                        let handler = NotificationTestHandler {
+                            started,
+                            wait_for_revoke: eof,
+                            error,
+                        };
+                        let host = host.try_clone().unwrap();
+                        let closer = std::thread::spawn(move || {
+                            receive.recv_timeout(Duration::from_secs(1)).unwrap();
+                            if eof {
+                                host.shutdown(Shutdown::Both).unwrap();
+                            }
+                            host // Keep live until handler returns in the no-EOF case.
+                        });
+                        let result = if compute {
+                            handle_compute_with_transport_liveness(
+                                stream,
+                                &handler,
+                                peer,
+                                7,
+                                ComputeRequest::Status(pb_pbmux::ComputeJobRequest {
+                                    lease_id: [0; 16],
+                                    worker_incarnation_id: [0; 16],
+                                    job_id: [0; 16],
+                                }),
+                                Instant::now(),
+                            )
+                            .map(|_| ())
+                        } else {
+                            handle_remote_buffer_with_transport_liveness(
+                                stream,
+                                &handler,
+                                peer,
+                                7,
+                                RemoteBufferRequest::Stat {
+                                    lease_id: [0; 16],
+                                    worker_incarnation_id: [0; 16],
+                                    buffer_id: [0; 16],
+                                },
+                                Instant::now(),
+                            )
+                            .map(|_| ())
+                        };
+                        let _host = closer.join().unwrap();
+                        assert_eq!(
+                            result,
+                            Err(if eof {
+                                RuntimeError::SessionLost
+                            } else {
+                                handler_runtime_error(error)
+                            })
+                        );
+                        assert_eq!(peer.is_live(), !eof);
+                    });
+                }
+            }
+        }
     }
 
     #[test]

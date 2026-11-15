@@ -1,4 +1,4 @@
-//! Readiness wait for the authenticated Linux initiator only.
+//! Readiness wait for both authenticated endpoints, including Android.
 //! Never consumes bytes, changes socket mode, or extends protocol deadlines.
 use crate::RuntimeError;
 use rustix::event::{PollFd, PollFlags, Timespec, poll};

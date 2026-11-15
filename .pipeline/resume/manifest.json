@@ -1,8 +1,8 @@
 {
-  "next_action": "Freeze instrumented legacy APK before replacing Android receive and completion waits",
+  "next_action": "Build candidate and compare baseline/candidate with Battery SaverON and profile1",
   "writer": "Codex",
-  "parent_head": "93f6446dd795ca32ebf0a40273b68e3ec7dbd09c",
-  "date": "2026-11-15T19:28:35.668620+00:00",
+  "parent_head": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
+  "date": "2026-11-15T19:40:35.456633+00:00",
   "branch": "spike/android-waits-v0-1",
   "push": "verify remote on resume",
   "physical_proof": "No new workload yet; original Samsung Battery SaverON, HealthThrottle1, memory1132MiB, budget128MiB; use profile1 identically A/B"

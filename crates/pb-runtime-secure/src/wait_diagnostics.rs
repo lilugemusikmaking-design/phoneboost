@@ -1,9 +1,7 @@
 //! Observation only: local readiness observation is NOT a kernel arrival timestamp.
 use pb_types::put_timing as trace;
-use rustix::event::{PollFd, PollFlags, Timespec, poll};
-use std::io::ErrorKind;
 use std::net::TcpStream;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 pub(crate) struct WaitTrace {
     start: Option<Instant>,
@@ -57,30 +55,4 @@ fn classify(stream: &TcpStream, immediate: bool) -> u64 {
         }
         Err(_) => trace::WAIT_CLOSED_OR_ERROR,
     }
-}
-
-/// Instrumented legacy responder: observe once, then retain the entire original
-/// quantum. Probe failures never alter the baseline's outcome or socket state.
-pub(crate) fn legacy_sleep(stream: &TcpStream, duration: Duration) {
-    let mut observation = WaitTrace::new();
-    let Some(start) = observation.start else {
-        std::thread::sleep(duration);
-        return;
-    };
-    let kind = match stream.peek(&mut [0; 2]) {
-        Err(e) if e.kind() == ErrorKind::WouldBlock => {
-            let mut fds = [PollFd::new(stream, PollFlags::IN | PollFlags::RDHUP)];
-            match Timespec::try_from(duration) {
-                Ok(timeout) => match poll(&mut fds, Some(&timeout)) {
-                    Ok(0) => trace::WAIT_TIMER,
-                    Ok(_) => classify(stream, false),
-                    Err(_) => trace::WAIT_CLOSED_OR_ERROR,
-                },
-                Err(_) => trace::WAIT_CLOSED_OR_ERROR,
-            }
-        }
-        _ => classify(stream, true),
-    };
-    observation.observed(kind);
-    std::thread::sleep(duration.saturating_sub(start.elapsed()));
 }

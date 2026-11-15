@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "branch": "spike/android-waits-v0-1",
-  "head": "93f6446dd795ca32ebf0a40273b68e3ec7dbd09c",
+  "head": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Reduce Android receive and handler completion polling with separate causal A/B proof",
-  "status": "AUDIT_COMPLETE_BASELINE_INSTRUMENTED",
+  "status": "CANDIDATE_SOFTWARE_VALIDATED",
   "report": "docs/architecture/ANDROID_WAITS_V0_1.md",
   "evidence": "docs/evidence/android-waits-v0-1.json",
   "previous_checkpoint": {
@@ -41,24 +41,45 @@
     "feat(diag): qualify Android decrypt backends with physical replay",
     "perf(android): select pinned ChaCha20 NEON after physical paired validation",
     "docs(android): close physical decrypt evidence and verify restored power state",
-    "feat(diag): observe Android wait readiness without advancing legacy wakeups"
+    "feat(diag): observe Android wait readiness without advancing legacy wakeups",
+    "perf(android): wake session receive and handler completion waits"
   ],
   "last_tests": [
     {
-      "command": "cargo test --locked --offline --release -p pb-runtime-secure -p pb-types --features pb-runtime-secure/diagnostic-timing -- --test-threads=2",
+      "log": "baseline-tests.log",
       "returncode": 0,
-      "log_sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
+      "sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
+    },
+    {
+      "log": "candidate-tests.log",
+      "returncode": 0,
+      "sha256": "847b14c1264645a5ad82f113b6719b63559969ef3eeb18e6faf6cf1ed02f19cc"
+    },
+    {
+      "log": "candidate-session-final.log",
+      "returncode": 0,
+      "sha256": "43e8a68356e2cbbe5f0dbc2e80f96e39498751f9519c1a3af0595086bf16bf8e"
+    },
+    {
+      "log": "candidate-clippy.log",
+      "returncode": 0,
+      "sha256": "6a20fe9518bd56c2a9feaf186923fe2c8e78961b51df06fd5bf2809c26926b52"
+    },
+    {
+      "log": "build-baseline.log",
+      "returncode": 0,
+      "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
     }
   ],
   "physical_proof": "No new workload yet; original Samsung Battery SaverON, HealthThrottle1, memory1132MiB, budget128MiB; use profile1 identically A/B",
-  "next_action": "Freeze instrumented legacy APK before replacing Android receive and completion waits",
+  "next_action": "Build candidate and compare baseline/candidate with Battery SaverON and profile1",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T19:28:35.667698+00:00",
-    "commit": "93f6446dd795ca32ebf0a40273b68e3ec7dbd09c",
+    "date": "2026-11-15T19:40:35.455265+00:00",
+    "commit": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {

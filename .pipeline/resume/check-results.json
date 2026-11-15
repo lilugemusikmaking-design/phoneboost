@@ -1,7 +1,27 @@
 [
   {
-    "command": "cargo test --locked --offline --release -p pb-runtime-secure -p pb-types --features pb-runtime-secure/diagnostic-timing -- --test-threads=2",
+    "log": "baseline-tests.log",
     "returncode": 0,
-    "log_sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
+    "sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
+  },
+  {
+    "log": "candidate-tests.log",
+    "returncode": 0,
+    "sha256": "847b14c1264645a5ad82f113b6719b63559969ef3eeb18e6faf6cf1ed02f19cc"
+  },
+  {
+    "log": "candidate-session-final.log",
+    "returncode": 0,
+    "sha256": "43e8a68356e2cbbe5f0dbc2e80f96e39498751f9519c1a3af0595086bf16bf8e"
+  },
+  {
+    "log": "candidate-clippy.log",
+    "returncode": 0,
+    "sha256": "6a20fe9518bd56c2a9feaf186923fe2c8e78961b51df06fd5bf2809c26926b52"
+  },
+  {
+    "log": "build-baseline.log",
+    "returncode": 0,
+    "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
   }
 ]
