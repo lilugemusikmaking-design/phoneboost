@@ -86,12 +86,21 @@ jobs:
         run: |
           python3 scripts/test_c12_timing.py --daemon target/release/phoneboostd --client target/release/phoneboostctl --reference-daemon target/debug/phoneboostd --reference-client target/debug/phoneboostctl
           PHONEBOOST_TIMING_DIAGNOSTIC=0 python3 scripts/test_c12_import_cli.py --daemon target/release/phoneboostd --client target/release/phoneboostctl
+      - name: Android decrypt build guard and independent replay fixture
+        run: |
+          python3 scripts/check_android_crypto_build.py
+          python3 scripts/test_android_crypto_build.py
+          cargo build --locked --release -p pb-runtime-secure --features decrypt-bench,diagnostic-timing --example android_decrypt_bench
+          target/release/examples/android_decrypt_bench --write-fixture /tmp/android-decrypt.fixture
+          target/release/examples/android_decrypt_bench --measure /tmp/android-decrypt.fixture > /tmp/android-decrypt-replay.jsonl
       - name: Validate recorded physical comparison (no hardware workload)
         run: |
           python3 scripts/test_compare_c12_build_timing.py
           python3 scripts/test_analyze_session_wait.py
           python3 scripts/test_analyze_put_wait.py
           python3 scripts/test_physical_campaign_power.py
+          python3 scripts/test_analyze_android_decrypt.py
+          python3 scripts/analyze_android_decrypt.py docs/evidence/android-decrypt-v0-1.json
           python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json
           python3 scripts/analyze_session_wait.py docs/evidence/session-input-wait-v0-1.json
           python3 scripts/compare_c12_build_timing.py --dev docs/evidence/c12-end-to-end-timing-v0-1.json --release docs/evidence/c12-release-vs-dev-v0-1.json

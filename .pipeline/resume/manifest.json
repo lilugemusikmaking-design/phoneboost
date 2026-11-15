@@ -1,9 +1,9 @@
 {
-  "next_action": "Build equivalent diagnostic APKs and measure paired 64 MiB C12 before retaining NEON",
+  "next_action": "Verify Battery Saver ON cleanup and await dedicated PR CI; no further workload",
   "writer": "Codex",
-  "parent_head": "5446240bedb630be93bdec4f619afee7a6b781c7",
-  "date": "2026-11-15T18:18:07.242134+00:00",
+  "parent_head": "3dcfdd32bce15c4425dce68a5c32cb731f1bb447",
+  "date": "2026-11-15T18:40:38.146783+00:00",
   "branch": "spike/android-decrypt-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization."
+  "physical_proof": "2 warmups +3 paired AB runs exact; NEON decrypt and end-to-end faster in3/3pairs; cleanup ON confirmation pending"
 }

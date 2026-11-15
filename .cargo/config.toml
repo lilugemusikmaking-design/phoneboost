@@ -1,0 +1,5 @@
+# ChaCha20 0.9.1 requires this explicit cfg to use its existing ARM64 NEON
+# backend. No cipher/protocol/CPU-affinity change. Physical proof:
+# docs/architecture/ANDROID_DECRYPT_V0_1.md
+[target.aarch64-linux-android]
+rustflags = ["--cfg", "chacha20_force_neon"]
