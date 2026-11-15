@@ -1,9 +1,9 @@
 {
-  "next_action": "Calibrer puis mesurer les PUT 64 MiB sur le m\u00eame nouvel APK diagnostique, sans optimisation.",
+  "next_action": "R\u00e9duire uniquement le co\u00fbt du d\u00e9chiffrement Noise Android, puis v\u00e9rifier le gain end-to-end par A/B sous les m\u00eames garde-fous, sans changer le protocole.",
   "writer": "Codex",
-  "parent_head": "a85364d6fec2ae60db09116b7c57a028fac381e1",
-  "date": "2026-11-15T16:59:36.575842+00:00",
+  "parent_head": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
+  "date": "2026-11-15T17:34:31.475429+00:00",
   "branch": "spike/put-wait-breakdown-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "No new physical evidence yet; historical evidence preserved."
+  "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization."
 }

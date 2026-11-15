@@ -54,6 +54,19 @@ class AnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(expected['total']['android_ms']['android_handler_completion_poll_delay'], .289)
         self.assertGreater(expected['total']['outside_android_core_ms'], 0)
 
+    def test_startup_readiness_put_is_explicitly_excluded(self):
+        host, android = fixture()
+        for row in host['rows']:
+            row[3] += 100_000
+            row[4] += 100_000
+        setup = [[READY, 999, 1, 1, 1, 1], [START, 9999, 2, 2, 2, 999],
+                 [AWAKE, 999, 1, 3, 3, 1]]
+        host['rows'] += setup
+        result = analyze(host, android)
+        self.assertEqual(result['excluded_host_setup_puts'], [{'bytes': 1, 'caller_ms': .000002}])
+        setup[-1][3] = setup[-1][4] = 1_000_000_000
+        with self.assertRaises(AssertionError): analyze(host, android)
+
     def test_missing_fragment_and_failed_response_rejected(self):
         host, android = fixture()
         android['rows'].remove(next(r for r in android['rows'] if r[0] == RX))

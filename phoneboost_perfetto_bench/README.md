@@ -45,3 +45,11 @@ Raw traces are private local artifacts, never blanket-added to Git.
 
 Expected columns:
 `profile,configured_threads,observed_compute_threads,cpus_used,max_simultaneous_running,time_ge_2_threads_ms,time_ge_3_threads_ms,time_ge_4_threads_ms,cpu_time_ms,migration_count`
+
+Battery Saver is now handled by `run_campaign.sh` through the development-only
+[`physical_campaign_power.py`](../scripts/physical_campaign_power.py) wrapper.
+Keep the experimental Health service active until restoration completes. The
+private journal defaults to `${OUT_DIR}.power-state.json` (override `PB_POWER_STATE`).
+No trace/workload starts before fresh Health confirms powerSave=false. See
+[power lifecycle and restoration](../docs/testing/PHYSICAL_CAMPAIGN_POWER.md).
+An OEM-ignored ADB command fails closed; it is not treated as a successful toggle.

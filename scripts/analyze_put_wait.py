@@ -56,11 +56,23 @@ def stats(values):
 
 def analyze(host, android):
     h, a = check_trace(host), check_trace(android)
-    starts = select(h, START)
+    # Host trace begins at daemon startup; Android is reset at the job boundary.
+    # Join the complete Android PUT set, and account for any earlier 1-byte
+    # readiness probe explicitly. Never discard an unmatched in-job request.
+    android_keys = {r[1] for r in select(a, REASSEMBLED)}
+    all_starts = select(h, START)
+    starts = [r for r in all_starts if r[1] in android_keys]
     assert len(starts) == 17, "requires exactly 17 observed logical PUTs"
     keys = [r[1] for r in starts]
     assert len(set(keys)) == 17 and 0 not in keys, "ambiguous request pseudonym"
     assert set(r[1] for r in select(a, REASSEMBLED)) == set(keys)
+    first_ready = min(one(h, READY, r[5])[3] for r in starts)
+    setup = []
+    for r in all_starts:
+        if r[1] in android_keys: continue
+        ready, awake = one(h, READY, r[5]), one(h, AWAKE, r[5])
+        assert ready[5] == 1 and awake[3] < first_ready, "unmatched in-job PUT"
+        setup.append(dict(bytes=ready[5], caller_ms=duration(ready[3], awake[3])))
     puts = []
     previous_android_sent = None
     for ordinal, start in enumerate(starts, 1):
@@ -95,8 +107,12 @@ def analyze(host, android):
             host_frame_encode=hs("FrameEncode"),
             host_wait_after_send=duration(sent[3], rx[0][3]),
             host_response_processing=duration(rx[0][3], notify[3]),
+            host_response_read=hs("WireReadPrefix", rx[0][3], notify[3]) + hs("WireReadBody", rx[0][3], notify[3]),
+            host_response_decrypt=hs("Decrypt", rx[0][3], notify[3]),
             host_queue_after_response=duration(notify[3], awake[3]),
             host_session_poll=clipped(h, P["SessionPoll"], ht, ready[3], awake[3]),
+            host_poll_while_queued=clipped(h, P["SessionPoll"], ht, enqueue[3], start[3]),
+            host_poll_waiting_response=clipped(h, P["SessionPoll"], ht, sent[3], rx[0][3]),
         )
         host_ms["host_send_other"] = host_ms["host_send_window"] - sum(host_ms[k] for k in ("host_crypto", "host_socket_write", "host_frame_encode"))
         assert host_ms["host_send_other"] >= -0.01
@@ -144,7 +160,7 @@ def analyze(host, android):
                     for name in puts[0][side]} for side in ("host_ms", "android_ms")}
     for key in ("android_core_ms", "host_send_to_response_ms", "outside_android_core_ms"):
         total[key] = sum(p[key] for p in puts)
-    return dict(puts=puts, total=total, distribution_ms={
+    return dict(puts=puts, total=total, excluded_host_setup_puts=setup, distribution_ms={
         name: stats([p[side][name] for p in puts]) for side, name in [
             ("host_ms", "caller_total"), ("host_ms", "host_queue_before_send"),
             ("host_ms", "host_wait_after_send"), ("android_ms", "android_decrypt"),

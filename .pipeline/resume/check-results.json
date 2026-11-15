@@ -40,5 +40,120 @@
     "returncode": 0,
     "scope": "3 deterministic causal analysis tests",
     "recorded_utc": "2026-11-15T16:59:36.475609+00:00"
+  },
+  {
+    "log": "product-check.log",
+    "log_sha256": "98756e0ca0a3464a26a1479cb252da8b01d595f83a9d0a7c61faf98d7a49d771",
+    "returncode": 0,
+    "scope": "Host/CLI/runtime compile without diagnostic features"
+  },
+  {
+    "log": "analysis-tests-final.log",
+    "log_sha256": "32317174e654bdeaf5a163e9410f242d7b0e7f66775c9056680a9848eed72eb4",
+    "returncode": 0,
+    "scope": "4 causal attribution and loss/window rejection tests",
+    "recorded_utc": "2026-11-15T17:30:11.341789+00:00"
+  },
+  {
+    "log": "power-tests.log",
+    "log_sha256": "bc8e6cb14ecaa458caee4f3b488fa22e61ccf9bcc2a1353da3ad3f85e41c89e1",
+    "returncode": 0,
+    "scope": "7 Battery Saver lifecycle/unknown/interruption/recovery/device/journal tests",
+    "recorded_utc": "2026-11-15T17:30:11.341868+00:00"
+  },
+  {
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+    "returncode": 0,
+    "scope": "Recompute all 4 physical traces; exact remote results, Health and cleanup",
+    "recorded_utc": "2026-11-15T17:30:11.341917+00:00"
+  },
+  {
+    "log": "historical-proof.log",
+    "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad",
+    "returncode": 0,
+    "scope": "PR34 historical evidence remains valid",
+    "recorded_utc": "2026-11-15T17:30:11.341987+00:00"
+  },
+  {
+    "command": "physical_campaign_power.py (Samsung witness)",
+    "returncode": 2,
+    "scope": "Expected refusal: cmd power set-mode 0 ignored by OEM; no witness ran; initial ON confirmed in finally",
+    "evidence": "docs/evidence/put-wait-breakdown-v0-1.json#cleanup.power_tool_smoke"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/test_physical_campaign_power.py"
+    ],
+    "returncode": 0,
+    "log": "power-tests-final.log",
+    "log_sha256": "77ecdaf76b0a4f9f157b08dc741287943417847cdfae17660c5fea600de76490"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/test_analyze_put_wait.py"
+    ],
+    "returncode": 0,
+    "log": "analysis-tests-final.log",
+    "log_sha256": "eff869ac89b95c042aef4e872a58d7a7f0ad454c94b3960cc42c950a4e93660e"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/validate_put_wait_evidence.py",
+      "docs/evidence/put-wait-breakdown-v0-1.json"
+    ],
+    "returncode": 0,
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "returncode": 0,
+    "log": "final-diff.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
+      ".github/workflows/pipeline.yml"
+    ],
+    "returncode": 0,
+    "log": "final-actionlint.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "bash",
+      "-n",
+      "phoneboost_perfetto_bench/run_campaign.sh",
+      "phoneboost_perfetto_bench/capture_profile.sh"
+    ],
+    "returncode": 0,
+    "log": "final-shell-syntax.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": "gitleaks dir <decompressed numeric public traces> --redact --no-banner",
+    "returncode": 0,
+    "log": "gitleaks-raw.log"
+  },
+  {
+    "command": "gitleaks dir docs/evidence/put-wait-v0-1 --redact --no-banner",
+    "returncode": 0,
+    "scope": "Final uncompressed numeric JSON traces"
+  },
+  {
+    "command": "python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json",
+    "returncode": 0,
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+    "scope": "Final JSON format/source list; all four raw traces recomputed"
   }
 ]

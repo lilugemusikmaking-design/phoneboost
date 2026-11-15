@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "branch": "spike/put-wait-breakdown-v0-1",
-  "head": "a85364d6fec2ae60db09116b7c57a028fac381e1",
+  "head": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Diagnostic-only per-PUT host/Android wait decomposition",
-  "status": "PUT_WAIT_SOFTWARE_VALIDATED",
+  "status": "PUT_WAIT_PHYSICALLY_DECOMPOSED",
   "report": "docs/architecture/PUT_WAIT_BREAKDOWN_V0_1.md",
-  "evidence": null,
+  "evidence": "docs/evidence/put-wait-breakdown-v0-1.json",
   "previous_checkpoint": {
     "commit": "a85364d6fec2ae60db09116b7c57a028fac381e1",
     "merged_pr": 34,
@@ -37,7 +37,8 @@
     "feat(diag): measure C12 end-to-end timing without behavior changes",
     "docs(diag): qualify standard release host with physical ABAB evidence",
     "perf(session): wake host input waits on socket readiness",
-    "feat(diag): correlate local PUT wait stages without protocol changes"
+    "feat(diag): correlate local PUT wait stages without protocol changes",
+    "docs(diag): publish PUT wait breakdown and reversible campaign power guard"
   ],
   "last_tests": [
     {
@@ -81,17 +82,132 @@
       "returncode": 0,
       "scope": "3 deterministic causal analysis tests",
       "recorded_utc": "2026-11-15T16:59:36.475609+00:00"
+    },
+    {
+      "log": "product-check.log",
+      "log_sha256": "98756e0ca0a3464a26a1479cb252da8b01d595f83a9d0a7c61faf98d7a49d771",
+      "returncode": 0,
+      "scope": "Host/CLI/runtime compile without diagnostic features"
+    },
+    {
+      "log": "analysis-tests-final.log",
+      "log_sha256": "32317174e654bdeaf5a163e9410f242d7b0e7f66775c9056680a9848eed72eb4",
+      "returncode": 0,
+      "scope": "4 causal attribution and loss/window rejection tests",
+      "recorded_utc": "2026-11-15T17:30:11.341789+00:00"
+    },
+    {
+      "log": "power-tests.log",
+      "log_sha256": "bc8e6cb14ecaa458caee4f3b488fa22e61ccf9bcc2a1353da3ad3f85e41c89e1",
+      "returncode": 0,
+      "scope": "7 Battery Saver lifecycle/unknown/interruption/recovery/device/journal tests",
+      "recorded_utc": "2026-11-15T17:30:11.341868+00:00"
+    },
+    {
+      "log": "evidence-validation.log",
+      "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+      "returncode": 0,
+      "scope": "Recompute all 4 physical traces; exact remote results, Health and cleanup",
+      "recorded_utc": "2026-11-15T17:30:11.341917+00:00"
+    },
+    {
+      "log": "historical-proof.log",
+      "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad",
+      "returncode": 0,
+      "scope": "PR34 historical evidence remains valid",
+      "recorded_utc": "2026-11-15T17:30:11.341987+00:00"
+    },
+    {
+      "command": "physical_campaign_power.py (Samsung witness)",
+      "returncode": 2,
+      "scope": "Expected refusal: cmd power set-mode 0 ignored by OEM; no witness ran; initial ON confirmed in finally",
+      "evidence": "docs/evidence/put-wait-breakdown-v0-1.json#cleanup.power_tool_smoke"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test_physical_campaign_power.py"
+      ],
+      "returncode": 0,
+      "log": "power-tests-final.log",
+      "log_sha256": "77ecdaf76b0a4f9f157b08dc741287943417847cdfae17660c5fea600de76490"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test_analyze_put_wait.py"
+      ],
+      "returncode": 0,
+      "log": "analysis-tests-final.log",
+      "log_sha256": "eff869ac89b95c042aef4e872a58d7a7f0ad454c94b3960cc42c950a4e93660e"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/validate_put_wait_evidence.py",
+        "docs/evidence/put-wait-breakdown-v0-1.json"
+      ],
+      "returncode": 0,
+      "log": "evidence-validation.log",
+      "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "log": "final-diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
+        ".github/workflows/pipeline.yml"
+      ],
+      "returncode": 0,
+      "log": "final-actionlint.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "bash",
+        "-n",
+        "phoneboost_perfetto_bench/run_campaign.sh",
+        "phoneboost_perfetto_bench/capture_profile.sh"
+      ],
+      "returncode": 0,
+      "log": "final-shell-syntax.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "gitleaks dir <decompressed numeric public traces> --redact --no-banner",
+      "returncode": 0,
+      "log": "gitleaks-raw.log"
+    },
+    {
+      "command": "gitleaks dir docs/evidence/put-wait-v0-1 --redact --no-banner",
+      "returncode": 0,
+      "scope": "Final uncompressed numeric JSON traces"
+    },
+    {
+      "command": "python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json",
+      "returncode": 0,
+      "log": "evidence-validation.log",
+      "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+      "scope": "Final JSON format/source list; all four raw traces recomputed"
     }
   ],
-  "physical_proof": "No new physical evidence yet; historical evidence preserved.",
-  "next_action": "Calibrer puis mesurer les PUT 64 MiB sur le m\u00eame nouvel APK diagnostique, sans optimisation.",
+  "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization.",
+  "next_action": "R\u00e9duire uniquement le co\u00fbt du d\u00e9chiffrement Noise Android, puis v\u00e9rifier le gain end-to-end par A/B sous les m\u00eames garde-fous, sans changer le protocole.",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T16:59:36.574941+00:00",
-    "commit": "a85364d6fec2ae60db09116b7c57a028fac381e1",
+    "date": "2026-11-15T17:34:31.474277+00:00",
+    "commit": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -168,9 +284,33 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "verified_utc": "2026-11-15T14:17:05.350882+00:00",
+    "verified_utc": "2026-11-15T17:16:04.288020+00:00",
     "battery_saver_initial": true,
     "battery_saver_restored": true,
+    "health_verification": {
+      "observed_boottime_ms": 1136294590,
+      "effective_sample_age_ms": 1241,
+      "sample": {
+        "count": "471",
+        "at_ms": "1136293355",
+        "sample_worker_ms": "943883",
+        "age_ms": "6",
+        "result": "0",
+        "safety": "1",
+        "thermal": "0",
+        "battery": "0",
+        "charging": "true",
+        "power_save": "true",
+        "low_memory": "false",
+        "memory_mib": "1031",
+        "memory_bytes": "1081237504",
+        "total_memory_bytes": "3848155136",
+        "thermal_code": "0",
+        "battery_pct": "100",
+        "budget_bytes": "134217728"
+      },
+      "ready": false
+    },
     "timing_collection": false,
     "experimental_profile": 1,
     "product_unchanged": true,
@@ -178,14 +318,43 @@
     "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "evidence": "docs/evidence/session-input-wait-v0-1.json#cleanup"
+    "apk_sha256": {
+      "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "org.phoneboost.app.multicore": "efc70d8adb6e00302ae6ca8edfd5f6fee69f4466d30cad08f6c3b59c09791a6e"
+    },
+    "post_power_tool_verified_utc": "2026-11-15T17:23:43.262586+00:00",
+    "power_tool_smoke": {
+      "schema": 1,
+      "initial_power_save": true,
+      "stage": "RESTORED",
+      "created_utc": "2026-11-15T17:22:08.052685+00:00",
+      "updated_utc": "2026-11-15T17:22:39.787073+00:00",
+      "campaign_error_type": "PowerError",
+      "campaign_error": "Battery Saver confirmation failed: Health/system do not yet confirm expected powerSave",
+      "restored_health": {
+        "power_save": true,
+        "at_ms": 1136689667,
+        "age_ms": 653
+      },
+      "restoration_verified": true,
+      "exit_code": 2,
+      "command_reached": false,
+      "adb_command_ineffective": true
+    }
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
   "previous_comparison_evidence": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
   "diagnostic": {
     "base_master": "a85364d6fec2ae60db09116b7c57a028fac381e1",
-    "status": "IN_PROGRESS",
-    "physical_measurements": "not run for this diagnostic"
+    "status": "MEASURED",
+    "physical_measurements": "1 calibration +3 guarded valid runs; same new APK; all traces complete",
+    "report": "docs/architecture/PUT_WAIT_BREAKDOWN_V0_1.md",
+    "evidence": "docs/evidence/put-wait-breakdown-v0-1.json"
+  },
+  "power_campaign_tool": {
+    "path": "scripts/physical_campaign_power.py",
+    "status": "DETERMINISTIC_TESTS_PASS_PHYSICAL_OEM_REFUSAL",
+    "physical": "Samsung cmd power set-mode 0 ineffective; witness refused, initial ON verified; no product change"
   }
 }
