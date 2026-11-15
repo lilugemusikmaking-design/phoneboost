@@ -1,17 +1,15 @@
 {
   "schema_version": 1,
-  "branch": "spike/android-decrypt-v0-1",
-  "head": "a5f01532f19bc7fd7bdd7bd0731141c1e8efabc6",
+  "branch": "spike/android-waits-v0-1",
+  "head": "572dc0e0430df6cff6733cd1c6799d422da5f25b",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
-  "task": "Qualify current Android decrypt backend and only retain a safe physical A/B improvement",
-  "status": "ANDROID_NEON_PHYSICALLY_VALIDATED",
-  "report": "docs/architecture/ANDROID_DECRYPT_V0_1.md",
-  "evidence": "docs/evidence/android-decrypt-v0-1.json",
+  "task": "Reduce Android receive and handler completion polling with separate causal A/B proof",
+  "status": "PHYSICAL_AB_VALIDATED_CI_PENDING",
+  "report": "docs/architecture/ANDROID_WAITS_V0_1.md",
+  "evidence": "docs/evidence/android-waits-v0-1.json",
   "previous_checkpoint": {
-    "commit": "5f9aa25747eb8c5d1c336c4693f25b1295b2db83",
-    "merged_pr": 35,
-    "merge_commit": "5446240bedb630be93bdec4f619afee7a6b781c7",
-    "report": "docs/architecture/PUT_WAIT_BREAKDOWN_V0_1.md"
+    "merged_pr": 36,
+    "merge_commit": "93f6446dd795ca32ebf0a40273b68e3ec7dbd09c"
   },
   "historical_source": {
     "branch": "spike/guarded-cpu-allocation-v0-1",
@@ -42,94 +40,87 @@
     "docs(diag): publish PUT wait breakdown and reversible campaign power guard",
     "feat(diag): qualify Android decrypt backends with physical replay",
     "perf(android): select pinned ChaCha20 NEON after physical paired validation",
-    "docs(android): close physical decrypt evidence and verify restored power state"
+    "docs(android): close physical decrypt evidence and verify restored power state",
+    "feat(diag): observe Android wait readiness without advancing legacy wakeups",
+    "perf(android): wake session receive and handler completion waits",
+    "docs(android): qualify paired receive and completion wakeups"
   ],
   "last_tests": [
     {
-      "log": "security-tests.log",
-      "log_sha256": "c0c58293615e3e60a9dd87e56d81e90fc356516f424c88ec27d6d90053248dce",
+      "log": "baseline-tests.log",
       "returncode": 0,
-      "scope": "Release runtime+security:31+6 tests and4 doctests"
+      "sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
     },
     {
-      "log": "bench-clippy.log",
-      "log_sha256": "6fd0130e5832ee9f59569aa71ea6aa0212523723dad73d8bb1c2b3bd11771ac3",
-      "returncode": 101,
-      "scope": "Extra strict -D warnings: pre-existing collapsible_if in unchanged pb-types"
-    },
-    {
-      "log": "bench-clippy-project-policy.log",
-      "log_sha256": "59b379bc940117157f1a5a0a4422b170f2b6b5377d471a294641745ef6d15b41",
+      "log": "candidate-tests.log",
       "returncode": 0,
-      "scope": "Clippy with repository/CI policy"
+      "sha256": "847b14c1264645a5ad82f113b6719b63559969ef3eeb18e6faf6cf1ed02f19cc"
     },
     {
-      "log": "build-apk-baseline.log",
-      "log_sha256": "d8f73a42e5773092024bf07b05d12e2957413646a5dcfbcad0b38ccb10527675",
+      "log": "candidate-session-final.log",
       "returncode": 0,
-      "scope": "Baseline native release + APK assemble/lint"
+      "sha256": "43e8a68356e2cbbe5f0dbc2e80f96e39498751f9519c1a3af0595086bf16bf8e"
     },
     {
-      "log": "build-apk-neon.log",
-      "log_sha256": "9aa30064c828a87b34127f85460db308e937a1aced910a3de6c859816a10c1c8",
+      "log": "candidate-clippy.log",
       "returncode": 0,
-      "scope": "NEON native release + APK assemble/lint"
+      "sha256": "6a20fe9518bd56c2a9feaf186923fe2c8e78961b51df06fd5bf2809c26926b52"
     },
     {
-      "log": "build-configured-apk.log",
-      "log_sha256": "20c10f42d130e3d6e1bc979b0961f778c2a1c965a7edfc0025dbc0d888ad6dbc",
+      "log": "build-baseline.log",
       "returncode": 0,
-      "scope": "Committed config build exactly matches measured candidate APK SHA"
+      "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
     },
     {
-      "log": "product-android-validation.log",
-      "log_sha256": "8deb8a4c0dc346ac4deaea670049a1e474a8dbeab087cfa2e833a106422cc87c",
+      "log": "build-candidate.log",
       "returncode": 0,
-      "scope": "Full product Android packaging + Kotlin/JNI health/lease/pairing tests + lint; not installed"
+      "sha256": "20c2371ec15bf7c23866c687ef913e2fd517ba3cec5df5db57f2c5ca625e18e8"
     },
     {
-      "log": "pipeline-fast.log",
-      "log_sha256": "9bb125d038878aa51e09ffd25e9a01b3c5e6b216028a390780081375b81a9e1e",
+      "log": "final-analysis.log",
       "returncode": 0,
-      "scope": "22 repository tests + diff check + actionlint, actually run with shared Git lock access"
+      "sha256": "608cb6ed177fa84acf4c09414be88c21f223cd2b14e512a1635b97f83e38cd20"
     },
     {
-      "command": "python3 scripts/test_android_crypto_build.py",
+      "log": "historical-decrypt-validation.log",
       "returncode": 0,
-      "scope": "4 build guard tests; env/config merges, empty flags, shadowed config, missing NEON",
-      "log_sha256": "84ff24306afcf5e19892adf32493aa9bc9dbc8db16870c6155e8e03c23864a33"
+      "sha256": "78de871a0ebaf22020d2f2e9f0d3cf9f4cfde0a42de5701abdf4b4546da5a5c5"
     },
     {
-      "command": "python3 scripts/test_analyze_android_decrypt.py",
+      "log": "historical-put-validation.log",
       "returncode": 0,
-      "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
-      "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
+      "sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
     },
     {
-      "command": "cargo fmt --all -- --check; git diff --check",
-      "returncode": 0
-    },
-    {
-      "log": "pipeline-fast-sandbox-unavailable.log",
-      "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
-      "returncode": 1,
-      "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
-    },
-    {
-      "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
+      "log": "historical-session-validation.log",
       "returncode": 0,
-      "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
+      "sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
+    },
+    {
+      "log": "historical-c12-validation.log",
+      "returncode": 0,
+      "sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
+    },
+    {
+      "log": "analyzer-tests.log",
+      "returncode": 0,
+      "sha256": "63fae94ebda308ca88c373b47f361d0a74f201cfad14766ccc34293adfa70cf4"
+    },
+    {
+      "log": "actionlint.log",
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
-  "physical_proof": "Microbenchmark ABAB + 2warmups/3paired app runs exact;3/3 decrypt and end-to-end favorable; Health nominal. Cleanup verified: SaverON, profile1, timingOFF, isolated app/host stopped, product intact.",
-  "next_action": "Await PR36 final checks, then address only measured Android polling residual; no further workload now",
+  "physical_proof": "2 warmups +3 alternating pairs; all REMOTE_SUCCESS/exact; paired median gain11.80%,2/3 favorable; BatterySaverON/profile1 unchanged",
+  "next_action": "Quantify socket-wait, scheduling and local-read contributions inside Android WireReadBody (~726 ms), before selecting one reception optimization",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T18:48:34.515779+00:00",
-    "commit": "a5f01532f19bc7fd7bdd7bd0731141c1e8efabc6",
+    "date": "2026-11-15T19:59:23.662403+00:00",
+    "commit": "572dc0e0430df6cff6733cd1c6799d422da5f25b",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -206,63 +197,22 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "verified_utc": "2026-11-15T17:16:04.288020+00:00",
-    "battery_saver_initial": true,
+    "verified_utc": "2026-11-15T19:53:44.851342+00:00",
+    "initial_battery_saver": true,
     "battery_saver_restored": true,
-    "health_verification": {
-      "observed_boottime_ms": 1136294590,
-      "effective_sample_age_ms": 1241,
-      "sample": {
-        "count": "471",
-        "at_ms": "1136293355",
-        "sample_worker_ms": "943883",
-        "age_ms": "6",
-        "result": "0",
-        "safety": "1",
-        "thermal": "0",
-        "battery": "0",
-        "charging": "true",
-        "power_save": "true",
-        "low_memory": "false",
-        "memory_mib": "1031",
-        "memory_bytes": "1081237504",
-        "total_memory_bytes": "3848155136",
-        "thermal_code": "0",
-        "battery_pct": "100",
-        "budget_bytes": "134217728"
-      },
-      "ready": false
+    "power_mode_command_sent": false,
+    "restored_health": {
+      "power_save": true,
+      "at_ms": 1145752937,
+      "age_ms": 1953
     },
-    "timing_collection": false,
     "experimental_profile": 1,
-    "product_unchanged": true,
+    "timing_enabled": false,
     "experimental_app_stopped": true,
-    "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "apk_sha256": {
-      "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
-      "org.phoneboost.app.multicore": "efc70d8adb6e00302ae6ca8edfd5f6fee69f4466d30cad08f6c3b59c09791a6e"
-    },
-    "post_power_tool_verified_utc": "2026-11-15T17:23:43.262586+00:00",
-    "power_tool_smoke": {
-      "schema": 1,
-      "initial_power_save": true,
-      "stage": "RESTORED",
-      "created_utc": "2026-11-15T17:22:08.052685+00:00",
-      "updated_utc": "2026-11-15T17:22:39.787073+00:00",
-      "campaign_error_type": "PowerError",
-      "campaign_error": "Battery Saver confirmation failed: Health/system do not yet confirm expected powerSave",
-      "restored_health": {
-        "power_save": true,
-        "at_ms": 1136689667,
-        "age_ms": 653
-      },
-      "restoration_verified": true,
-      "exit_code": 2,
-      "command_reached": false,
-      "adb_command_ineffective": true
-    }
+    "product_unchanged": true,
+    "product_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a"
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
@@ -279,9 +229,13 @@
     "status": "DETERMINISTIC_TESTS_PASS_PHYSICAL_OEM_REFUSAL",
     "physical": "Samsung cmd power set-mode 0 ineffective; witness refused, initial ON verified; no product change"
   },
-  "pull_request": {
-    "number": 36,
-    "draft": true,
-    "merged": false
-  }
+  "physical_comparison": {
+    "evidence": "docs/evidence/android-waits-v0-1.json",
+    "paired_median_gain_pct": 11.804433069982768,
+    "favorable_pairs": 2,
+    "total_pairs": 3,
+    "scope": "combined two-wait change, no factorial attribution",
+    "retained_for_review": true
+  },
+  "review": "Independent read-only path, completion and final evidence reviews: no blocking finding; final analyzer reexecuted from 16 hash-checked traces"
 }

@@ -1,14 +1,11 @@
-# Android decrypt v0.1 — closed measurement
+# Android waits physical checkpoint
 
-- Branch: spike/android-decrypt-v0-1. Base master:5446240bedb630be93bdec4f619afee7a6b781c7 (#35 merged with merge commit).
-- PR36 draft, no auto-merge. Source/proof checkpoint a5f01532; final checkpoint contains cleanup.
-- Isolated ABAB:279.765→213.768ms; same independent fixture, exact plaintext, tamper/replay rejected.
-- App:2warmups+3pairs; all REMOTE_SUCCESS64MiB/exact digest/nominal Health; unchanged ResourceGuard.
-- Aggregate decrypt667.408→570.166ms, process E2E3402.680→3293.384ms;3/3 pairs favorable; CPU Android1190→1070ms.
-- Standard target-scoped ChaCha20 NEON cfg; Snow/dependencies/protocol/PBMUX/polling/timeouts/CPU policy unchanged.
-- Product Android pipeline, tests, APK lints, build guard/evidence tests, project-policy Clippy,22 pipeline tests/actionlint and Gitleaks passed. Extra strict Clippy failure was pre-existing and kept in evidence.
-- Cleanup VERIFIED: initial SaverON restored manually after explicit OEM-command failure; Health power_save=true age2367ms; profile1/timingOFF; isolated app/owned host/ADB forward stopped; product APK unchanged. No further workload.
-- Private durable archive:/var/tmp/phoneboost-android-decrypt-v0-1-evidence-20261115-3dcfdd3 (private logs/APKs; never publish wholesale).
-- Historical worktrees/branches preserved; no stash or cleanup of historical work.
-- Remaining this mission: await final PR36 CI/CodeQL and report.
-- NEXT_ACTION after this task: traiter le polling Android résiduel mesuré (~634ms réception + retour handler), sans modifier la crypto ni le protocole. Do not start now.
+Branch `spike/android-waits-v0-1`, base master `93f6446dd795ca32ebf0a40273b68e3ec7dbd09c` after merge commit #36. One writer; historical branches/worktrees intact.
+
+Software and physical A/B complete. Baseline source a80f66a; candidate binary source572dc0e. Two warmups + three alternating pairs, all exact REMOTE_SUCCESS. End-to-end paired median gain11.80%,2/3 favorable; unfavorablepair retained. Both runs use Battery SaverON/profile1 under unchanged ResourceGuard. Combined two-wait change retained for review, not factorial attribution.
+
+Report `docs/architecture/ANDROID_WAITS_V0_1.md`; public numeric evidence `docs/evidence/android-waits-v0-1.json`. Private campaign `/tmp/phoneboost-android-waits-20261115` contains credentials and MUST NOT be published. No more physical workloads. Cleanup verified: SaverON unchanged, profile1, diagnosticsOFF, experimentalapp stopped, ownedhost/forward removed, product APK unchanged.
+
+Actual checks: runtime36+4doc, worker60+2doc, Clippy, both APK builds/lint, sixnewanalyzer tests, existing timing/power/evidencevalidators, fmt/actionlint. Publish evidence via project-pipeline/Gitleaks, open dedicated draft PR, wait CI/CodeQL. Do not auto-merge. No crypto/protocol/threshold/timeouts/C13/RAM/GPU/NPU/affinity change.
+
+NEXT_ACTION = Quantify socket-wait, scheduling and local-read contributions inside Android WireReadBody (~726 ms), before selecting one reception optimization.

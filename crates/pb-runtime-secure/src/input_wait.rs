@@ -1,4 +1,4 @@
-//! Readiness wait for the authenticated Linux initiator only.
+//! Readiness wait for both authenticated endpoints, including Android.
 //! Never consumes bytes, changes socket mode, or extends protocol deadlines.
 use crate::RuntimeError;
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
@@ -14,11 +14,17 @@ pub(crate) enum Wake {
 }
 
 pub(crate) fn wait(stream: &TcpStream, timeout: Duration) -> Result<Wake, RuntimeError> {
+    #[cfg(feature = "diagnostic-timing")]
+    let mut observation = crate::wait_diagnostics::WaitTrace::new();
     // A single queued prefix byte is readable to poll, but cannot be consumed
     // by the existing record reader. Retain its old bounded sleep to avoid spin.
     let mut prefix = [0; 2];
     match stream.peek(&mut prefix) {
-        Ok(0) => return Err(RuntimeError::SessionLost),
+        Ok(0) => {
+            #[cfg(feature = "diagnostic-timing")]
+            observation.observed(pb_types::put_timing::WAIT_CLOSED_OR_ERROR);
+            return Err(RuntimeError::SessionLost);
+        }
         Ok(1) => {
             // A FIN behind an incomplete prefix cannot be consumed by the
             // record reader. Detect it without spinning or waiting for liveness.
@@ -35,11 +41,15 @@ pub(crate) fn wait(stream: &TcpStream, timeout: Duration) -> Result<Wake, Runtim
                 Ok(_) | Err(rustix::io::Errno::INTR) => {}
                 Err(_) => return Err(RuntimeError::SessionLost),
             }
+            #[cfg(feature = "diagnostic-timing")]
+            observation.observed(pb_types::put_timing::WAIT_PARTIAL);
             std::thread::sleep(timeout);
             pb_types::timed!(SessionPartialWait, 0, ());
             return Ok(Wake::PartialPrefix);
         }
         Ok(_) => {
+            #[cfg(feature = "diagnostic-timing")]
+            observation.observed(pb_types::put_timing::WAIT_ALREADY_READABLE);
             pb_types::timed!(SessionReadableWake, 0, ());
             return Ok(Wake::Readable);
         }
@@ -64,6 +74,8 @@ pub(crate) fn wait(stream: &TcpStream, timeout: Duration) -> Result<Wake, Runtim
         }
         Err(_) => return Err(RuntimeError::SessionLost),
     };
+    #[cfg(feature = "diagnostic-timing")]
+    observation.after_poll(stream, wake == Wake::Timeout);
     match wake {
         Wake::Readable => pb_types::timed!(SessionReadableWake, 0, ()),
         Wake::Timeout => pb_types::timed!(SessionTimeoutWake, 0, ()),

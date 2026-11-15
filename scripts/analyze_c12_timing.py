@@ -19,7 +19,14 @@ SESSION_PHASES = ('RequestBuild', 'FrameEncode', 'Encrypt', 'WireWrite',
                   'Reassembly', 'SessionPoll')
 
 
-def validate(run, *, warmup_control_tail=0, separate_control_windows=False):
+def validate(run, *, warmup_control_tail=0, separate_control_windows=False,
+             expected_threads=2, expected_power_save=False):
+    assert expected_threads in (1, 2)
+    assert type(expected_power_save) is bool
+    # Existing ResourceGuard permits only the single-thread profile in power-save
+    # Throttle. Old evidence remains strict (defaults: profile2, power-save OFF).
+    assert not expected_power_save or expected_threads == 1
+    expected_safety = int(expected_power_save)
     assert run['valid'] and run['returncode'] == 0 and run['digest_exact']
     assert run['execution_source'] == 'REMOTE_SUCCESS' and run['input_bytes'] == 64 * 2**20
     metrics = run['metrics']
@@ -80,16 +87,17 @@ def validate(run, *, warmup_control_tail=0, separate_control_windows=False):
     assert run['cli_process_ms'] * 1e6 >= cli['CliTotal']['ns']
     native = run['native']
     assert native['coherent'] and native['outcome'] == native['refusal'] == 0
-    assert native['configured_threads'] == native['executed_threads'] == 2
+    assert native['configured_threads'] == native['executed_threads'] == expected_threads
     assert native['input_bytes'] == run['input_bytes']
-    assert native['safety_before'] == native['safety_after'] == native['power_save'] == 0
+    assert native['safety_before'] == native['safety_after'] == expected_safety
+    assert native['power_save'] == int(expected_power_save)
     assert 0 <= native['age_before_ms'] <= native['age_after_ms'] <= 6000
     for point in ('before', 'after'):
         assert run['health'][point]['ready']
         assert 0 <= run['health'][point]['effective_sample_age_ms'] <= 6000
     samples = run['health']['samples_during']
-    assert samples and all(r['result'] == r['safety'] == r['thermal'] == '0'
-                           and r['low_memory'] == r['power_save'] == 'false'
+    assert samples and all(r['result'] == r['thermal'] == '0' and r['safety'] == str(expected_safety)
+                           and r['low_memory'] == 'false' and r['power_save'] == str(expected_power_save).lower()
                            and int(r['budget_bytes']) >= 72 * 2**20 for r in samples)
     assert all(0 < int(b['at_ms'])-int(a['at_ms']) <= 6000 for a,b in zip(samples,samples[1:]))
 

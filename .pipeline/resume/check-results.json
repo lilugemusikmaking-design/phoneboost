@@ -1,77 +1,67 @@
 [
   {
-    "log": "security-tests.log",
-    "log_sha256": "c0c58293615e3e60a9dd87e56d81e90fc356516f424c88ec27d6d90053248dce",
+    "log": "baseline-tests.log",
     "returncode": 0,
-    "scope": "Release runtime+security:31+6 tests and4 doctests"
+    "sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
   },
   {
-    "log": "bench-clippy.log",
-    "log_sha256": "6fd0130e5832ee9f59569aa71ea6aa0212523723dad73d8bb1c2b3bd11771ac3",
-    "returncode": 101,
-    "scope": "Extra strict -D warnings: pre-existing collapsible_if in unchanged pb-types"
-  },
-  {
-    "log": "bench-clippy-project-policy.log",
-    "log_sha256": "59b379bc940117157f1a5a0a4422b170f2b6b5377d471a294641745ef6d15b41",
+    "log": "candidate-tests.log",
     "returncode": 0,
-    "scope": "Clippy with repository/CI policy"
+    "sha256": "847b14c1264645a5ad82f113b6719b63559969ef3eeb18e6faf6cf1ed02f19cc"
   },
   {
-    "log": "build-apk-baseline.log",
-    "log_sha256": "d8f73a42e5773092024bf07b05d12e2957413646a5dcfbcad0b38ccb10527675",
+    "log": "candidate-session-final.log",
     "returncode": 0,
-    "scope": "Baseline native release + APK assemble/lint"
+    "sha256": "43e8a68356e2cbbe5f0dbc2e80f96e39498751f9519c1a3af0595086bf16bf8e"
   },
   {
-    "log": "build-apk-neon.log",
-    "log_sha256": "9aa30064c828a87b34127f85460db308e937a1aced910a3de6c859816a10c1c8",
+    "log": "candidate-clippy.log",
     "returncode": 0,
-    "scope": "NEON native release + APK assemble/lint"
+    "sha256": "6a20fe9518bd56c2a9feaf186923fe2c8e78961b51df06fd5bf2809c26926b52"
   },
   {
-    "log": "build-configured-apk.log",
-    "log_sha256": "20c10f42d130e3d6e1bc979b0961f778c2a1c965a7edfc0025dbc0d888ad6dbc",
+    "log": "build-baseline.log",
     "returncode": 0,
-    "scope": "Committed config build exactly matches measured candidate APK SHA"
+    "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
   },
   {
-    "log": "product-android-validation.log",
-    "log_sha256": "8deb8a4c0dc346ac4deaea670049a1e474a8dbeab087cfa2e833a106422cc87c",
+    "log": "build-candidate.log",
     "returncode": 0,
-    "scope": "Full product Android packaging + Kotlin/JNI health/lease/pairing tests + lint; not installed"
+    "sha256": "20c2371ec15bf7c23866c687ef913e2fd517ba3cec5df5db57f2c5ca625e18e8"
   },
   {
-    "log": "pipeline-fast.log",
-    "log_sha256": "9bb125d038878aa51e09ffd25e9a01b3c5e6b216028a390780081375b81a9e1e",
+    "log": "final-analysis.log",
     "returncode": 0,
-    "scope": "22 repository tests + diff check + actionlint, actually run with shared Git lock access"
+    "sha256": "608cb6ed177fa84acf4c09414be88c21f223cd2b14e512a1635b97f83e38cd20"
   },
   {
-    "command": "python3 scripts/test_android_crypto_build.py",
+    "log": "historical-decrypt-validation.log",
     "returncode": 0,
-    "scope": "4 build guard tests; env/config merges, empty flags, shadowed config, missing NEON",
-    "log_sha256": "84ff24306afcf5e19892adf32493aa9bc9dbc8db16870c6155e8e03c23864a33"
+    "sha256": "78de871a0ebaf22020d2f2e9f0d3cf9f4cfde0a42de5701abdf4b4546da5a5c5"
   },
   {
-    "command": "python3 scripts/test_analyze_android_decrypt.py",
+    "log": "historical-put-validation.log",
     "returncode": 0,
-    "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
-    "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
+    "sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
   },
   {
-    "command": "cargo fmt --all -- --check; git diff --check",
-    "returncode": 0
-  },
-  {
-    "log": "pipeline-fast-sandbox-unavailable.log",
-    "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
-    "returncode": 1,
-    "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
-  },
-  {
-    "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
+    "log": "historical-session-validation.log",
     "returncode": 0,
-    "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
+    "sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
+  },
+  {
+    "log": "historical-c12-validation.log",
+    "returncode": 0,
+    "sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
+  },
+  {
+    "log": "analyzer-tests.log",
+    "returncode": 0,
+    "sha256": "63fae94ebda308ca88c373b47f361d0a74f201cfad14766ccc34293adfa70cf4"
+  },
+  {
+    "log": "actionlint.log",
+    "returncode": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 ]
