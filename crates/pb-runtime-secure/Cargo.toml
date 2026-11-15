@@ -18,3 +18,8 @@ snow.workspace = true
 [features]
 default = []
 diagnostic-timing = ["pb-types/diagnostic-timing"]
+decrypt-bench = ["rustix/time"]
+
+[[example]]
+name = "android_decrypt_bench"
+required-features = ["decrypt-bench"]

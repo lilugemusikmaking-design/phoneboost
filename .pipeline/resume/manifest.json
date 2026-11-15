@@ -1,9 +1,9 @@
 {
-  "next_action": "R\u00e9duire uniquement le co\u00fbt du d\u00e9chiffrement Noise Android, puis v\u00e9rifier le gain end-to-end par A/B sous les m\u00eames garde-fous, sans changer le protocole.",
+  "next_action": "Await PR36 final checks, then address only measured Android polling residual; no further workload now",
   "writer": "Codex",
-  "parent_head": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
-  "date": "2026-11-15T17:34:31.475429+00:00",
-  "branch": "spike/put-wait-breakdown-v0-1",
+  "parent_head": "a5f01532f19bc7fd7bdd7bd0731141c1e8efabc6",
+  "date": "2026-11-15T18:48:34.516864+00:00",
+  "branch": "spike/android-decrypt-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization."
+  "physical_proof": "Microbenchmark ABAB + 2warmups/3paired app runs exact;3/3 decrypt and end-to-end favorable; Health nominal. Cleanup verified: SaverON, profile1, timingOFF, isolated app/host stopped, product intact."
 }

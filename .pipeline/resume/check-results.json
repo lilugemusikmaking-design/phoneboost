@@ -1,159 +1,77 @@
 [
   {
-    "log": "tests.log",
-    "log_sha256": "9f3eb628de749669283da335933149af0ab03dd6f44f8cee2d214a1be8007fba",
+    "log": "security-tests.log",
+    "log_sha256": "c0c58293615e3e60a9dd87e56d81e90fc356516f424c88ec27d6d90053248dce",
     "returncode": 0,
-    "scope": "Release host/CLI/runtime/types: 306 tests +4 doctests, 1 ignored",
-    "recorded_utc": "2026-11-15T16:59:36.474835+00:00"
+    "scope": "Release runtime+security:31+6 tests and4 doctests"
   },
   {
-    "log": "probes-enabled-tests.log",
-    "log_sha256": "5237c9711efa5532eaba3d98dab96fd16aa7e46a5d536fcf45a08989db7adc51",
-    "returncode": 0,
-    "scope": "Final types/runtime with aggregate and per-PUT probes ON",
-    "recorded_utc": "2026-11-15T16:59:36.475015+00:00"
+    "log": "bench-clippy.log",
+    "log_sha256": "6fd0130e5832ee9f59569aa71ea6aa0212523723dad73d8bb1c2b3bd11771ac3",
+    "returncode": 101,
+    "scope": "Extra strict -D warnings: pre-existing collapsible_if in unchanged pb-types"
   },
   {
-    "log": "equivalence.log",
-    "log_sha256": "e86f336d77b5b7a6d56c4042c4e3f793b88bac9f71e58f954dfbc40849bb5017",
+    "log": "bench-clippy-project-policy.log",
+    "log_sha256": "59b379bc940117157f1a5a0a4422b170f2b6b5377d471a294641745ef6d15b41",
     "returncode": 0,
-    "scope": "C12 OFF/ON and #34/new host responses/errors/fallback equality",
-    "recorded_utc": "2026-11-15T16:59:36.475133+00:00"
+    "scope": "Clippy with repository/CI policy"
   },
   {
-    "log": "build-host.log",
-    "log_sha256": "9a0c6bcf5aa4ce4d59c0cc078f8b7c1ee5c5d3dc6b6fa27d96540f5a8b28e682",
+    "log": "build-apk-baseline.log",
+    "log_sha256": "d8f73a42e5773092024bf07b05d12e2957413646a5dcfbcad0b38ccb10527675",
     "returncode": 0,
-    "scope": "Standard release host and CLI build",
-    "recorded_utc": "2026-11-15T16:59:36.475306+00:00"
+    "scope": "Baseline native release + APK assemble/lint"
   },
   {
-    "log": "build-android.log",
-    "log_sha256": "0a5a908a3ed85a629f4b390dc8d3ba88fea6e22125e9396e83b44d6e3e522436",
+    "log": "build-apk-neon.log",
+    "log_sha256": "9aa30064c828a87b34127f85460db308e937a1aced910a3de6c859816a10c1c8",
     "returncode": 0,
-    "scope": "Diagnostic APK assembleDebug + lintDebug; native release",
-    "recorded_utc": "2026-11-15T16:59:36.475459+00:00"
+    "scope": "NEON native release + APK assemble/lint"
   },
   {
-    "log": "analysis-tests.log",
-    "log_sha256": "0c821bdc2a05cb3357313c47c2429d6cf7d1f6ece135657d9f9d1cefcda71e33",
+    "log": "build-configured-apk.log",
+    "log_sha256": "20c10f42d130e3d6e1bc979b0961f778c2a1c965a7edfc0025dbc0d888ad6dbc",
     "returncode": 0,
-    "scope": "3 deterministic causal analysis tests",
-    "recorded_utc": "2026-11-15T16:59:36.475609+00:00"
+    "scope": "Committed config build exactly matches measured candidate APK SHA"
   },
   {
-    "log": "product-check.log",
-    "log_sha256": "98756e0ca0a3464a26a1479cb252da8b01d595f83a9d0a7c61faf98d7a49d771",
+    "log": "product-android-validation.log",
+    "log_sha256": "8deb8a4c0dc346ac4deaea670049a1e474a8dbeab087cfa2e833a106422cc87c",
     "returncode": 0,
-    "scope": "Host/CLI/runtime compile without diagnostic features"
+    "scope": "Full product Android packaging + Kotlin/JNI health/lease/pairing tests + lint; not installed"
   },
   {
-    "log": "analysis-tests-final.log",
-    "log_sha256": "32317174e654bdeaf5a163e9410f242d7b0e7f66775c9056680a9848eed72eb4",
+    "log": "pipeline-fast.log",
+    "log_sha256": "9bb125d038878aa51e09ffd25e9a01b3c5e6b216028a390780081375b81a9e1e",
     "returncode": 0,
-    "scope": "4 causal attribution and loss/window rejection tests",
-    "recorded_utc": "2026-11-15T17:30:11.341789+00:00"
+    "scope": "22 repository tests + diff check + actionlint, actually run with shared Git lock access"
   },
   {
-    "log": "power-tests.log",
-    "log_sha256": "bc8e6cb14ecaa458caee4f3b488fa22e61ccf9bcc2a1353da3ad3f85e41c89e1",
+    "command": "python3 scripts/test_android_crypto_build.py",
     "returncode": 0,
-    "scope": "7 Battery Saver lifecycle/unknown/interruption/recovery/device/journal tests",
-    "recorded_utc": "2026-11-15T17:30:11.341868+00:00"
+    "scope": "4 build guard tests; env/config merges, empty flags, shadowed config, missing NEON",
+    "log_sha256": "84ff24306afcf5e19892adf32493aa9bc9dbc8db16870c6155e8e03c23864a33"
   },
   {
-    "log": "evidence-validation.log",
-    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+    "command": "python3 scripts/test_analyze_android_decrypt.py",
     "returncode": 0,
-    "scope": "Recompute all 4 physical traces; exact remote results, Health and cleanup",
-    "recorded_utc": "2026-11-15T17:30:11.341917+00:00"
+    "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
+    "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
   },
   {
-    "log": "historical-proof.log",
-    "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad",
-    "returncode": 0,
-    "scope": "PR34 historical evidence remains valid",
-    "recorded_utc": "2026-11-15T17:30:11.341987+00:00"
+    "command": "cargo fmt --all -- --check; git diff --check",
+    "returncode": 0
   },
   {
-    "command": "physical_campaign_power.py (Samsung witness)",
-    "returncode": 2,
-    "scope": "Expected refusal: cmd power set-mode 0 ignored by OEM; no witness ran; initial ON confirmed in finally",
-    "evidence": "docs/evidence/put-wait-breakdown-v0-1.json#cleanup.power_tool_smoke"
+    "log": "pipeline-fast-sandbox-unavailable.log",
+    "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
+    "returncode": 1,
+    "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
   },
   {
-    "command": [
-      "python3",
-      "scripts/test_physical_campaign_power.py"
-    ],
+    "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
     "returncode": 0,
-    "log": "power-tests-final.log",
-    "log_sha256": "77ecdaf76b0a4f9f157b08dc741287943417847cdfae17660c5fea600de76490"
-  },
-  {
-    "command": [
-      "python3",
-      "scripts/test_analyze_put_wait.py"
-    ],
-    "returncode": 0,
-    "log": "analysis-tests-final.log",
-    "log_sha256": "eff869ac89b95c042aef4e872a58d7a7f0ad454c94b3960cc42c950a4e93660e"
-  },
-  {
-    "command": [
-      "python3",
-      "scripts/validate_put_wait_evidence.py",
-      "docs/evidence/put-wait-breakdown-v0-1.json"
-    ],
-    "returncode": 0,
-    "log": "evidence-validation.log",
-    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
-  },
-  {
-    "command": [
-      "git",
-      "diff",
-      "--check"
-    ],
-    "returncode": 0,
-    "log": "final-diff.log",
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "command": [
-      "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
-      ".github/workflows/pipeline.yml"
-    ],
-    "returncode": 0,
-    "log": "final-actionlint.log",
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "command": [
-      "bash",
-      "-n",
-      "phoneboost_perfetto_bench/run_campaign.sh",
-      "phoneboost_perfetto_bench/capture_profile.sh"
-    ],
-    "returncode": 0,
-    "log": "final-shell-syntax.log",
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "command": "gitleaks dir <decompressed numeric public traces> --redact --no-banner",
-    "returncode": 0,
-    "log": "gitleaks-raw.log"
-  },
-  {
-    "command": "gitleaks dir docs/evidence/put-wait-v0-1 --redact --no-banner",
-    "returncode": 0,
-    "scope": "Final uncompressed numeric JSON traces"
-  },
-  {
-    "command": "python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json",
-    "returncode": 0,
-    "log": "evidence-validation.log",
-    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
-    "scope": "Final JSON format/source list; all four raw traces recomputed"
+    "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
   }
 ]

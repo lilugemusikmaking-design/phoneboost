@@ -2,6 +2,7 @@
 set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$workspace_root"
 shared_tooling="${PHONEBOOST_SHARED_TOOLING:-${workspace_root}/.tooling}"
 android_sdk="${shared_tooling}/android-sdk"
 ndk_root="${android_sdk}/ndk/29.0.14206865"
@@ -27,6 +28,7 @@ export AR_aarch64_linux_android="${ndk_root}/toolchains/llvm/prebuilt/linux-x86_
 export PATH="${java_root}/bin:${rust_toolchain}/bin:/usr/bin:/bin"
 
 mkdir -p "${jni_libs}" "${ANDROID_USER_HOME}"
+python3 scripts/check_android_crypto_build.py
 "${cargo_bin}" build --locked --release --target aarch64-linux-android \
     -p phoneboost-core-jni --features jni-test-probes
 cp "${native_output}" "${jni_libs}/libphoneboost_core_jni.so"

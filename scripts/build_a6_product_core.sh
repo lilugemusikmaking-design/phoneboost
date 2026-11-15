@@ -2,6 +2,7 @@
 set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$workspace_root"
 shared_tooling="${PHONEBOOST_SHARED_TOOLING:-${workspace_root}/.tooling}"
 android_sdk="${shared_tooling}/android-sdk"
 ndk_root="${android_sdk}/ndk/29.0.14206865"
@@ -18,6 +19,7 @@ export CC_aarch64_linux_android="${CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER}"
 export AR_aarch64_linux_android="${ndk_root}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
 export PATH="${rust_toolchain}/bin:/usr/bin:/bin"
 
+python3 scripts/check_android_crypto_build.py
 "${cargo_bin}" build --locked --release --target aarch64-linux-android \
     -p phoneboost-core-jni
 "${workspace_root}/scripts/scan_a6_product.py" "${product_so}"
