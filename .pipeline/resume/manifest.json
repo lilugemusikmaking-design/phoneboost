@@ -1,9 +1,9 @@
 {
-  "next_action": "R\u00e9duire uniquement le co\u00fbt du d\u00e9chiffrement Noise Android, puis v\u00e9rifier le gain end-to-end par A/B sous les m\u00eames garde-fous, sans changer le protocole.",
+  "next_action": "Build equivalent diagnostic APKs and measure paired 64 MiB C12 before retaining NEON",
   "writer": "Codex",
-  "parent_head": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
-  "date": "2026-11-15T17:34:31.475429+00:00",
-  "branch": "spike/put-wait-breakdown-v0-1",
+  "parent_head": "5446240bedb630be93bdec4f619afee7a6b781c7",
+  "date": "2026-11-15T18:18:07.242134+00:00",
+  "branch": "spike/android-decrypt-v0-1",
   "push": "verify remote on resume",
   "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization."
 }

@@ -1,14 +1,11 @@
-# Reprise — décomposition PUT mesurée
+# Android decrypt qualification
 
-Branche spike/put-wait-breakdown-v0-1 depuis master a85364d6fec2ae60db09116b7c57a028fac381e1 (#34 merge commit).
-PR #35 diagnostique, non fusionnée. Source APK/host mesurés : 25fd92f6a793e8a1224cf885f0600485da5f83a5.
-Rapport : docs/architecture/PUT_WAIT_BREAKDOWN_V0_1.md.
-Preuves : docs/evidence/put-wait-breakdown-v0-1.json +8 traces numériques JSON.
-1 calibration +3 runs exacts/Health nominale ; fenêtres host/Android séparées, pas de double comptage.
-Run médian : 3361,505 ms ; SessionPoll3032,870 dont2453,948 pendant17PUT.
-Coût fonctionnel directement isolé le plus grand, médiane3runs : decrypt Android737,853ms ; polling réception+retard handler647,456ms.
-Transport/USB pur non isolé ; polling inter-PUT chevauche file host/résidu.
-SaverON/profil1/collecteOFF ; app/daemon/forward arrêtés, produit intact.
-Nouveau wrapper dev Battery Saver automatique/finally : tests passent, Samsung ignore cmd power set-mode0 ; témoin refusé et restaurationON vérifiée. Aucun fallback silencieux.
-Ne pas refaire les campagnes closes ; pas de changement protocole/Noise/PBMUX/chunks/ResourceGuard/timeouts/C13/RAM/GPU/NPU.
-NEXT_ACTION : Réduire uniquement le coût du déchiffrement Noise Android, puis vérifier le gain end-to-end par A/B sous les mêmes garde-fous, sans changer le protocole.
+- Branch: spike/android-decrypt-v0-1
+- Base: 5446240bedb630be93bdec4f619afee7a6b781c7 (#35 merge commit; merged verified).
+- Only writer: root. Historical worktrees/branches preserved.
+- Audit: Snow 0.9.6 / ChaCha20Poly1305 0.10.1 / ChaCha20 0.9.1 soft / Poly1305 0.8.0 soft on ARM64.
+- Candidate: existing chacha20_force_neon cfg, benchmark only until physical validation.
+- No product changes yet. No protocol, framing, polling, ResourceGuard, RAM, GPU/NPU or affinity changes.
+- Physical initial Saver ON; operator manually OFF; fresh Health OFF confirmed. Restoration journal /tmp/phoneboost-android-decrypt-20261115/power-state.json. Must restore ON and verify Health at end.
+- Host-generated fixture and standalone Android benchmark in preparation; no benchmark PASS claimed yet.
+- NEXT_ACTION: build and measure isolated baseline; only then compare existing NEON backend.
