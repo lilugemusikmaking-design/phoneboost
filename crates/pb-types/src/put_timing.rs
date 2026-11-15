@@ -25,6 +25,14 @@ pub const HANDLER_END: u64 = 1015;
 pub const HANDLER_OBSERVED: u64 = 1016;
 pub const RESPONSE_BUILT: u64 = 1017;
 pub const RESPONSE_SENT: u64 = 1018;
+// Android/local socket wait observation. No request/peer identifier or wire field.
+pub const WAIT_READY: u64 = 1020;
+pub const WAIT_FINISHED: u64 = 1021;
+pub const WAIT_ALREADY_READABLE: u64 = 1;
+pub const WAIT_DATA: u64 = 2;
+pub const WAIT_TIMER: u64 = 3;
+pub const WAIT_PARTIAL: u64 = 4;
+pub const WAIT_CLOSED_OR_ERROR: u64 = 5;
 
 // [kind, request tag (or caller-local token), local thread, start ns, end ns, value]
 pub type Row = [u64; 6];

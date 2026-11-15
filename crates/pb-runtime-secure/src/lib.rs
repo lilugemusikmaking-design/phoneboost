@@ -4,6 +4,8 @@ mod initiator;
 mod input_wait;
 mod runtime;
 mod storage;
+#[cfg(feature = "diagnostic-timing")]
+mod wait_diagnostics;
 mod wire;
 
 pub use initiator::{

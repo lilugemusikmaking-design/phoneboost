@@ -1,77 +1,7 @@
 [
   {
-    "log": "security-tests.log",
-    "log_sha256": "c0c58293615e3e60a9dd87e56d81e90fc356516f424c88ec27d6d90053248dce",
+    "command": "cargo test --locked --offline --release -p pb-runtime-secure -p pb-types --features pb-runtime-secure/diagnostic-timing -- --test-threads=2",
     "returncode": 0,
-    "scope": "Release runtime+security:31+6 tests and4 doctests"
-  },
-  {
-    "log": "bench-clippy.log",
-    "log_sha256": "6fd0130e5832ee9f59569aa71ea6aa0212523723dad73d8bb1c2b3bd11771ac3",
-    "returncode": 101,
-    "scope": "Extra strict -D warnings: pre-existing collapsible_if in unchanged pb-types"
-  },
-  {
-    "log": "bench-clippy-project-policy.log",
-    "log_sha256": "59b379bc940117157f1a5a0a4422b170f2b6b5377d471a294641745ef6d15b41",
-    "returncode": 0,
-    "scope": "Clippy with repository/CI policy"
-  },
-  {
-    "log": "build-apk-baseline.log",
-    "log_sha256": "d8f73a42e5773092024bf07b05d12e2957413646a5dcfbcad0b38ccb10527675",
-    "returncode": 0,
-    "scope": "Baseline native release + APK assemble/lint"
-  },
-  {
-    "log": "build-apk-neon.log",
-    "log_sha256": "9aa30064c828a87b34127f85460db308e937a1aced910a3de6c859816a10c1c8",
-    "returncode": 0,
-    "scope": "NEON native release + APK assemble/lint"
-  },
-  {
-    "log": "build-configured-apk.log",
-    "log_sha256": "20c10f42d130e3d6e1bc979b0961f778c2a1c965a7edfc0025dbc0d888ad6dbc",
-    "returncode": 0,
-    "scope": "Committed config build exactly matches measured candidate APK SHA"
-  },
-  {
-    "log": "product-android-validation.log",
-    "log_sha256": "8deb8a4c0dc346ac4deaea670049a1e474a8dbeab087cfa2e833a106422cc87c",
-    "returncode": 0,
-    "scope": "Full product Android packaging + Kotlin/JNI health/lease/pairing tests + lint; not installed"
-  },
-  {
-    "log": "pipeline-fast.log",
-    "log_sha256": "9bb125d038878aa51e09ffd25e9a01b3c5e6b216028a390780081375b81a9e1e",
-    "returncode": 0,
-    "scope": "22 repository tests + diff check + actionlint, actually run with shared Git lock access"
-  },
-  {
-    "command": "python3 scripts/test_android_crypto_build.py",
-    "returncode": 0,
-    "scope": "4 build guard tests; env/config merges, empty flags, shadowed config, missing NEON",
-    "log_sha256": "84ff24306afcf5e19892adf32493aa9bc9dbc8db16870c6155e8e03c23864a33"
-  },
-  {
-    "command": "python3 scripts/test_analyze_android_decrypt.py",
-    "returncode": 0,
-    "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
-    "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
-  },
-  {
-    "command": "cargo fmt --all -- --check; git diff --check",
-    "returncode": 0
-  },
-  {
-    "log": "pipeline-fast-sandbox-unavailable.log",
-    "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
-    "returncode": 1,
-    "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
-  },
-  {
-    "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
-    "returncode": 0,
-    "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
+    "log_sha256": "303108c0e5885d16bca73d6cb3fc8a518ff3df8e3900ecc649f98b7893dc2b8f"
   }
 ]

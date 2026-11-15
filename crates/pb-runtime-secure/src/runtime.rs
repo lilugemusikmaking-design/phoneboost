@@ -1328,6 +1328,9 @@ fn enter_authenticated_loop(
             if initiator {
                 crate::input_wait::wait(stream, duration).map(|_| ())
             } else {
+                #[cfg(feature = "diagnostic-timing")]
+                crate::wait_diagnostics::legacy_sleep(stream, duration);
+                #[cfg(not(feature = "diagnostic-timing"))]
                 std::thread::sleep(duration);
                 Ok(())
             }
