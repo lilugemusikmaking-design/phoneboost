@@ -544,13 +544,13 @@
     "bench_zip_sha256": "3d04c95f0e744cbda02c5b5bb97895d11a5acc8c4ff26beb5c6be92949a12596",
     "scope": "supplied bench reused; launch bound to C12; SQL extraction clipped to PhoneBoost TID/BOOTTIME intervals"
   },
-  "next_action": "Tester le profil 4 sous les mêmes garde-fous.",
+  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "publication": {
     "state": "Consult live GitHub PR/checks for this branch; no CI success inferred from local tests",
-    "merge_gate": "PR32 remains draft/unmerged at this checkpoint; profile4 unqualified. No product-value claim; consult live checks for published HEAD."
+    "merge_gate": "PR32 draft and unmerged per explicit user instruction. Consult live Actions/CodeQL for containing commit."
   },
   "date_utc": "2026-11-14T14:09:58.590436+00:00",
   "current_verdict": "MULTICORE_CONFIRMED_BENEFICIAL",
@@ -558,12 +558,23 @@
     "path": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
     "verdict": "MULTICORE_EXECUTION_CONFIRMED",
     "performance_qualified": false,
-    "profile4_run": false
+    "profile4_run": false,
+    "record_scope": "Historical first 1/2 scheduler campaign; profile4_run applies to that campaign only."
   },
   "performance_qualification": {
     "path": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
     "verdict": "MULTICORE_CONFIRMED_BENEFICIAL",
     "native_benefit_only": true,
-    "profile4_run": false
-  }
+    "profile4_run": false,
+    "record_scope": "Historical 1/2 performance campaign; profile4_run applies to that campaign only. Its native benefit remains valid."
+  },
+  "profile4_qualification": {
+    "path": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
+    "four_way_confirmed": true,
+    "native_incremental_benefit_qualified": false,
+    "complete_pairs": 5,
+    "spike_closed": true
+  },
+  "current_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
+  "limitations_record_scope": "Historical initial and scheduler-only campaign limitations. Current physical state and remaining limitations are in current_evidence."
 }

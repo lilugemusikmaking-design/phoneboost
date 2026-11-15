@@ -1,9 +1,9 @@
 {
-  "next_action": "Tester le profil 4 sous les m\u00eames garde-fous.",
+  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en d\u00e9composant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
   "writer": "Codex",
-  "parent_head": "94f0717872e7cead328639df57d8e274dd6907b5",
-  "date": "2026-11-14T21:32:46.897447+00:00",
+  "parent_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+  "date": "2026-11-15T10:36:15.004872+00:00",
   "branch": "spike/android-multicore-v0-2",
   "push": "verify remote on resume",
-  "physical_proof": "Two qualified16MiB-buffer scheduler captures, then six balanced1vs2 pairs:14exact remote64MiB jobs, profile2 median paired native speedup1.753576x,6of6>1.05. No end-to-end benefit; no4."
+  "physical_proof": "Profile 4 exact 64 MiB: 4 TIDs, peak 4, 25.824309 ms four-way Running. Five complete 2/4 pairs plus isolated sixth 4: median paired native ratio 1.065364x, 3/5 above 1.05; incremental benefit not qualified. Operator 120 s preflight stops final 2 after C08 recovered. Profile 2 retained; no product or end-to-end benefit claimed."
 }

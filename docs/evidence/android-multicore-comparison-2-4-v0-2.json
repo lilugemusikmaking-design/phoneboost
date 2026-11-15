@@ -1,0 +1,1349 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-11-15T10:31:27.827802+00:00",
+  "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+  "apk_code_checkpoint": "93f1de187838163729c476da2c327f5a612cf8a9",
+  "device": {
+    "ro.product.model": "SM-A155F",
+    "ro.build.version.release": "16",
+    "ro.build.version.sdk": "36",
+    "ro.build.id": "BP4A.251205.006",
+    "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+    "org.phoneboost.app.multicore": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+    "thermal": [
+      "IsStatusOverride: false",
+      "Thermal Status: 0",
+      "HAL Ready: true"
+    ],
+    "power_save_setting": false
+  },
+  "package": "org.phoneboost.app.multicore",
+  "apk_sha256": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+  "protocol": {
+    "input_bytes": 67108864,
+    "input_sha256": "601fc533f64b11042a9ae821c272064871306a99496652afb5758c8979d8834d",
+    "expected_blake3": "7b2def9fc609feb94905bd0cdb0772743544d6564b8d73cf2bba66c4759116a4",
+    "apk_sha256": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b",
+    "warmups": [
+      4,
+      2
+    ],
+    "warmups_perfetto": [
+      4
+    ],
+    "paired_order": [
+      [
+        2,
+        4
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        4,
+        2
+      ]
+    ],
+    "measured_runs_per_profile": 6,
+    "measured_runs_perfetto": false,
+    "perfetto_duration_ms": 55000,
+    "perfetto_buffer_kib": 16384,
+    "benefit_criterion": "Incremental2→4: same predeclared native benefit threshold as spike, median paired ratio>=1.10 and>=5/6pairs>1.05; scheduler overlap required before pairs",
+    "refusal_policy": "Stop on first refused/failed workload or failed bounded preflight; preserve all attempted runs; no selected replacements",
+    "preflight_timeout_seconds": 120,
+    "profile4": true,
+    "date_utc": "2026-11-15T10:05:06.852578+00:00",
+    "aggregation": "Preserve each raw one-run generator artifact. Map its actual warmup/measured role and pair from this predeclared schedule; CLI end-to-end measured around original phoneboostctl excludes read-only Health wrapper probes.",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+    "scheduler_gate": "Profile4: exact remote64MiB;2..4observedcomputeTIDs,>=2CPUs,peak>=2,time_ge2>0,complete trace,no qualifying losses,freshNominalHealth. Separately report actual4-way peak/time.",
+    "operator_sha256": {
+      "campaign.py": "77d3d491422d027ab9d314efd16c09cdfad828f38a703073197230ecbb3171fe",
+      "preflight.py": "03a2155a091806fd5b60057dad0c1bceed9234ff9cd999e9532a1d5bbada4716",
+      "guarded-ctl": "3d59ce8ed9fd80f1c572414653db4710be214368c4457cf4a0759bd0e670fa02",
+      "qualify.py": "06635b0c74846d0ddbb871ed8482824a2212f95d75b1a345066eb619cb6c777c"
+    },
+    "host_binary_sha256": {
+      "phoneboostctl": "e42d35bb037a4c15f5f8e1d29184543933f0b565e1f582e3d1a8f53c2f436093",
+      "phoneboostd": "9e6c8dcf9465018c59e83aeedb056d47bbc119e4cbe94e0edbc0aff104375cec"
+    },
+    "operator_post_audit_sha256": {
+      "qualify.py": "c493902ea769bb2cb0a91e88938d0e620d3437f483c9916f20587316acd98530",
+      "trace_stats_probe.py": "256e89b41be7a27c045c662b640b51b9124daafc87287b8962d33089e390542e"
+    }
+  },
+  "verdict": "MULTICORE_CONFIRMED_BENEFICIAL",
+  "incremental_2_to_4": {
+    "native_benefit_qualified": false,
+    "native_multicore_runs": 6,
+    "median_paired_speedup": 1.0653638235798866,
+    "complete_pairs": 5,
+    "pairs_above_1_05": 3,
+    "maximum_possible_favorable_of6": 4,
+    "criterion": "Same spike threshold: median>=1.10,>=5/6pairs>1.05",
+    "recommended_experimental_profile": 2
+  },
+  "summary": {
+    "2": {
+      "count": 5,
+      "median_native_ms": 51.155077,
+      "median_mib_s": 1251.0977160683387,
+      "median_end_to_end_ms": 27499.122081,
+      "median_cpu_over_wall": 1.9150486861743947,
+      "median_native_cpu_ms": 97.964463,
+      "native_wall_range_ms": [
+        49.035,
+        57.951385
+      ],
+      "end_to_end_range_ms": [
+        26549.481574,
+        28534.697474
+      ],
+      "memory_min_mib": 1030.68359375,
+      "budget_min_mib": 128.0,
+      "source_age_at_compute_end_max_ms": 1892.5229070186615,
+      "hal_battery_temperature_range_c": [
+        27.7,
+        28.0
+      ],
+      "hal_skin_temperature_range_c": [
+        31.3,
+        31.5
+      ]
+    },
+    "4": {
+      "count": 5,
+      "median_native_ms": 48.309616,
+      "median_mib_s": 1324.7880090787723,
+      "median_end_to_end_ms": 27686.370796,
+      "median_cpu_over_wall": 2.8103244082917156,
+      "median_native_cpu_ms": 136.91092,
+      "native_wall_range_ms": [
+        44.794385,
+        63.716307
+      ],
+      "end_to_end_range_ms": [
+        27299.237197,
+        34376.016084
+      ],
+      "memory_min_mib": 1013.6953125,
+      "budget_min_mib": 125.423828125,
+      "source_age_at_compute_end_max_ms": 2033.6859030723572,
+      "hal_battery_temperature_range_c": [
+        27.8,
+        28.0
+      ],
+      "hal_skin_temperature_range_c": [
+        31.3,
+        31.5
+      ]
+    }
+  },
+  "scheduler": {
+    "4": {
+      "profile": 4,
+      "qualified": true,
+      "digest_exact": true,
+      "remote_success": true,
+      "observed_compute_threads": 4,
+      "tids": [
+        19385,
+        19386,
+        19387,
+        19388
+      ],
+      "cpus": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7
+      ],
+      "max_simultaneous_running": 4,
+      "time_ge_2_threads_ms": 44.003153,
+      "time_ge_3_threads_ms": 26.99977,
+      "time_ge_4_threads_ms": 25.824309,
+      "multicore_execution_confirmed": true,
+      "four_way_confirmed": true,
+      "pairwise_different_cpu_overlap_ms": 175.47562,
+      "cpu_time_sched_ms": 141.505001,
+      "wall_clock_phoneboost_ms": 45.968077,
+      "cpu_time_native_ms": 140.075305,
+      "migrations": [
+        {
+          "tid": 19387,
+          "ts": 1110775325868720,
+          "from_cpu": 0,
+          "to_cpu": 5
+        },
+        {
+          "tid": 19387,
+          "ts": 1110775333810566,
+          "from_cpu": 5,
+          "to_cpu": 1
+        },
+        {
+          "tid": 19387,
+          "ts": 1110775337834489,
+          "from_cpu": 1,
+          "to_cpu": 2
+        },
+        {
+          "tid": 19387,
+          "ts": 1110775342022566,
+          "from_cpu": 2,
+          "to_cpu": 3
+        },
+        {
+          "tid": 19387,
+          "ts": 1110775343455182,
+          "from_cpu": 3,
+          "to_cpu": 7
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775325861566,
+          "from_cpu": 5,
+          "to_cpu": 0
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775330160028,
+          "from_cpu": 0,
+          "to_cpu": 2
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775333802566,
+          "from_cpu": 2,
+          "to_cpu": 3
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775337830259,
+          "from_cpu": 3,
+          "to_cpu": 5
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775341990259,
+          "from_cpu": 5,
+          "to_cpu": 1
+        },
+        {
+          "tid": 19388,
+          "ts": 1110775343315797,
+          "from_cpu": 1,
+          "to_cpu": 6
+        }
+      ],
+      "per_tid": [
+        {
+          "tid": 19385,
+          "cpus": [
+            6
+          ],
+          "running_ms": 28.173769
+        },
+        {
+          "tid": 19386,
+          "cpus": [
+            7
+          ],
+          "running_ms": 27.706154
+        },
+        {
+          "tid": 19387,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            5,
+            7
+          ],
+          "running_ms": 43.165615
+        },
+        {
+          "tid": 19388,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            5,
+            6
+          ],
+          "running_ms": 42.459463
+        }
+      ],
+      "trace_errors": [],
+      "trace_complete": true,
+      "health_nominal_during_job": true,
+      "trace_loss_counters_zero": true,
+      "service_global_discarded_chunks_historical_current": [
+        3,
+        4
+      ],
+      "global_counter_scope": "Service-wide; historical3/current4 is not a same-session delta. Origin/timing unknown.",
+      "packet_continuity": {
+        "packet_counts": {
+          "1": 13,
+          "2": 3862,
+          "3": 44
+        },
+        "noninitial_packet_drops": [],
+        "initial_drop_markers": [
+          {
+            "sequence": 2,
+            "first_seen": true,
+            "producer_first": true
+          },
+          {
+            "sequence": 3,
+            "first_seen": true,
+            "producer_first": true
+          }
+        ],
+        "all_initial_markers_producer_first": true,
+        "all_buffer_bytes_and_chunks_read": true
+      },
+      "health_samples": 14,
+      "source_sample_age_at_compute_end_ms": 917.5667970180511,
+      "performance_qualified": false,
+      "input_bytes": 67108864,
+      "trace_bytes": 4304261,
+      "trace_sha256": "1dcb8bddaf7d32e66a435215473cdc9b7cc245691c7046e3796160d1a66809a8",
+      "cpus_used": 7
+    }
+  },
+  "runs": [
+    {
+      "label": "profile4",
+      "profile": 4,
+      "pair": -1,
+      "warmup": true,
+      "native_wall_ms": 45.968077,
+      "native_cpu_ms": 140.075305,
+      "native_throughput_mib_s": 1392.270553323342,
+      "end_to_end_ms": 25665.399454,
+      "operator_command_ms": 26670.05829,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        19385,
+        19386,
+        19387,
+        19388
+      ],
+      "sampled_cpu_mask": 229,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1110775314.889028,
+      "native_window_end_boottime_ms": 1110775359.566797,
+      "preflight_memory_mib": 1100.23828125,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 2000,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 872,
+      "native_health_age_after_ms": 918,
+      "source_health_age_at_compute_end_ms": 917.5667970180511,
+      "health": {
+        "samples": 16,
+        "memory_min_mib": 980.67578125,
+        "memory_median_mib": 997.7734375,
+        "budget_min_mib": 117.1689453125,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.3,
+        "BAT": 27.1,
+        "PA": 33.4,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 27.2
+      },
+      "raw_run_file": "profile-4/job/runs.json",
+      "raw_run_sha256": "59e6dd43528532d9d243e0b7ac35c49bf2b77567f202409c85b7c36ebc939e0b"
+    },
+    {
+      "label": "profile2",
+      "profile": 2,
+      "pair": -1,
+      "warmup": true,
+      "native_wall_ms": 49.569231,
+      "native_cpu_ms": 96.023689,
+      "native_throughput_mib_s": 1291.1235197495803,
+      "end_to_end_ms": 25832.133489,
+      "operator_command_ms": 26822.978467,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        20893,
+        20894
+      ],
+      "sampled_cpu_mask": 192,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111025967.76135,
+      "native_window_end_boottime_ms": 1111026016.562197,
+      "preflight_memory_mib": 1139.12109375,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 1596,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 606,
+      "native_health_age_after_ms": 655,
+      "source_health_age_at_compute_end_ms": 655.562196969986,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1039.8203125,
+        "memory_median_mib": 1060.01953125,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.7,
+        "BAT": 27.6,
+        "PA": 33.1,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 27.8
+      },
+      "raw_run_file": "profile-2/job/runs.json",
+      "raw_run_sha256": "ea00f00e3ff5006c4c63ab478c6406871b93070e38bb7be929960c3b86e06992"
+    },
+    {
+      "label": "pair00-profile2",
+      "profile": 2,
+      "pair": 0,
+      "warmup": false,
+      "native_wall_ms": 52.061231,
+      "native_cpu_ms": 98.272154,
+      "native_throughput_mib_s": 1229.3216808492293,
+      "end_to_end_ms": 26549.481574,
+      "operator_command_ms": 27573.7362,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        20988,
+        20989
+      ],
+      "sampled_cpu_mask": 193,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111058711.932352,
+      "native_window_end_boottime_ms": 1111058763.334814,
+      "preflight_memory_mib": 1067.3203125,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 1681,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1214,
+      "native_health_age_after_ms": 1266,
+      "source_health_age_at_compute_end_ms": 1266.3348140716553,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1058.26953125,
+        "memory_median_mib": 1109.79296875,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 10,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.6,
+        "BAT": 27.7,
+        "PA": 33.0,
+        "SKIN": 31.4,
+        "SUBBAT": 0.0,
+        "USB": 27.8
+      },
+      "raw_run_file": "pair00-profile2/job/runs.json",
+      "raw_run_sha256": "30782abd6e56581fa6f6d366bbd5e968ff2637a80e4571262dc3d8a13bd86a43"
+    },
+    {
+      "label": "pair00-profile4",
+      "profile": 4,
+      "pair": 0,
+      "warmup": false,
+      "native_wall_ms": 63.716307,
+      "native_cpu_ms": 176.066612,
+      "native_throughput_mib_s": 1004.4524394673408,
+      "end_to_end_ms": 28414.026732,
+      "operator_command_ms": 29817.100269,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        21550,
+        21551,
+        21552,
+        21553
+      ],
+      "sampled_cpu_mask": 191,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111093679.655739,
+      "native_window_end_boottime_ms": 1111093742.569047,
+      "preflight_memory_mib": 1105.41796875,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 281,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 52,
+      "native_health_age_after_ms": 116,
+      "source_health_age_at_compute_end_ms": 116.56904697418213,
+      "health": {
+        "samples": 16,
+        "memory_min_mib": 1013.6953125,
+        "memory_median_mib": 1136.154296875,
+        "budget_min_mib": 125.423828125,
+        "sample_age_max_ms": 6,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.6,
+        "BAT": 27.8,
+        "PA": 32.9,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 27.9
+      },
+      "raw_run_file": "pair00-profile4/job/runs.json",
+      "raw_run_sha256": "f0ff14888b7b2f935169f2552d0fbeef2a2b5362ccebfa5ddb72b18b97222e68"
+    },
+    {
+      "label": "pair01-profile4",
+      "profile": 4,
+      "pair": 1,
+      "warmup": false,
+      "native_wall_ms": 46.616,
+      "native_cpu_ms": 136.640998,
+      "native_throughput_mib_s": 1372.9191693839025,
+      "end_to_end_ms": 27384.568073,
+      "operator_command_ms": 28418.429704,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        21650,
+        21651,
+        21652,
+        21653
+      ],
+      "sampled_cpu_mask": 242,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111127221.353049,
+      "native_window_end_boottime_ms": 1111127266.912741,
+      "preflight_memory_mib": 1154.65234375,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 1046,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1470,
+      "native_health_age_after_ms": 1516,
+      "source_health_age_at_compute_end_ms": 1516.912740945816,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1146.1015625,
+        "memory_median_mib": 1186.01953125,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 6,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.8,
+        "BAT": 27.8,
+        "PA": 33.0,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 28.0
+      },
+      "raw_run_file": "pair01-profile4/job/runs.json",
+      "raw_run_sha256": "9ae990a9b063514e6bbf1ae302ef3ef9c537dc83fc006229181d1266d0cf8685"
+    },
+    {
+      "label": "pair01-profile2",
+      "profile": 2,
+      "pair": 1,
+      "warmup": false,
+      "native_wall_ms": 49.663,
+      "native_cpu_ms": 96.708224,
+      "native_throughput_mib_s": 1288.6857419004089,
+      "end_to_end_ms": 27499.122081,
+      "operator_command_ms": 28598.552863,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        21772,
+        21773
+      ],
+      "sampled_cpu_mask": 192,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111160971.547435,
+      "native_window_end_boottime_ms": 1111161020.676666,
+      "preflight_memory_mib": 1175.90625,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 514,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1085,
+      "native_health_age_after_ms": 1134,
+      "source_health_age_at_compute_end_ms": 1134.676666021347,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1074.1953125,
+        "memory_median_mib": 1089.69140625,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.5,
+        "BAT": 27.9,
+        "PA": 32.8,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 28.0
+      },
+      "raw_run_file": "pair01-profile2/job/runs.json",
+      "raw_run_sha256": "71152e503633b727f0b53e864c00ccde869c96021a9c1bebc5c23da046eccf8c"
+    },
+    {
+      "label": "pair02-profile2",
+      "profile": 2,
+      "pair": 2,
+      "warmup": false,
+      "native_wall_ms": 49.035,
+      "native_cpu_ms": 95.396229,
+      "native_throughput_mib_s": 1305.19017028653,
+      "end_to_end_ms": 27847.323995,
+      "operator_command_ms": 28893.856924,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        21868,
+        21869
+      ],
+      "sampled_cpu_mask": 192,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111194917.554514,
+      "native_window_end_boottime_ms": 1111194965.884437,
+      "preflight_memory_mib": 1071.01953125,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 2067,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 899,
+      "native_health_age_after_ms": 948,
+      "source_health_age_at_compute_end_ms": 947.884437084198,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1066.57421875,
+        "memory_median_mib": 1147.44140625,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.5,
+        "BAT": 27.9,
+        "PA": 32.9,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair02-profile2/job/runs.json",
+      "raw_run_sha256": "5d3e10eb2655fe7231bdf80d12b55e97e2b5815c94877f9d56cb66e98f5ce71f"
+    },
+    {
+      "label": "pair02-profile4",
+      "profile": 4,
+      "pair": 2,
+      "warmup": false,
+      "native_wall_ms": 48.309616,
+      "native_cpu_ms": 135.765693,
+      "native_throughput_mib_s": 1324.7880090787723,
+      "end_to_end_ms": 27299.237197,
+      "operator_command_ms": 28395.844792,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        21992,
+        21993,
+        21994,
+        21995
+      ],
+      "sampled_cpu_mask": 254,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111228454.390516,
+      "native_window_end_boottime_ms": 1111228500.936132,
+      "preflight_memory_mib": 1163.16015625,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 1995,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 298,
+      "native_health_age_after_ms": 347,
+      "source_health_age_at_compute_end_ms": 346.9361319541931,
+      "health": {
+        "samples": 16,
+        "memory_min_mib": 1046.40234375,
+        "memory_median_mib": 1143.34765625,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 9,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.6,
+        "BAT": 28.0,
+        "PA": 32.9,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair02-profile4/job/runs.json",
+      "raw_run_sha256": "bb918c1b4a607c846bca5974fe68c475500feda5505b15a9dc3eb7ef1458a80d"
+    },
+    {
+      "label": "pair03-profile4",
+      "profile": 4,
+      "pair": 3,
+      "warmup": false,
+      "native_wall_ms": 51.163923,
+      "native_cpu_ms": 136.91092,
+      "native_throughput_mib_s": 1250.8814071978022,
+      "end_to_end_ms": 27686.370796,
+      "operator_command_ms": 28731.204809,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        22090,
+        22091,
+        22092,
+        22093
+      ],
+      "sampled_cpu_mask": 253,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111262274.591749,
+      "native_window_end_boottime_ms": 1111262324.685903,
+      "preflight_memory_mib": 1145.9296875,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 1339,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1982,
+      "native_health_age_after_ms": 2033,
+      "source_health_age_at_compute_end_ms": 2033.6859030723572,
+      "health": {
+        "samples": 16,
+        "memory_min_mib": 1108.515625,
+        "memory_median_mib": 1121.154296875,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 33.3,
+        "BAT": 28.0,
+        "PA": 33.3,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair03-profile4/job/runs.json",
+      "raw_run_sha256": "103b7ec339f7a8df3a422849f79bed07f33bc688c1885e41355bd686cf326eae"
+    },
+    {
+      "label": "pair03-profile2",
+      "profile": 2,
+      "pair": 3,
+      "warmup": false,
+      "native_wall_ms": 57.951385,
+      "native_cpu_ms": 99.922465,
+      "native_throughput_mib_s": 1104.3739506829734,
+      "end_to_end_ms": 27307.312844,
+      "operator_command_ms": 28357.54148,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        22503,
+        22504
+      ],
+      "sampled_cpu_mask": 212,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111295795.170828,
+      "native_window_end_boottime_ms": 1111295852.718828,
+      "preflight_memory_mib": 1104.1640625,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 949,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1357,
+      "native_health_age_after_ms": 1415,
+      "source_health_age_at_compute_end_ms": 1415.7188279628754,
+      "health": {
+        "samples": 15,
+        "memory_min_mib": 1030.68359375,
+        "memory_median_mib": 1088.69140625,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 6,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.6,
+        "BAT": 28.0,
+        "PA": 32.8,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair03-profile2/job/runs.json",
+      "raw_run_sha256": "11669584cfca20f2a679670331a0724e218318432ea788dd3999b671e8a9ffb6"
+    },
+    {
+      "label": "pair04-profile2",
+      "profile": 2,
+      "pair": 4,
+      "warmup": false,
+      "native_wall_ms": 51.155077,
+      "native_cpu_ms": 97.964463,
+      "native_throughput_mib_s": 1251.0977160683387,
+      "end_to_end_ms": 28534.697474,
+      "operator_command_ms": 29566.329915,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        22597,
+        22598
+      ],
+      "sampled_cpu_mask": 200,
+      "executed_threads": 2,
+      "peak_hash_scopes": 2,
+      "native_window_start_boottime_ms": 1111330410.170522,
+      "native_window_end_boottime_ms": 1111330460.522907,
+      "preflight_memory_mib": 1086.73828125,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 335,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1841,
+      "native_health_age_after_ms": 1892,
+      "source_health_age_at_compute_end_ms": 1892.5229070186615,
+      "health": {
+        "samples": 16,
+        "memory_min_mib": 1094.2734375,
+        "memory_median_mib": 1106.939453125,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 9,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 33.1,
+        "BAT": 27.9,
+        "PA": 33.2,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair04-profile2/job/runs.json",
+      "raw_run_sha256": "8ba89f0f31ff770bb4a19f6e900877a3b5b9a6166debee19acca8f6e52b0fca5"
+    },
+    {
+      "label": "pair04-profile4",
+      "profile": 4,
+      "pair": 4,
+      "warmup": false,
+      "native_wall_ms": 44.794385,
+      "native_cpu_ms": 137.817997,
+      "native_throughput_mib_s": 1428.7505007603074,
+      "end_to_end_ms": 34376.016084,
+      "operator_command_ms": 35369.221244,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        23023,
+        23024,
+        23025,
+        23026
+      ],
+      "sampled_cpu_mask": 223,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111371929.535217,
+      "native_window_end_boottime_ms": 1111371973.014525,
+      "preflight_memory_mib": 1012.671875,
+      "preflight_budget_mib": 125.16796875,
+      "preflight_effective_age_ms": 2042,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 1198,
+      "native_health_age_after_ms": 1243,
+      "source_health_age_at_compute_end_ms": 1243.014524936676,
+      "health": {
+        "samples": 18,
+        "memory_min_mib": 1024.10546875,
+        "memory_median_mib": 1173.169921875,
+        "budget_min_mib": 128.0,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.6,
+        "BAT": 28.0,
+        "PA": 32.8,
+        "SKIN": 31.3,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair04-profile4/job/runs.json",
+      "raw_run_sha256": "3745252fa54e896a2d1bcc51e257624047d30d6a08a24535d2f95fbcc1949824"
+    },
+    {
+      "label": "pair05-profile4",
+      "profile": 4,
+      "pair": 5,
+      "warmup": false,
+      "native_wall_ms": 69.703308,
+      "native_cpu_ms": 187.673994,
+      "native_throughput_mib_s": 918.1773697168002,
+      "end_to_end_ms": 32733.97951,
+      "operator_command_ms": 33907.470821,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        23662,
+        23663,
+        23664,
+        23665
+      ],
+      "sampled_cpu_mask": 247,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111410883.095143,
+      "native_window_end_boottime_ms": 1111410952.064066,
+      "preflight_memory_mib": 1185.046875,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 298,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 20,
+      "native_health_age_after_ms": 90,
+      "source_health_age_at_compute_end_ms": 89.06406593322754,
+      "health": {
+        "samples": 18,
+        "memory_min_mib": 884.33984375,
+        "memory_median_mib": 1178.033203125,
+        "budget_min_mib": 93.0849609375,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.8,
+        "BAT": 28.0,
+        "PA": 33.2,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair05-profile4/job/runs.json",
+      "raw_run_sha256": "25b9ebabb6fe0cd5253c9bd55ac3787faa47a056b2583af3628790a36a8a19a0"
+    }
+  ],
+  "pairs": [
+    {
+      "pair": 0,
+      "order": [
+        2,
+        4
+      ],
+      "native_speedup": 0.8170786012441054,
+      "end_to_end_speedup": 0.9343794114228752,
+      "compute_start_gap_seconds": 34.96772338700295
+    },
+    {
+      "pair": 1,
+      "order": [
+        4,
+        2
+      ],
+      "native_speedup": 1.0653638235798866,
+      "end_to_end_speedup": 1.0041831592046524,
+      "compute_start_gap_seconds": 33.750194386005404
+    },
+    {
+      "pair": 2,
+      "order": [
+        2,
+        4
+      ],
+      "native_speedup": 1.0150153128933999,
+      "end_to_end_speedup": 1.020077000468725,
+      "compute_start_gap_seconds": 33.536836002111436
+    },
+    {
+      "pair": 3,
+      "order": [
+        4,
+        2
+      ],
+      "native_speedup": 1.1326610940290878,
+      "end_to_end_speedup": 0.9863088609629268,
+      "compute_start_gap_seconds": 33.520579079151155
+    },
+    {
+      "pair": 4,
+      "order": [
+        2,
+        4
+      ],
+      "native_speedup": 1.141997529377845,
+      "end_to_end_speedup": 0.8300757541034899,
+      "compute_start_gap_seconds": 41.51936469507218
+    }
+  ],
+  "median_paired_end_to_end_speedup": 0.9863088609629268,
+  "end_to_end_pairs_above_1_05": 0,
+  "exact_remote_jobs": 13,
+  "profile4_run": true,
+  "stop_condition": {
+    "phase": "Before final pair05 profile2; workload never submitted",
+    "wait_limit_s": 120,
+    "ready": true,
+    "recovery_observed": false,
+    "latest_memory_mib": 1124.35546875,
+    "minimum_after_last_job_mib": 737.01953125,
+    "latest_safety": "0",
+    "latest_budget_bytes": 134217728,
+    "low_memory": "false",
+    "power_save": "false",
+    "sample_age_ms": 477,
+    "source_samples": 62,
+    "max_source_gap_ms": 2023,
+    "predicate": "Operator preflight at120s: recovery_observed=false because all last7samples must be safety0 andavail>=896MiB overabout12s. Latest C08 was alreadyNominal,budget128MiB,available1124.355MiB; only final2samplesNominal. C08 itself had recovered.",
+    "causal_attribution": "Global memory fell to737.0195MiB after last4job and triggered C08; attribution to4alone unknown. Last2 not submitted because conservative operator stability window incomplete, not an active C08 refusal at the final sample.",
+    "complete_pairs": 5,
+    "unpaired_valid_run": "pair05-profile4",
+    "measured_jobs": 11,
+    "warmups": 2,
+    "workload_failures": 0,
+    "retry": false,
+    "resource_guard_recovered_at_stop": true,
+    "operator_extra_stability_rule": true
+  },
+  "unpaired_runs": [
+    {
+      "label": "pair05-profile4",
+      "profile": 4,
+      "pair": 5,
+      "warmup": false,
+      "native_wall_ms": 69.703308,
+      "native_cpu_ms": 187.673994,
+      "native_throughput_mib_s": 918.1773697168002,
+      "end_to_end_ms": 32733.97951,
+      "operator_command_ms": 33907.470821,
+      "remote_success": true,
+      "digest_exact": true,
+      "tids": [
+        23662,
+        23663,
+        23664,
+        23665
+      ],
+      "sampled_cpu_mask": 247,
+      "executed_threads": 4,
+      "peak_hash_scopes": 4,
+      "native_window_start_boottime_ms": 1111410883.095143,
+      "native_window_end_boottime_ms": 1111410952.064066,
+      "preflight_memory_mib": 1185.046875,
+      "preflight_budget_mib": 128.0,
+      "preflight_effective_age_ms": 298,
+      "recovery_observed": true,
+      "native_health_age_before_ms": 20,
+      "native_health_age_after_ms": 90,
+      "source_health_age_at_compute_end_ms": 89.06406593322754,
+      "health": {
+        "samples": 18,
+        "memory_min_mib": 884.33984375,
+        "memory_median_mib": 1178.033203125,
+        "budget_min_mib": 93.0849609375,
+        "sample_age_max_ms": 7,
+        "thermal_codes": [
+          0
+        ],
+        "all_nominal": true,
+        "power_save": false,
+        "low_memory": false
+      },
+      "hal_temperatures_c": {
+        "AP": 32.8,
+        "BAT": 28.0,
+        "PA": 33.2,
+        "SKIN": 31.5,
+        "SUBBAT": 0.0,
+        "USB": 28.1
+      },
+      "raw_run_file": "pair05-profile4/job/runs.json",
+      "raw_run_sha256": "25b9ebabb6fe0cd5253c9bd55ac3787faa47a056b2583af3628790a36a8a19a0"
+    }
+  ],
+  "measured_profile4_all6_median_wall_ms": 49.736769499999994,
+  "global_verdict_source": "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
+  "method": "Predeclared six balanced2vs4pairs; stopped at five complete pairs plus sixth4only. Paired summaries use only complete pairs; the sixth4 is retained separately. Same existing native benefit threshold; global1vs2verdict preserved. Warmups excluded. Native CPU sum covers leaf compute; Perfetto scheduler CPU measured separately. CLI end-to-end excludes operator Health probes.",
+  "operator_sha256_final": {
+    "campaign.py": "77d3d491422d027ab9d314efd16c09cdfad828f38a703073197230ecbb3171fe",
+    "preflight.py": "03a2155a091806fd5b60057dad0c1bceed9234ff9cd999e9532a1d5bbada4716",
+    "guarded-ctl": "3d59ce8ed9fd80f1c572414653db4710be214368c4457cf4a0759bd0e670fa02",
+    "qualify.py": "c493902ea769bb2cb0a91e88938d0e620d3437f483c9916f20587316acd98530",
+    "summarize.py": "413793629ee4bd6226ab8630f1d3c233636a39d041ec4c992ed6f22c1df9ed77"
+  },
+  "profile4_verdict": "Exécution quatre threads simultanés confirmée ; gain natif incrémental non qualifié. Profil2 retenu comme compromis expérimental actuel.",
+  "spike_closed": true,
+  "spike_closure_scope": "Physical CPU experiment and decision; PR remains draft, no product adoption.",
+  "meaning": "Global verdict preserves qualified1vs2 native benefit. Current2vs4 gain does not meet predeclared material-benefit criterion; no end-to-end/product benefit established.",
+  "limitations": [
+    "Five complete pairs, not six: final profile2 never submitted. Sixth valid profile4 retained separately, not matched to another control.",
+    "Native paired median1.065364x and3of5pairs>1.05; even favorable missing pair would give at most4of6, below required5of6. This is failure to qualify the predeclared benefit, not proof of zero possible benefit.",
+    "After last4job global available memory fell below768MiB and C08 refused. C08 recovered before deadline; operator required an additional seven nominal samples (about12s), not met by120s. Do not describe final stop as continuing C08 refusal.",
+    "Single Samsung and64MiB BLAKE3 workload; no CPU affinity, energy measurement or dynamic ResourceGuard policy.",
+    "Native CPU time sums leaf threads; not total process CPU time or energy.",
+    "Service-wide discarded counter3yesterday/4today has unknown origin/timing. Current session has zero qualifying buffer/ftrace/parser/writer loss and intact packet sequences; historical count is not a current-session baseline."
+  ],
+  "instrumentation": {
+    "bench_unchanged": true,
+    "buffer_kib": 16384,
+    "duration_ms": 55000,
+    "profile4_captures": 1,
+    "paired_runs_traced": false,
+    "trace_counter_audit": {
+      "historical_global_counter": 3,
+      "current_global_counter": 4,
+      "counter_increment_timing_origin": "Unknown over interval since yesterday; not attributed to current session",
+      "current_session_buffer_bytes_written_read": [
+        4358144,
+        4358144
+      ],
+      "current_session_chunks_written_read": [
+        133,
+        133
+      ],
+      "noninitial_packet_drops": 0,
+      "initial_markers_have_producer_first_flag": true,
+      "ftrace_errors_and_loss": 0,
+      "decision": "Qualify actual session based on per-session counters, packet continuity, full worker windows and independent sched slices; preserve global uncertainty",
+      "sources": [
+        "https://github.com/google/perfetto/blob/v51.2/src/tracing/service/tracing_service_impl.cc#L3335",
+        "https://github.com/google/perfetto/blob/v51.2/protos/perfetto/trace/trace_packet.proto#L326",
+        "https://perfetto.dev/docs/concepts/buffers#debugging-data-losses"
+      ],
+      "audit_tools": [
+        "Context7 official Perfetto documentation",
+        "versioned upstream v51.2 schemas",
+        "trace_processor v59.1",
+        "raw packet continuity parser"
+      ]
+    },
+    "classification": "Instrument/diagnostic only; no product code or ResourceGuard policy change"
+  },
+  "setup_recovery": {
+    "starting_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+    "worktree_recovery": "Same missing /tmp worktree restored from matching existing HEAD/index; branch unchanged; historical worktrees untouched",
+    "tool_recovery": "Existing Cargo cache used to build exact host debug experimental binary; pinned trace_processor59.1 downloaded after absence confirmed; SHA verified; installed APK exact and not reinstalled",
+    "pairing": "Prior isolated host keys were in cleaned /tmp; new experimental host paired through equal SAS in6.2s; initial expired pairing preserved; pairing-only daemon restarted per existing startup path after peer commit",
+    "fixture": "Same64MiB deterministic generator and SHA verified; same expected BLAKE3 oracle as previous campaign",
+    "failed_workloads": 0,
+    "product_changes": false
+  },
+  "cleanup": {
+    "verified_utc": "2026-11-15T10:24:50.470464+00:00",
+    "battery_saver_restore_target": true,
+    "battery_saver_restored": true,
+    "initial_state_reference": "User-requested ON from previous checkpoint; first current probe occurred after user disabled it",
+    "observed_before_campaign": false,
+    "health_verification": {
+      "pid": "14251",
+      "observed_boottime_ms": 1111620750,
+      "effective_sample_age_ms": 1169,
+      "sample": {
+        "count": "701",
+        "at_ms": "1111619587",
+        "sample_worker_ms": "1405308",
+        "age_ms": "6",
+        "result": "0",
+        "safety": "1",
+        "thermal": "0",
+        "battery": "0",
+        "charging": "true",
+        "power_save": "true",
+        "low_memory": "false",
+        "memory_mib": "1074",
+        "memory_bytes": "1126244352",
+        "total_memory_bytes": "3848155136",
+        "thermal_code": "0",
+        "battery_pct": "57",
+        "budget_bytes": "134217728"
+      },
+      "ready": false
+    },
+    "host_auto_use": "OFF",
+    "experimental_profile": 1,
+    "host_daemon_absent": true,
+    "owned_forward_absent": true,
+    "apk_sha256": {
+      "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+      "org.phoneboost.app.multicore": "ef0b103bc8731fff5f5169b2905b19ba199c753b173c411a4d88ddc4238f772b"
+    },
+    "apks_unchanged": true,
+    "experimental_app_stopped": true,
+    "owned_device_trace_files_removed": true
+  },
+  "validation": {
+    "physical_audit": "PASS:13exact remote jobs, per-run preflight/Health/reservations, scheduler4-way and packet continuity",
+    "software_ci": "Read Actions/CodeQL on containing commit; never inferred from local proof",
+    "local_checks": [
+      {
+        "command": [
+          "python3",
+          "scripts/test_measure_android_multicore.py"
+        ],
+        "returncode": 0,
+        "tests": 6,
+        "scope": "Operator fixture tests; actual preceding tool command passed, not a phone run",
+        "recorded_utc": "2026-11-15T10:33:53.832629+00:00",
+        "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      },
+      {
+        "command": [
+          "python3",
+          "py_compile.compile",
+          "<nine archived operator scripts>"
+        ],
+        "returncode": 0,
+        "scope": "Syntax only; actual preceding command passed before publication audit",
+        "recorded_utc": "2026-11-15T10:33:53.832651+00:00",
+        "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      },
+      {
+        "command": [
+          "python3",
+          "/tmp/phoneboost-profile4-20261115/validate_publication.py"
+        ],
+        "returncode": 0,
+        "log_sha256": "86f40321f7579f6258835bc285f866670938f9a0a4802ded8fdf6a8f2705bca9",
+        "scope": "Offline evidence/instrumentation checks only",
+        "recorded_utc": "2026-11-15T10:33:53.832656+00:00",
+        "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      },
+      {
+        "command": [
+          "bash",
+          "-n",
+          "phoneboost_perfetto_bench/run_campaign.sh"
+        ],
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scope": "Offline evidence/instrumentation checks only",
+        "recorded_utc": "2026-11-15T10:33:53.832658+00:00",
+        "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scope": "Offline evidence/instrumentation checks only",
+        "recorded_utc": "2026-11-15T10:33:53.832661+00:00",
+        "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+      }
+    ],
+    "publication_audit_note": "First comparison rejected extra aggregation metadata. Corrected audit verifies all source fields unchanged plus actual input bytes, trace bytes/SHA and distinct CPU count; first failure log preserved."
+  },
+  "historical_evidence": [
+    "docs/evidence/android-multicore-comparison-1-2-v0-2.json",
+    "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
+    "docs/evidence/android-multicore-v0-2.json"
+  ],
+  "private_artifacts": "/var/tmp/phoneboost-profile4-v0-2-evidence-20261115-cd8fcdb",
+  "artifact_manifest": "SHA256SUMS.json",
+  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
+  "publication": "PR32 draft, unmerged, per explicit user instruction",
+  "artifact_manifest_sha256": "a2b96b079abfe90da25c231ef77ffb8a2bc4b32cd8eb68f9af7cf6884d6306e0",
+  "artifact_files_verified": 313,
+  "artifact_bytes_verified": 147781709
+}

@@ -1,14 +1,36 @@
 [
   {
     "command": [
-      "git",
-      "diff",
-      "--check"
+      "python3",
+      "scripts/test_measure_android_multicore.py"
     ],
     "returncode": 0,
-    "scope": "evidence/instrumentation only",
-    "date": "2026-11-14T21:31:39.554535+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
+    "tests": 6,
+    "scope": "Operator fixture tests; actual preceding tool command passed, not a phone run",
+    "recorded_utc": "2026-11-15T10:33:53.832629+00:00",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+  },
+  {
+    "command": [
+      "python3",
+      "py_compile.compile",
+      "<nine archived operator scripts>"
+    ],
+    "returncode": 0,
+    "scope": "Syntax only; actual preceding command passed before publication audit",
+    "recorded_utc": "2026-11-15T10:33:53.832651+00:00",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+  },
+  {
+    "command": [
+      "python3",
+      "/tmp/phoneboost-profile4-20261115/validate_publication.py"
+    ],
+    "returncode": 0,
+    "log_sha256": "86f40321f7579f6258835bc285f866670938f9a0a4802ded8fdf6a8f2705bca9",
+    "scope": "Offline evidence/instrumentation checks only",
+    "recorded_utc": "2026-11-15T10:33:53.832656+00:00",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
   },
   {
     "command": [
@@ -17,61 +39,21 @@
       "phoneboost_perfetto_bench/run_campaign.sh"
     ],
     "returncode": 0,
-    "scope": "evidence/instrumentation only",
-    "date": "2026-11-14T21:31:39.554555+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scope": "Offline evidence/instrumentation checks only",
+    "recorded_utc": "2026-11-15T10:33:53.832658+00:00",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
   },
   {
     "command": [
-      "python3",
-      "scripts/test_measure_android_multicore.py"
+      "git",
+      "diff",
+      "--check"
     ],
     "returncode": 0,
-    "tests": 6,
-    "log_sha256": "d2c61d2f42aae5e46926f21402e4caa225ecca5f3a04a0958059bf13404f4cd6",
-    "date": "2026-11-14T21:31:39.554559+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
-  },
-  {
-    "command": [
-      "python3",
-      "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/qualify.py",
-      "1"
-    ],
-    "returncode": 0,
-    "scope": "Actual scheduler traces, zero session errors/loss, unchanged global counter",
-    "date": "2026-11-14T21:31:39.554562+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
-  },
-  {
-    "command": [
-      "python3",
-      "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/qualify.py",
-      "2"
-    ],
-    "returncode": 0,
-    "scope": "Actual scheduler traces, zero session errors/loss, unchanged global counter",
-    "date": "2026-11-14T21:31:39.554562+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
-  },
-  {
-    "command": [
-      "python3",
-      "/tmp/phoneboost-multicore-audit/comparison-1-2-20261114/summarize.py"
-    ],
-    "returncode": 0,
-    "scope": "Actual14jobs exact; preflight, freshness and Health bracketing; existing verdict classifier",
-    "date": "2026-11-14T21:31:39.554564+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5"
-  },
-  {
-    "command": [
-      "python3",
-      "-"
-    ],
-    "returncode": 0,
-    "date": "2026-11-14T21:31:39.554569+00:00",
-    "source_head": "94f0717872e7cead328639df57d8e274dd6907b5",
-    "scope": "Inline evidence JSON/input SHA/scope audit in task tool log"
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scope": "Offline evidence/instrumentation checks only",
+    "recorded_utc": "2026-11-15T10:33:53.832661+00:00",
+    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
   }
 ]

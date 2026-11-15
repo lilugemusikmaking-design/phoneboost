@@ -1150,5 +1150,7 @@
   "performance_qualified": true,
   "performance_scope": "Native experimental BLAKE3 only, no end-to-end or product benefit",
   "artifact_manifest_sha256": "f26e512028d950974a434fef91b1a2b15f5d4583e4b563179ac83066458c05ec",
-  "artifact_files_verified": 372
+  "artifact_files_verified": 372,
+  "record_scope": "Historical1vs2 evidence and then-current NEXT_ACTION; still valid for global native benefit, superseded for current state.",
+  "superseded_by": "docs/evidence/android-multicore-comparison-2-4-v0-2.json"
 }
