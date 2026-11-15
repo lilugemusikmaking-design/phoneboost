@@ -27,4 +27,7 @@ pub use wire::{RECORD_PREFIX_BYTES, SecureWireError};
 #[cfg(feature = "diagnostic-timing")]
 pub use pb_types::diagnostic_timing;
 
+#[cfg(feature = "diagnostic-timing")]
+pub use pb_types::put_timing;
+
 pub use pb_types::timed;

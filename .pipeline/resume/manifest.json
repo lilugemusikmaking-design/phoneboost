@@ -1,9 +1,9 @@
 {
-  "next_action": "D\u00e9composer les 3,07 s d\u2019attente r\u00e9siduelle des PUT entre file host et polling Android avant toute seconde optimisation.",
+  "next_action": "Calibrer puis mesurer les PUT 64 MiB sur le m\u00eame nouvel APK diagnostique, sans optimisation.",
   "writer": "Codex",
-  "parent_head": "21f664783d333024d9b336a7423dfb7e197a9318",
-  "date": "2026-11-15T14:21:53.620418+00:00",
-  "branch": "spike/session-input-wait-v0-1",
+  "parent_head": "a85364d6fec2ae60db09116b7c57a028fac381e1",
+  "date": "2026-11-15T16:59:36.575842+00:00",
+  "branch": "spike/put-wait-breakdown-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "Same-APK release A/B: 2 warmups +3 exact pairs; median paired 1.031819x, 3/3 favorable but small variable gain. Host idle CPU 0.4% both. Remaining host wait 3.073s. No further optimization."
+  "physical_proof": "No new physical evidence yet; historical evidence preserved."
 }

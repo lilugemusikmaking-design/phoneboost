@@ -327,6 +327,9 @@ mod tests {
 pub mod diagnostic_timing;
 
 #[cfg(feature = "diagnostic-timing")]
+pub mod put_timing;
+
+#[cfg(feature = "diagnostic-timing")]
 #[macro_export]
 macro_rules! timed {
     ($phase:ident, $bytes:expr, $body:expr) => {{

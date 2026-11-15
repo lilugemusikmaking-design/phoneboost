@@ -7,6 +7,8 @@ use pb_pbmux::{
     RemoteBufferRequest, ResourceRequest, ResourceResult,
 };
 use pb_types::PeerId;
+#[cfg(feature = "diagnostic-timing")]
+use pb_types::put_timing as put_trace;
 
 const INITIATOR_QUEUE_CAPACITY: usize = 16;
 pub(crate) const INITIATOR_REQUEST_TIMEOUT: Duration = Duration::from_secs(35);
@@ -96,6 +98,8 @@ pub(crate) enum InitiatorResponse {
 }
 
 pub(crate) struct PendingInitiatorRequest {
+    #[cfg(feature = "diagnostic-timing")]
+    pub(crate) timing_caller: u64,
     pub(crate) generation: u64,
     pub(crate) request_id: Option<u64>,
     pub(crate) request: InitiatorRequest,
@@ -286,6 +290,16 @@ impl InitiatorSessionClient {
         request_id: Option<u64>,
         request: InitiatorRequest,
     ) -> Result<InitiatorResponse, InitiatorClientError> {
+        #[cfg(feature = "diagnostic-timing")]
+        let timing_caller =
+            if let InitiatorRequest::RemoteBuffer(RemoteBufferRequest::Put { data, .. }) = &request
+            {
+                let token = put_trace::caller();
+                put_trace::mark(put_trace::READY, token, data.len() as u64);
+                token
+            } else {
+                0
+            };
         let admission = pb_types::timed!(
             ClientQueueLock,
             0,
@@ -307,22 +321,36 @@ impl InitiatorSessionClient {
         };
         let (response, receiver) = mpsc::sync_channel(1);
         let pending = PendingInitiatorRequest {
+            #[cfg(feature = "diagnostic-timing")]
+            timing_caller,
             generation,
             request_id,
             request,
             response,
         };
+        #[cfg(feature = "diagnostic-timing")]
+        if timing_caller != 0 {
+            put_trace::mark(put_trace::ENQUEUE, timing_caller, 0);
+        }
         self.sender.try_send(pending).map_err(|error| match error {
             mpsc::TrySendError::Full(_) => InitiatorClientError::Busy,
             mpsc::TrySendError::Disconnected(_) => InitiatorClientError::SessionLost,
         })?;
         drop(admission);
-        pb_types::timed!(
+        let received = pb_types::timed!(
             ClientResponseWait,
             0,
             receiver.recv_timeout(INITIATOR_REQUEST_TIMEOUT)
-        )
-        .map_err(|error| match error {
+        );
+        #[cfg(feature = "diagnostic-timing")]
+        if timing_caller != 0 {
+            put_trace::mark(
+                put_trace::AWAKE,
+                timing_caller,
+                u64::from(matches!(&received, Ok(Ok(_)))),
+            );
+        }
+        received.map_err(|error| match error {
             mpsc::RecvTimeoutError::Timeout => InitiatorClientError::Timeout,
             mpsc::RecvTimeoutError::Disconnected => InitiatorClientError::SessionLost,
         })?
