@@ -15,6 +15,8 @@ use pb_pbmux::{
 use pb_runtime_secure::VerifiedPeerSession;
 
 mod compute;
+#[cfg(feature = "experimental-multicore")]
+pub mod experimental_multicore;
 mod lease;
 mod remote_buffer;
 mod resource_guard;
@@ -149,6 +151,10 @@ pub struct WorkerCore {
     compute_jobs: compute::ComputeJobStore,
     resource_requests: std::collections::BTreeMap<(LeaseId, u64), ResourceRequestCacheEntry>,
     clock: Box<dyn WorkerMonotonicClock>,
+    #[cfg(feature = "experimental-multicore")]
+    cpu_profile: experimental_multicore::CpuProfile,
+    #[cfg(feature = "experimental-multicore")]
+    cpu_record: Option<experimental_multicore::CpuRecord>,
 }
 
 #[derive(Clone)]
@@ -174,6 +180,10 @@ impl WorkerCore {
             compute_jobs: compute::ComputeJobStore::new(),
             resource_requests: std::collections::BTreeMap::new(),
             clock: Box::new(SystemWorkerClock::start()),
+            #[cfg(feature = "experimental-multicore")]
+            cpu_profile: experimental_multicore::CpuProfile::One,
+            #[cfg(feature = "experimental-multicore")]
+            cpu_record: None,
         })
     }
 
@@ -816,6 +826,42 @@ impl WorkerCore {
                     );
                 }
             };
+        #[cfg(feature = "experimental-multicore")]
+        let mut cpu_record = experimental_multicore::CpuRecord {
+            sequence: self
+                .cpu_record
+                .as_ref()
+                .map_or(1, |old| old.sequence.saturating_add(1)),
+            profile: self.cpu_profile,
+            input_bytes: submit.input_length,
+            scratch_bytes,
+            held_before: self.resource_guard.reserved_bytes(),
+            held_after: self.resource_guard.reserved_bytes(),
+            health_before: self.resource_guard.health_status(now_ms),
+            health_after: self.resource_guard.health_status(now_ms),
+            refusal: None,
+            outcome: ComputeReason::None,
+            trace: experimental_multicore::HashTrace::default(),
+        };
+        #[cfg(feature = "experimental-multicore")]
+        let cpus = experimental_multicore::available_cpus();
+        #[cfg(feature = "experimental-multicore")]
+        if let Err(refusal) =
+            self.resource_guard
+                .admit_cpu_profile(self.cpu_profile, cpus, scratch_bytes, now_ms)
+        {
+            cpu_record.refusal = Some(refusal);
+            cpu_record.outcome = ComputeReason::ResourceExhausted;
+            self.cpu_record = Some(cpu_record);
+            return self.cache_compute_refusal(
+                proof.lease_id,
+                session_id,
+                request_id,
+                submit,
+                ComputeReason::ResourceExhausted,
+                now_ms,
+            );
+        }
         let staged = match self.compute_jobs.stage(
             proof,
             session_id,
@@ -856,6 +902,15 @@ impl WorkerCore {
             .job_input(job_id)
             .expect("published job retains input reference");
         let clock = &self.clock;
+        #[cfg(feature = "experimental-multicore")]
+        let guard = &self.resource_guard;
+        #[cfg(feature = "experimental-multicore")]
+        let lease_deadline = self
+            .lease_manager
+            .validated_deadline(proof)
+            .unwrap_or(now_ms);
+        #[cfg(feature = "experimental-multicore")]
+        let profile = self.cpu_profile;
         let digest = self.remote_buffers.with_compute_input(
             proof,
             session_id,
@@ -863,22 +918,69 @@ impl WorkerCore {
             input_offset,
             input_length,
             |input| {
-                compute::blake3_digest_bounded(
-                    input,
-                    now_ms,
-                    || clock.now_ms(),
-                    || verified_session.is_live(),
-                )
+                #[cfg(not(feature = "experimental-multicore"))]
+                {
+                    compute::blake3_digest_bounded(
+                        input,
+                        now_ms,
+                        || clock.now_ms(),
+                        || verified_session.is_live(),
+                    )
+                }
+                #[cfg(feature = "experimental-multicore")]
+                {
+                    let check = || {
+                        let now = clock.now_ms();
+                        if !verified_session.is_live() {
+                            return Err(ComputeReason::SessionLost);
+                        }
+                        if now >= lease_deadline {
+                            return Err(ComputeReason::StaleControllerLease);
+                        }
+                        if now.saturating_sub(now_ms) > compute::PROVIDER_TIMEOUT_MS {
+                            return Err(ComputeReason::ProviderTimeout);
+                        }
+                        guard
+                            .admit_cpu_profile(profile, cpus, scratch_bytes, now)
+                            .map_err(|_| ComputeReason::ResourceExhausted)
+                    };
+                    // Join all children before terminalization releases scratch, even if a
+                    // provider bug panics. Preserve the existing JNI containment boundary.
+                    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        experimental_multicore::hash_bounded(input, profile, &check)
+                    })) {
+                        Ok((result, trace)) => {
+                            cpu_record.trace = trace;
+                            result
+                        }
+                        Err(_) => Err(ComputeReason::ProviderFailed),
+                    }
+                }
             },
         );
         let finished_ms = self.clock.now_ms();
-        self.compute_jobs.terminalize(
+        let outcome = digest.unwrap_or(Err(ComputeReason::InternalError));
+        let response = self.compute_jobs.terminalize(
             &mut self.resource_guard,
             job_id,
             session_id,
-            digest.unwrap_or(Err(ComputeReason::InternalError)),
+            outcome,
             finished_ms,
-        )
+        );
+        #[cfg(feature = "experimental-multicore")]
+        {
+            let terminal_reason = match response {
+                ComputeResponse::Result(result) => result.reason,
+                _ => ComputeReason::InternalError,
+            };
+            if input_length >= 1024 * 1024 || terminal_reason != ComputeReason::None {
+                cpu_record.outcome = terminal_reason;
+                cpu_record.held_after = self.resource_guard.reserved_bytes();
+                cpu_record.health_after = self.resource_guard.health_status(finished_ms);
+                self.cpu_record = Some(cpu_record);
+            }
+        }
+        response
     }
 
     #[allow(clippy::too_many_arguments)]

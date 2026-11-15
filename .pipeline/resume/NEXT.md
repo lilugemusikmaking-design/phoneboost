@@ -1,9 +1,23 @@
-# Reprise après qualification physique Android health
+# Reprise : spike CPU physique fermé, profil 2 retenu
 
-Lire [le rapport health](../../docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md) et [les preuves logicielles et physiques](../../docs/evidence/android-health-source-v0-1.json). `scripts/project-pipeline status` donne la branche et le HEAD courant. Le jalon de publication est : Project pipeline et CodeQL verts sur le SHA final de #31, puis fusion et relevé du SHA de `master`.
+Verdict global : **MULTICORE_CONFIRMED_BENEFICIAL**, limité à BLAKE3 natif.
+Preuve 1→2 historique : 1,754×, 6/6 favorables. Profil 4 physique confirmé : 4 TID,
+pic à 4 Running, 25,824309 ms à quatre. Gain incrémental 2→4 non qualifié : cinq paires
+complètes, 1,065364×, 3/5 favorables ; sixième profil 4 isolé à 69,703308 ms conservé.
 
-NEXT_ACTION après publication validée de #31 : reprendre le spike CPU multicœur sous ResourceGuard, avec instrumentation physique, puis ouvrir le chantier RAM distante.
+Lire le [rapport](../../docs/architecture/ANDROID_MULTICORE_SPIKE_V0_2.md) et les
+[preuves 2/4](../../docs/evidence/android-multicore-comparison-2-4-v0-2.json). Le dernier profil 2 n'est jamais soumis : après baisse mémoire
+et refus C08, C08 récupère avant 120 s, mais la fenêtre opérateur de sept échantillons
+déjà nominaux n'est pas atteinte. Ne pas confondre cet arrêt avec un refus C08
+encore actif, ni présenter six paires complètes. Aucune relance à effectuer.
 
-La correction part du master convergé `251306e825db79173f0bdeb97d1823d08d894ca7`, contenant #30, #27, #28 et #29. Le Samsung SM-A155F / Android 16 a permis de vérifier sur un APK identique à celui installé : HAL thermique prêt sans override, cohérence mémoire/batterie/charge/Battery Saver/thermique, et refus périmé avant lecture après une pause contrôlée écran éteint, suivi d'une mesure fraîche. La courte séquence ne prouve pas une veille profonde ; les tests déterministes couvrent les entrées absentes ou incohérentes non produites naturellement.
+NEXT_ACTION : Diagnostiquer quantitativement les ~28 s end-to-end en décomposant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.
 
-Le worktree historique reste intact à `9daae7fb496da2f903212d7c811357901f4b2aee`. Le collecteur quarantiné reste exclu. Ne pas relancer WebP, CAPACITY, THROUGHPUT, audit SoC ou étude below-OS ; ne pas ouvrir multicœur/RAM/GPU/NPU avant la fusion de #31 ni nettoyer les branches historiques.
+Cette action n'a pas été commencée. RAM/GPU/NPU/C13 et affinité restent fermés.
+Produit à 1 thread ; exception 1/2/4 strictement expérimentale ; ResourceGuard,
+contrats et plafonds inchangés. PR #32 draft et non fusionnée, aucune fusion
+automatique. Vérifier Actions/CodeQL du HEAD publié.
+
+Nettoyage vérifié : Battery Saver ON, profil 1, auto-use OFF, APK expérimental arrêté,
+hôte/tunnel privés absents, deux APK inchangés. Anciennes preuves conservées,
+leurs NEXT_ACTION historiques remplacés par celui-ci.

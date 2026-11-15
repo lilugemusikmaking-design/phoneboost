@@ -634,6 +634,18 @@ impl ControllerLeaseManager {
         })
     }
 
+    #[cfg(feature = "experimental-multicore")]
+    pub(crate) fn validated_deadline(&self, proof: LeaseProof) -> Option<u64> {
+        self.active
+            .as_ref()
+            .filter(|active| {
+                active.id == proof.lease_id
+                    && active.peer_id == proof.peer_id
+                    && active.incarnation == proof.incarnation
+            })
+            .map(|active| active.expires_at_ms)
+    }
+
     pub(crate) fn expire_if_needed(&mut self, now_ms: u64) -> Option<LeaseId> {
         let expired = self
             .active

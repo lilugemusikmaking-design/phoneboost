@@ -14,6 +14,12 @@ export AR_aarch64_linux_android="$ndk/llvm-ar"
 "$root/scripts/pipeline-with-sccache" cargo build --locked --release --target aarch64-linux-android -p phoneboost-core-jni
 mkdir -p .work/a5/jniLibs/arm64-v8a
 cp "${CARGO_TARGET_DIR:-target}/aarch64-linux-android/release/libphoneboost_core_jni.so" .work/a5/jniLibs/arm64-v8a/
+# Product packaging must fail closed if an experimental native artifact is mixed in.
+readelf --dyn-syms --wide .work/a5/jniLibs/arm64-v8a/libphoneboost_core_jni.so > .work/a5/native-symbols.txt
+if grep -q Java_org_phoneboost_app_MulticoreNative_ .work/a5/native-symbols.txt; then
+    printf '%s\n' 'Refusing experimental multicore JNI in product APK' >&2
+    exit 1
+fi
 # Exercise Kotlin -> actual JNI -> ResourceGuard with deterministic fixtures on
 # the host. The Android library is built separately above; this is not AVD proof.
 "$root/scripts/pipeline-with-sccache" cargo build --locked -p phoneboost-core-jni

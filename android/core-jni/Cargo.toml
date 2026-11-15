@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 jni-test-probes = []
+experimental-multicore = ["pb-worker-core/experimental-multicore"]
 
 [dependencies]
 pb-runtime-secure = { path = "../../crates/pb-runtime-secure" }

@@ -1,12 +1,9 @@
 {
-  "branch": "fix/android-health-source-v0-1",
-  "parent_head": "251306e825db79173f0bdeb97d1823d08d894ca7",
-  "date": "2026-11-14",
+  "next_action": "Diagnostiquer quantitativement les ~28 s end-to-end en d\u00e9composant C12 import, transport/PBMUX, copies, readiness/lease et compute, avant toute nouvelle optimisation.",
   "writer": "Codex",
-  "next_action": "Reprendre le spike CPU multicœur sous ResourceGuard avec instrumentation physique, puis ouvrir le chantier RAM distante, après publication validée de #31.",
-  "report": "docs/architecture/ANDROID_HEALTH_SOURCE_V0_1.md",
-  "evidence": "docs/evidence/android-health-source-v0-1.json",
-  "physical_proof": "PASS on Samsung SM-A155F Android 16 API 36; exact installed APK, HAL Ready true/no override, source-to-ResourceGuard and stale/refused/recovery. See evidence.",
-  "publication": "Publication gate for #31: Project pipeline and CodeQL must pass on the final PR HEAD before merge; GitHub records the merged master SHA.",
-  "historical_source": "9daae7fb496da2f903212d7c811357901f4b2aee"
+  "parent_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b",
+  "date": "2026-11-15T10:36:15.004872+00:00",
+  "branch": "spike/android-multicore-v0-2",
+  "push": "verify remote on resume",
+  "physical_proof": "Profile 4 exact 64 MiB: 4 TIDs, peak 4, 25.824309 ms four-way Running. Five complete 2/4 pairs plus isolated sixth 4: median paired native ratio 1.065364x, 3/5 above 1.05; incremental benefit not qualified. Operator 120 s preflight stops final 2 after C08 recovered. Profile 2 retained; no product or end-to-end benefit claimed."
 }

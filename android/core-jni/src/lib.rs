@@ -5,6 +5,9 @@ use std::os::fd::{FromRawFd, OwnedFd};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, OnceLock};
 
+#[cfg(feature = "experimental-multicore")]
+mod experimental_multicore;
+
 use pb_runtime_secure::{
     AckPayload, AuthenticatedCommandHandler, AuthenticatedCommandHandlerError, BufferResult,
     CommandPayload, ComputeRequest, ComputeResponse, EndpointRole, HeartbeatPayload,
@@ -2742,7 +2745,10 @@ mod tests {
     #[test]
     fn e_gen_04_authenticated_remote_blake3_64_mib_repeats_and_failures() {
         const INPUT_BYTES: usize = 64 * 1024 * 1024;
+        #[cfg(not(feature = "experimental-multicore"))]
         const SCRATCH_BYTES: u64 = 1024 * 1024;
+        #[cfg(feature = "experimental-multicore")]
+        const SCRATCH_BYTES: u64 = 8 * 1024 * 1024;
 
         let _test_guard = test_lock();
         reset();
@@ -3153,6 +3159,22 @@ mod tests {
 
                     let repeated_started = std::time::Instant::now();
                     for index in 1..10_u64 {
+                        #[cfg(feature = "experimental-multicore")]
+                        {
+                            let requested = [1, 2, 4][index as usize % 3];
+                            let available =
+                                std::thread::available_parallelism().map_or(1, |n| n.get());
+                            let threads = if requested <= available { requested } else { 1 };
+                            assert!(
+                                worker_slot()
+                                    .lock()
+                                    .unwrap()
+                                    .as_mut()
+                                    .unwrap()
+                                    .set_experimental_cpu_profile(threads)
+                            );
+                            eprintln!("experimental authenticated C10 profile={threads}");
+                        }
                         let scratch = reserve_and_commit(
                             client,
                             &mut resource_request_id,
@@ -3170,6 +3192,15 @@ mod tests {
                             RESULT_OK
                         );
                     }
+                    #[cfg(feature = "experimental-multicore")]
+                    assert!(
+                        worker_slot()
+                            .lock()
+                            .unwrap()
+                            .as_mut()
+                            .unwrap()
+                            .set_experimental_cpu_profile(1)
+                    );
                     let repeated_elapsed = repeated_started.elapsed();
 
                     let post_hash = client.remote(
@@ -3293,6 +3324,104 @@ mod tests {
                 assert!(old_job.job.is_none());
             },
         );
+        reset();
+    }
+
+    #[test]
+    #[cfg(feature = "experimental-multicore")]
+    fn experimental_multicore_wire_refusal_preserves_reservation_ownership() {
+        let _test_guard = test_lock();
+        start_healthy_worker();
+        let (_directory, runtime, private, public) = configured_resilience_runtime();
+        with_production_android_session(runtime, &private, &public, |client| {
+            let lease = acquire_or_renew(client, 1, None);
+            let mut id = 100;
+            let input = vec![23; 4096];
+            let (buffer, _) = create_ready_buffer(client, &mut id, lease, &input);
+            for (index, threads) in [1, 2, 4].into_iter().enumerate() {
+                refresh_health();
+                let scratch = reserve_and_commit(
+                    client,
+                    &mut id,
+                    lease.lease_id,
+                    lease.incarnation,
+                    WireResourceClass::NativeOpScratchBytes,
+                    8 * 1024 * 1024,
+                );
+                assert!(
+                    worker_slot()
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .unwrap()
+                        .set_experimental_cpu_profile(threads)
+                );
+                assert_eq!(
+                    update_health(2_147_483_648, 0, 0, 80, 1, 1, health_sample_time()),
+                    RESULT_OK
+                );
+                let response = client.compute(
+                    1000 + index as u64,
+                    ComputeRequest::Submit(ComputeSubmit {
+                        lease_id: lease.lease_id,
+                        worker_incarnation_id: lease.incarnation,
+                        reservation_id: scratch,
+                        provider_id: 1,
+                        provider_version: 1,
+                        input_kind: 1,
+                        buffer_id: buffer,
+                        input_offset: 0,
+                        input_length: input.len() as u64,
+                    }),
+                );
+                if threads == 1 {
+                    assert_eq!(
+                        completed_digest(response).1,
+                        *blake3::hash(&input).as_bytes()
+                    );
+                } else {
+                    let ComputeResponse::Result(result) = response else {
+                        panic!("result required");
+                    };
+                    assert_eq!(result.reason, ComputeReason::ResourceExhausted);
+                    assert!(result.digest.is_none());
+                    assert_eq!(
+                        worker_slot()
+                            .lock()
+                            .unwrap()
+                            .as_ref()
+                            .unwrap()
+                            .experimental_cpu_field(8),
+                        2
+                    );
+                    // Refusal before RUNNING leaves caller-owned committed scratch;
+                    // explicit release must reclaim it, with no leaked allocation.
+                    let release = client.resource(
+                        id,
+                        ResourceRequest::Release {
+                            lease_id: lease.lease_id,
+                            worker_incarnation_id: lease.incarnation,
+                            reservation_id: scratch,
+                        },
+                    );
+                    id += 1;
+                    assert_eq!(
+                        release.reservation.unwrap().state,
+                        WireReservationState::Released
+                    );
+                }
+            }
+            client.remote(
+                id,
+                RemoteBufferRequest::Free {
+                    lease_id: lease.lease_id,
+                    worker_incarnation_id: lease.incarnation,
+                    buffer_id: buffer,
+                },
+            );
+            id += 1;
+            assert_full_budget_available(client, &mut id, lease);
+        });
         reset();
     }
 
