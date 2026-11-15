@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import statistics
+import subprocess
 
 from analyze_c12_timing import critical_partition, validate
 
@@ -122,7 +123,7 @@ def main():
     assert hashlib.sha256(dev_bytes).hexdigest() == release['dev_evidence']['sha256']
     root = Path(__file__).resolve().parents[1]
     for source in release['build']['source_files']:
-        assert hashlib.sha256((root/source['path']).read_bytes()).hexdigest() == source['sha256']
+        assert hashlib.sha256(subprocess.check_output(['git','show',release['build']['source_head']+':'+source['path']],cwd=root)).hexdigest() == source['sha256']
     result = compare(json.loads(dev_bytes),release)
     if 'comparison' in release:
         assert result == release['comparison'], 'stored comparison does not match raw evidence'

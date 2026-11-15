@@ -72,6 +72,9 @@ phases!(
     LeaseRenew,
     Reassembly,
     BufferRequestParse,
+    SessionReadableWake,
+    SessionTimeoutWake,
+    SessionPartialWait,
 );
 const N: usize = NAMES.len();
 static ENABLED: AtomicU8 = AtomicU8::new(2);

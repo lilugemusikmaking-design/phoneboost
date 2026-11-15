@@ -1,28 +1,17 @@
-# Reprise : comparaison C12 release/dev ABAB terminée
+# Reprise — attente session host mesurée
 
-Branche `spike/c12-end-to-end-timing-v0-1`, PR #33 ouverte, non fusionnée.
-Source produit mesurée : `31ecca48a347a95c1650cf08822e82cf82889e88`.
-Base master : `524d0065f5609919c61e37c242771ee3bf61eb9b`.
-Résoudre le HEAD publié et ses checks sur GitHub ; ne pas reprendre l'ancien
-NEXT_ACTION demandant de compiler en release.
+Branche spike/session-input-wait-v0-1 depuis master 21f664783d333024d9b336a7423dfb7e197a9318.
+#33 est fusionnée avec merge commit ; branches/worktrees historiques préservés.
 
-[Rapport](../../docs/architecture/C12_RELEASE_VS_DEV_V0_1.md) —
-[preuves](../../docs/evidence/c12-release-vs-dev-v0-1.json).
+Rapport : docs/architecture/SESSION_INPUT_WAIT_V0_1.md.
+Preuves : docs/evidence/session-input-wait-v0-1.json.
+Host-only rustix poll borné20ms, partial prefix sans spin/FIN fail-closed ; APK inchangé.
+Deux warmups et trois paires exactes : 3.416→3.294s médian, ratio médian apparié1.031819x.
+Gain modeste variable ; petites requêtes pas améliorées. CPU idle host0.4% dans les deux groupes.
+Restant : host SessionPoll3.073s ; répartition filehost/Android non isolée.
+Ne pas refaire les campagnes closes ni optimiser crypto/transport/chunks/RAM/GPU/NPU/C13.
 
-Deux warmups puis trois paires dev/release exactes : **34,855 → 3,586 s**,
-**9,720×**, 3/3 favorables. Noise **32,490 s → 90,160 ms**. Le profil Cargo
-release standard est la seule différence logicielle. Environnement Cargo,
-resolver/features snow et état CPU/alimentation host sont enregistrés.
-Trois premières mesures release groupées et trois dev historiques conservées
-séparément : 26,502 → 3,563 s (7,439×). Ne pas refaire ces campagnes closes.
+BatterySaverON, profil1, collecteOFF, app/daemon/forward arrêtés ; produit intact.
+PR polling à vérifier sur GitHub, pas de merge automatique.
 
-Le nouveau poste dominant est **SessionPoll host, 3,325 s médian**. Il contient
-les sleeps inconditionnels de 20 ms et l'attente de traitement/réponse Android.
-Ce n'est pas un RTT USB. La part évitable n'est pas encore isolée.
-
-Battery Saver ON, profil 1, collecte OFF, app/daemon/forward expérimentaux
-arrêtés, APK produit et expérimental inchangés ; restauration finale vérifiée.
-Aucune modification Noise/PBMUX/chunks/protocole/ResourceGuard. Pas de chantier
-RAM/GPU/NPU/C13, d'affinité, ni de suppression de worktree historique.
-
-NEXT_ACTION : Réduire la latence du polling de session à 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchangé.
+NEXT_ACTION : Décomposer les 3,07 s d’attente résiduelle des PUT entre file host et polling Android avant toute seconde optimisation.

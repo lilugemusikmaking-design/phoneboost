@@ -73,6 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          fetch-depth: 0 # Validate historical physical proof against its recorded source commit.
           persist-credentials: false
       - run: rustup show
       - name: Standard release functional tests
@@ -88,6 +89,8 @@ jobs:
       - name: Validate recorded physical comparison (no hardware workload)
         run: |
           python3 scripts/test_compare_c12_build_timing.py
+          python3 scripts/test_analyze_session_wait.py
+          python3 scripts/analyze_session_wait.py docs/evidence/session-input-wait-v0-1.json
           python3 scripts/compare_c12_build_timing.py --dev docs/evidence/c12-end-to-end-timing-v0-1.json --release docs/evidence/c12-release-vs-dev-v0-1.json
   frontend:
     runs-on: ubuntu-24.04

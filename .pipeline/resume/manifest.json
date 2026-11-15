@@ -1,9 +1,9 @@
 {
-  "next_action": "R\u00e9duire la latence du polling de session \u00e0 20 ms sur le chemin PUT en release, avec mesure A/B et protocole inchang\u00e9.",
+  "next_action": "D\u00e9composer les 3,07 s d\u2019attente r\u00e9siduelle des PUT entre file host et polling Android avant toute seconde optimisation.",
   "writer": "Codex",
-  "parent_head": "31ecca48a347a95c1650cf08822e82cf82889e88",
-  "date": "2026-11-15T13:38:36.995142+00:00",
-  "branch": "spike/c12-end-to-end-timing-v0-1",
+  "parent_head": "21f664783d333024d9b336a7423dfb7e197a9318",
+  "date": "2026-11-15T14:21:53.620418+00:00",
+  "branch": "spike/session-input-wait-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "Two warmups then three exact ABAB dev/release pairs: median 34.855s to 3.586s, 9.720x paired, Noise 32.490s to 90.160ms. Three initial release runs preserved separately versus historical dev (7.439x). Session wait dominates; no product logic, APK, protocol or ResourceGuard change."
+  "physical_proof": "Same-APK release A/B: 2 warmups +3 exact pairs; median paired 1.031819x, 3/3 favorable but small variable gain. Host idle CPU 0.4% both. Remaining host wait 3.073s. No further optimization."
 }

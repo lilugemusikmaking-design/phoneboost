@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod initiator;
+mod input_wait;
 mod runtime;
 mod storage;
 mod wire;

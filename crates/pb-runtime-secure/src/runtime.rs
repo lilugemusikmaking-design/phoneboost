@@ -1322,7 +1322,14 @@ fn enter_authenticated_loop(
         initiator,
         initiator_driver.as_deref_mut(),
         initiator_generation,
-        std::thread::sleep,
+        |stream, duration| {
+            if initiator {
+                crate::input_wait::wait(stream, duration).map(|_| ())
+            } else {
+                std::thread::sleep(duration);
+                Ok(())
+            }
+        },
     );
     verified_peer.revoke();
     if let Some(driver) = initiator_driver.as_deref_mut() {
@@ -1345,7 +1352,7 @@ fn run_authenticated_loop(
     initiator: bool,
     mut initiator_driver: Option<&mut InitiatorSessionDriver>,
     initiator_generation: Option<u64>,
-    mut wait_for_input: impl FnMut(Duration),
+    mut wait_for_input: impl FnMut(&TcpStream, Duration) -> Result<(), RuntimeError>,
 ) -> Result<SessionOutcome, RuntimeError> {
     let mut next_heartbeat = Instant::now() + HEARTBEAT_INTERVAL;
     let mut last_authenticated_traffic = Instant::now();
@@ -1665,7 +1672,7 @@ fn run_authenticated_loop(
             // Poll only while input is unavailable (including a partial record
             // prefix). Queued frames must not each pay this idle delay. Keep the
             // outer loop so cancellation and heartbeats are checked between frames.
-            pb_types::timed!(SessionPoll, 0, wait_for_input(SESSION_POLL));
+            pb_types::timed!(SessionPoll, 0, wait_for_input(stream, SESSION_POLL))?;
         }
     }
 }
@@ -2502,9 +2509,10 @@ mod tests {
                 false,
                 None,
                 None,
-                |duration| {
+                |_, duration| {
                     assert_eq!(duration, SESSION_POLL);
                     waits += 1;
+                    Ok(())
                 },
             );
             assert_eq!(outcome, Err(RuntimeError::CommandHandlerFailed));
@@ -2540,7 +2548,7 @@ mod tests {
                     false,
                     None,
                     None,
-                    |duration| {
+                    |_, duration| {
                         assert_eq!(duration, Duration::from_millis(20));
                         waits += 1;
                         assert_eq!(
@@ -2549,6 +2557,7 @@ mod tests {
                         );
                         host.write_all(&wire[prefix_bytes..]).unwrap();
                         wait_for_queued_bytes(&queue_probe, wire.len());
+                        Ok(())
                     },
                 );
                 assert_eq!(outcome, Ok(SessionOutcome::Lost));
@@ -2755,6 +2764,52 @@ mod tests {
             run_committed_ik_command(Some(trait_handler), acquire_command());
         assert!(accepted_response.is_err());
         assert_eq!(accepted_error, RuntimeError::CommandHandlerFailed);
+    }
+
+    #[test]
+    fn authenticated_initiator_input_wait_cancels_and_cleans_session() {
+        let host_dir = TestDirectory::new("input-wait-host");
+        let android_dir = TestDirectory::new("input-wait-peer");
+        let host_store = open_store(&host_dir.0);
+        let android_store = open_store(&android_dir.0);
+        let host_id = host_store.load_or_create_identity().unwrap();
+        let android_id = android_store.load_or_create_identity().unwrap();
+        host_store
+            .commit_peer(&PeerRecord::new(*android_id.public(), "Android", 1))
+            .unwrap();
+        android_store
+            .commit_peer(&PeerRecord::new(*host_id.public(), "host", 1))
+            .unwrap();
+        let host = SecureRuntime::initialize(EndpointRole::LinuxInitiator, host_store).unwrap();
+        let android =
+            SecureRuntime::initialize(EndpointRole::AndroidResponder, android_store).unwrap();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let responder = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            run_responder_session(&mut stream, &android, &[])
+        });
+        let (client, driver) = crate::initiator_session_channel();
+        let (done, result) = std::sync::mpsc::channel();
+        let initiator = std::thread::spawn(move || {
+            let mut stream = TcpStream::connect(endpoint).unwrap();
+            done.send(run_initiator_session_with_client(
+                &mut stream,
+                &host,
+                driver,
+            ))
+            .unwrap();
+        });
+        wait_until(|| client.snapshot().authenticated);
+        std::thread::sleep(Duration::from_millis(5));
+        client.cancel_session();
+        assert_eq!(
+            result.recv_timeout(Duration::from_secs(1)).unwrap(),
+            Ok(SessionOutcome::Cancelled)
+        );
+        initiator.join().unwrap();
+        assert!(!client.snapshot().authenticated);
+        assert_eq!(responder.join().unwrap(), Err(RuntimeError::SessionLost));
     }
 
     #[test]
