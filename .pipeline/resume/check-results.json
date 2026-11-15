@@ -1,59 +1,23 @@
 [
   {
     "command": [
-      "python3",
-      "scripts/test_measure_android_multicore.py"
-    ],
-    "returncode": 0,
-    "tests": 6,
-    "scope": "Operator fixture tests; actual preceding tool command passed, not a phone run",
-    "recorded_utc": "2026-11-15T10:33:53.832629+00:00",
-    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
-  },
-  {
-    "command": [
-      "python3",
-      "py_compile.compile",
-      "<nine archived operator scripts>"
-    ],
-    "returncode": 0,
-    "scope": "Syntax only; actual preceding command passed before publication audit",
-    "recorded_utc": "2026-11-15T10:33:53.832651+00:00",
-    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
-  },
-  {
-    "command": [
-      "python3",
-      "/tmp/phoneboost-profile4-20261115/validate_publication.py"
-    ],
-    "returncode": 0,
-    "log_sha256": "86f40321f7579f6258835bc285f866670938f9a0a4802ded8fdf6a8f2705bca9",
-    "scope": "Offline evidence/instrumentation checks only",
-    "recorded_utc": "2026-11-15T10:33:53.832656+00:00",
-    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
-  },
-  {
-    "command": [
-      "bash",
-      "-n",
-      "phoneboost_perfetto_bench/run_campaign.sh"
-    ],
-    "returncode": 0,
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "scope": "Offline evidence/instrumentation checks only",
-    "recorded_utc": "2026-11-15T10:33:53.832658+00:00",
-    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
-  },
-  {
-    "command": [
       "git",
       "diff",
       "--check"
     ],
     "returncode": 0,
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "scope": "Offline evidence/instrumentation checks only",
-    "recorded_utc": "2026-11-15T10:33:53.832661+00:00",
-    "source_head": "cd8fcdbe4c8040c8903ebd485b02a7dca8f9456b"
+    "scope": "tracked documentation and state",
+    "source_head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+    "date": "2026-11-15T11:22:24.267507+00:00"
+  },
+  {
+    "command": [
+      "python3",
+      "<inline diagnostic checkpoint consistency check>"
+    ],
+    "returncode": 0,
+    "scope": "new plan whitespace, branch/base, valid references, exact NEXT_ACTION, no measurement claim",
+    "source_head": "524d0065f5609919c61e37c242771ee3bf61eb9b",
+    "date": "2026-11-15T11:22:24.267545+00:00"
   }
 ]
