@@ -25,6 +25,8 @@ use pb_secure::{
     NOISE_IK_NAME, PROLOGUE, PairingActor, PersistOutcome, derive_sas, production_xx_initiator,
     production_xx_responder,
 };
+#[cfg(feature = "diagnostic-timing")]
+use pb_types::put_timing as put_trace;
 use pb_types::{
     Channel, ControlType, FLAG_END, FLAG_START, PAIRING_TIMEOUT_MS, PairingState, PeerId,
 };
@@ -1542,6 +1544,14 @@ fn run_authenticated_loop(
                         let kind = remote_response_kind(message_type)?;
                         let result = parse_remote_buffer_result_payload(kind, &payload)
                             .map_err(|_| RuntimeError::Pbmux)?;
+                        #[cfg(feature = "diagnostic-timing")]
+                        if message_type == 3 {
+                            put_trace::mark(
+                                put_trace::REASSEMBLED,
+                                put_trace::tag(request_id),
+                                payload.len() as u64,
+                            );
+                        }
                         let expected =
                             take_initiator_outstanding(&mut application_outstanding, request_id)?;
                         if expected.expected != ExpectedInitiatorResponse::RemoteBuffer(kind) {
@@ -1558,6 +1568,14 @@ fn run_authenticated_loop(
                         pb_types::timed!(Reassembly, frame.payload.len(), reassembler.accept(frame))
                             .map_err(|_| RuntimeError::Pbmux)?
                     {
+                        #[cfg(feature = "diagnostic-timing")]
+                        if message_type == 3 {
+                            put_trace::mark(
+                                put_trace::REASSEMBLED,
+                                put_trace::tag(request_id),
+                                payload.len() as u64,
+                            );
+                        }
                         let request = pb_types::timed!(
                             BufferRequestParse,
                             payload.len(),
@@ -1590,11 +1608,27 @@ fn run_authenticated_loop(
                             send_sequence,
                         )
                         .map_err(|_| RuntimeError::CommandHandlerFailed)?;
+                        #[cfg(feature = "diagnostic-timing")]
+                        if message_type == 3 {
+                            put_trace::mark(
+                                put_trace::RESPONSE_BUILT,
+                                put_trace::tag(request_id),
+                                responses.len() as u64,
+                            );
+                        }
                         send_sequence = send_sequence
                             .checked_add(responses.len() as u64)
                             .ok_or(RuntimeError::Pbmux)?;
                         for response in responses {
                             send_frame(stream, &mut transport, &response)?;
+                        }
+                        #[cfg(feature = "diagnostic-timing")]
+                        if message_type == 3 {
+                            put_trace::mark(
+                                put_trace::RESPONSE_SENT,
+                                put_trace::tag(request_id),
+                                0,
+                            );
                         }
                     }
                 }
@@ -1723,6 +1757,12 @@ struct InitiatorOutstanding {
 impl InitiatorOutstanding {
     fn complete(mut self, response: InitiatorResponse) {
         if let Some(sender) = self.response.take() {
+            #[cfg(feature = "diagnostic-timing")]
+            if self.expected
+                == ExpectedInitiatorResponse::RemoteBuffer(RemoteBufferResponseKind::Put)
+            {
+                put_trace::mark(put_trace::NOTIFY, put_trace::tag(self.request_id), 0);
+            }
             let _ = sender.send(Ok(response));
         }
     }
@@ -1742,7 +1782,11 @@ fn start_initiator_request(
     send_sequence: &mut u64,
     pending: PendingInitiatorRequest,
 ) -> Result<Option<InitiatorOutstanding>, RuntimeError> {
+    #[cfg(feature = "diagnostic-timing")]
+    let timing_start = put_trace::now();
     let PendingInitiatorRequest {
+        #[cfg(feature = "diagnostic-timing")]
+        timing_caller,
         request_id,
         request,
         response,
@@ -1756,6 +1800,15 @@ fn start_initiator_request(
         Some(request_id) => request_id,
         None => random_nonzero_u64()?,
     };
+    #[cfg(feature = "diagnostic-timing")]
+    if timing_caller != 0 {
+        put_trace::interval(
+            put_trace::SESSION_START,
+            put_trace::tag(request_id),
+            timing_start,
+            timing_caller,
+        );
+    }
     let built = pb_types::timed!(
         RequestBuild,
         0,
@@ -1818,6 +1871,14 @@ fn start_initiator_request(
             return Err(error);
         }
     }
+    #[cfg(feature = "diagnostic-timing")]
+    if timing_caller != 0 {
+        put_trace::mark(
+            put_trace::SEND_DONE,
+            put_trace::tag(request_id),
+            frame_count,
+        );
+    }
     *send_sequence = send_sequence
         .checked_add(frame_count)
         .ok_or(RuntimeError::Pbmux)?;
@@ -1864,14 +1925,36 @@ fn handle_remote_buffer_with_transport_liveness(
 ) -> Result<(RemoteBufferResponseKind, BufferResult), RuntimeError> {
     pb_types::timing_scope!(_timing_scope, BufferHandlerWait, 0);
 
+    #[cfg(feature = "diagnostic-timing")]
+    let timing_put = matches!(&request, RemoteBufferRequest::Put { .. });
+    #[cfg(feature = "diagnostic-timing")]
+    let timing_tag = if timing_put {
+        put_trace::tag(request_id)
+    } else {
+        0
+    };
+    #[cfg(feature = "diagnostic-timing")]
+    if timing_put {
+        put_trace::mark(put_trace::HANDLER_ENQUEUE, timing_tag, 0);
+    }
+
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     std::thread::scope(|scope| {
         scope.spawn(move || {
-            let _ = sender.send(command_handler.handle_authenticated_remote_buffer(
+            #[cfg(feature = "diagnostic-timing")]
+            if timing_put {
+                put_trace::mark(put_trace::HANDLER_START, timing_tag, 0);
+            }
+            let result = command_handler.handle_authenticated_remote_buffer(
                 verified_peer,
                 request_id,
                 request,
-            ));
+            );
+            #[cfg(feature = "diagnostic-timing")]
+            if timing_put {
+                put_trace::mark(put_trace::HANDLER_END, timing_tag, 0);
+            }
+            let _ = sender.send(result);
         });
         loop {
             if transport_loss_observed(stream)
@@ -1882,7 +1965,13 @@ fn handle_remote_buffer_with_transport_liveness(
                 return Err(RuntimeError::SessionLost);
             }
             match receiver.try_recv() {
-                Ok(result) => return result.map_err(handler_runtime_error),
+                Ok(result) => {
+                    #[cfg(feature = "diagnostic-timing")]
+                    if timing_put {
+                        put_trace::mark(put_trace::HANDLER_OBSERVED, timing_tag, 0);
+                    }
+                    return result.map_err(handler_runtime_error);
+                }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
                     pb_types::timed!(BufferHandlerPoll, 0, std::thread::sleep(SESSION_POLL));
                 }
@@ -2005,6 +2094,8 @@ fn receive_frame_if_available(
     if count < 2 {
         return Ok(None);
     }
+    #[cfg(feature = "diagnostic-timing")]
+    let timing_receive = put_trace::now();
     stream
         .set_nonblocking(false)
         .and_then(|()| stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT)))
@@ -2022,6 +2113,15 @@ fn receive_frame_if_available(
     if matches!(frame.header.channel, Channel::Control | Channel::Metrics) {
         pb_types::timed!(RxControl, plaintext.len(), ());
     }
+    #[cfg(feature = "diagnostic-timing")]
+    if frame.header.channel == Channel::RemoteBuffer && frame.header.message_type == 3 {
+        put_trace::interval(
+            put_trace::RX_FRAME,
+            put_trace::tag(frame.header.request_id),
+            timing_receive,
+            u64::from(frame.header.flags),
+        );
+    }
     Ok(Some(frame))
 }
 
@@ -2030,6 +2130,8 @@ fn send_frame(
     transport: &mut TransportState,
     frame: &Frame,
 ) -> Result<(), RuntimeError> {
+    #[cfg(feature = "diagnostic-timing")]
+    let timing_send = put_trace::now();
     let plaintext = pb_types::timed!(FrameEncode, frame.payload.len(), encode(frame))
         .map_err(|_| RuntimeError::Pbmux)?;
     pb_types::timed!(TxFrame, plaintext.len(), ());
@@ -2051,7 +2153,17 @@ fn send_frame(
         .set_write_timeout(None)
         .and_then(|()| stream.set_nonblocking(true));
     write_result?;
-    restore_result.map_err(|_| RuntimeError::SessionLost)
+    let result = restore_result.map_err(|_| RuntimeError::SessionLost);
+    #[cfg(feature = "diagnostic-timing")]
+    if frame.header.channel == Channel::RemoteBuffer && frame.header.message_type == 3 {
+        put_trace::interval(
+            put_trace::TX_FRAME,
+            put_trace::tag(frame.header.request_id),
+            timing_send,
+            u64::from(frame.header.flags),
+        );
+    }
+    result
 }
 
 fn control_frame(message_type: ControlType, request_id: u64, sequence: u64) -> Frame {

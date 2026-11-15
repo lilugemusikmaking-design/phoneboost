@@ -1,17 +1,14 @@
-# Reprise — attente session host mesurée
+# Reprise — décomposition PUT mesurée
 
-Branche spike/session-input-wait-v0-1 depuis master 21f664783d333024d9b336a7423dfb7e197a9318.
-#33 est fusionnée avec merge commit ; branches/worktrees historiques préservés.
-
-Rapport : docs/architecture/SESSION_INPUT_WAIT_V0_1.md.
-Preuves : docs/evidence/session-input-wait-v0-1.json.
-Host-only rustix poll borné20ms, partial prefix sans spin/FIN fail-closed ; APK inchangé.
-Deux warmups et trois paires exactes : 3.416→3.294s médian, ratio médian apparié1.031819x.
-Gain modeste variable ; petites requêtes pas améliorées. CPU idle host0.4% dans les deux groupes.
-Restant : host SessionPoll3.073s ; répartition filehost/Android non isolée.
-Ne pas refaire les campagnes closes ni optimiser crypto/transport/chunks/RAM/GPU/NPU/C13.
-
-BatterySaverON, profil1, collecteOFF, app/daemon/forward arrêtés ; produit intact.
-PR polling à vérifier sur GitHub, pas de merge automatique.
-
-NEXT_ACTION : Décomposer les 3,07 s d’attente résiduelle des PUT entre file host et polling Android avant toute seconde optimisation.
+Branche spike/put-wait-breakdown-v0-1 depuis master a85364d6fec2ae60db09116b7c57a028fac381e1 (#34 merge commit).
+PR #35 diagnostique, non fusionnée. Source APK/host mesurés : 25fd92f6a793e8a1224cf885f0600485da5f83a5.
+Rapport : docs/architecture/PUT_WAIT_BREAKDOWN_V0_1.md.
+Preuves : docs/evidence/put-wait-breakdown-v0-1.json +8 traces numériques JSON.
+1 calibration +3 runs exacts/Health nominale ; fenêtres host/Android séparées, pas de double comptage.
+Run médian : 3361,505 ms ; SessionPoll3032,870 dont2453,948 pendant17PUT.
+Coût fonctionnel directement isolé le plus grand, médiane3runs : decrypt Android737,853ms ; polling réception+retard handler647,456ms.
+Transport/USB pur non isolé ; polling inter-PUT chevauche file host/résidu.
+SaverON/profil1/collecteOFF ; app/daemon/forward arrêtés, produit intact.
+Nouveau wrapper dev Battery Saver automatique/finally : tests passent, Samsung ignore cmd power set-mode0 ; témoin refusé et restaurationON vérifiée. Aucun fallback silencieux.
+Ne pas refaire les campagnes closes ; pas de changement protocole/Noise/PBMUX/chunks/ResourceGuard/timeouts/C13/RAM/GPU/NPU.
+NEXT_ACTION : Réduire uniquement le coût du déchiffrement Noise Android, puis vérifier le gain end-to-end par A/B sous les mêmes garde-fous, sans changer le protocole.

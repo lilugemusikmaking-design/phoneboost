@@ -1,9 +1,9 @@
 {
-  "next_action": "D\u00e9composer les 3,07 s d\u2019attente r\u00e9siduelle des PUT entre file host et polling Android avant toute seconde optimisation.",
+  "next_action": "R\u00e9duire uniquement le co\u00fbt du d\u00e9chiffrement Noise Android, puis v\u00e9rifier le gain end-to-end par A/B sous les m\u00eames garde-fous, sans changer le protocole.",
   "writer": "Codex",
-  "parent_head": "21f664783d333024d9b336a7423dfb7e197a9318",
-  "date": "2026-11-15T14:21:53.620418+00:00",
-  "branch": "spike/session-input-wait-v0-1",
+  "parent_head": "25fd92f6a793e8a1224cf885f0600485da5f83a5",
+  "date": "2026-11-15T17:34:31.475429+00:00",
+  "branch": "spike/put-wait-breakdown-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "Same-APK release A/B: 2 warmups +3 exact pairs; median paired 1.031819x, 3/3 favorable but small variable gain. Host idle CPU 0.4% both. Remaining host wait 3.073s. No further optimization."
+  "physical_proof": "One calibration +3 complete exact 64 MiB runs; 17 PUTs correlated; host/Android local intervals independently validated; no optimization."
 }

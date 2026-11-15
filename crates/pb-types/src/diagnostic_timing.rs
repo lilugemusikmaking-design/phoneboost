@@ -93,6 +93,10 @@ static METRICS: [Metric; N] = [const {
 
 pub fn initialize_from_environment() {
     set_enabled(std::env::var_os("PHONEBOOST_TIMING_DIAGNOSTIC").is_some_and(|v| v == "1"));
+    // Reserve the bounded trace before serving work, never during a PUT.
+    crate::put_timing::control(
+        std::env::var_os("PHONEBOOST_PUT_DIAGNOSTIC").is_some_and(|v| v == "1"),
+    );
 }
 pub fn set_enabled(enabled: bool) {
     ENABLED.store(u8::from(enabled), Ordering::Relaxed);
@@ -139,6 +143,7 @@ impl Drop for Span {
             m.ns.fetch_add(elapsed, Ordering::Relaxed);
             m.bytes.fetch_add(self.bytes, Ordering::Relaxed);
             m.calls.fetch_add(1, Ordering::Relaxed);
+            crate::put_timing::phase(self.phase, start, self.bytes);
         }
     }
 }

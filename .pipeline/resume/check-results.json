@@ -1,92 +1,113 @@
 [
   {
     "log": "tests.log",
-    "log_sha256": "a441780105ffd40b7d9653e634e77aafbbb0aa85d55719929522df6c9a7913d6",
+    "log_sha256": "9f3eb628de749669283da335933149af0ab03dd6f44f8cee2d214a1be8007fba",
     "returncode": 0,
-    "scope": "303 release tests + 4 doctests; initial wait patch",
-    "recorded_utc": "2026-11-15T14:11:21.852138+00:00"
+    "scope": "Release host/CLI/runtime/types: 306 tests +4 doctests, 1 ignored",
+    "recorded_utc": "2026-11-15T16:59:36.474835+00:00"
   },
   {
-    "log": "runtime-final.log",
-    "log_sha256": "d4b1447140a5e8a1a8df3432b4b68c0d5ef124a4e123ac9fea01cbccd62ae0c0",
+    "log": "probes-enabled-tests.log",
+    "log_sha256": "5237c9711efa5532eaba3d98dab96fd16aa7e46a5d536fcf45a08989db7adc51",
     "returncode": 0,
-    "scope": "31 runtime tests + 4 doctests; final FIN/cancel cases",
-    "recorded_utc": "2026-11-15T14:12:45.173122+00:00"
-  },
-  {
-    "log": "clippy.log",
-    "log_sha256": "b2cb11625817ef706b420403f0afaec4e5f4d877fb56c581572ee973d9c5bea9",
-    "returncode": 0,
-    "scope": "Clippy runtime all-targets diagnostic; existing warnings",
-    "recorded_utc": "2026-11-15T14:13:21.949556+00:00"
+    "scope": "Final types/runtime with aggregate and per-PUT probes ON",
+    "recorded_utc": "2026-11-15T16:59:36.475015+00:00"
   },
   {
     "log": "equivalence.log",
     "log_sha256": "e86f336d77b5b7a6d56c4042c4e3f793b88bac9f71e58f954dfbc40849bb5017",
     "returncode": 0,
-    "scope": "OFF/ON and baseline/new CLI equivalence",
-    "recorded_utc": "2026-11-15T14:13:39.281760+00:00"
+    "scope": "C12 OFF/ON and #34/new host responses/errors/fallback equality",
+    "recorded_utc": "2026-11-15T16:59:36.475133+00:00"
+  },
+  {
+    "log": "build-host.log",
+    "log_sha256": "9a0c6bcf5aa4ce4d59c0cc078f8b7c1ee5c5d3dc6b6fa27d96540f5a8b28e682",
+    "returncode": 0,
+    "scope": "Standard release host and CLI build",
+    "recorded_utc": "2026-11-15T16:59:36.475306+00:00"
+  },
+  {
+    "log": "build-android.log",
+    "log_sha256": "0a5a908a3ed85a629f4b390dc8d3ba88fea6e22125e9396e83b44d6e3e522436",
+    "returncode": 0,
+    "scope": "Diagnostic APK assembleDebug + lintDebug; native release",
+    "recorded_utc": "2026-11-15T16:59:36.475459+00:00"
+  },
+  {
+    "log": "analysis-tests.log",
+    "log_sha256": "0c821bdc2a05cb3357313c47c2429d6cf7d1f6ece135657d9f9d1cefcda71e33",
+    "returncode": 0,
+    "scope": "3 deterministic causal analysis tests",
+    "recorded_utc": "2026-11-15T16:59:36.475609+00:00"
+  },
+  {
+    "log": "product-check.log",
+    "log_sha256": "98756e0ca0a3464a26a1479cb252da8b01d595f83a9d0a7c61faf98d7a49d771",
+    "returncode": 0,
+    "scope": "Host/CLI/runtime compile without diagnostic features"
+  },
+  {
+    "log": "analysis-tests-final.log",
+    "log_sha256": "32317174e654bdeaf5a163e9410f242d7b0e7f66775c9056680a9848eed72eb4",
+    "returncode": 0,
+    "scope": "4 causal attribution and loss/window rejection tests",
+    "recorded_utc": "2026-11-15T17:30:11.341789+00:00"
+  },
+  {
+    "log": "power-tests.log",
+    "log_sha256": "bc8e6cb14ecaa458caee4f3b488fa22e61ccf9bcc2a1353da3ad3f85e41c89e1",
+    "returncode": 0,
+    "scope": "7 Battery Saver lifecycle/unknown/interruption/recovery/device/journal tests",
+    "recorded_utc": "2026-11-15T17:30:11.341868+00:00"
+  },
+  {
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+    "returncode": 0,
+    "scope": "Recompute all 4 physical traces; exact remote results, Health and cleanup",
+    "recorded_utc": "2026-11-15T17:30:11.341917+00:00"
+  },
+  {
+    "log": "historical-proof.log",
+    "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad",
+    "returncode": 0,
+    "scope": "PR34 historical evidence remains valid",
+    "recorded_utc": "2026-11-15T17:30:11.341987+00:00"
+  },
+  {
+    "command": "physical_campaign_power.py (Samsung witness)",
+    "returncode": 2,
+    "scope": "Expected refusal: cmd power set-mode 0 ignored by OEM; no witness ran; initial ON confirmed in finally",
+    "evidence": "docs/evidence/put-wait-breakdown-v0-1.json#cleanup.power_tool_smoke"
   },
   {
     "command": [
       "python3",
-      "scripts/test_analyze_session_wait.py"
+      "scripts/test_physical_campaign_power.py"
     ],
     "returncode": 0,
-    "log": "proof-tests.log",
-    "log_sha256": "2def5aeac6b65b2581bff5adb7c7df030d387019f3d5c82880f178c6765609c4"
+    "log": "power-tests-final.log",
+    "log_sha256": "77ecdaf76b0a4f9f157b08dc741287943417847cdfae17660c5fea600de76490"
   },
   {
     "command": [
       "python3",
-      "scripts/analyze_session_wait.py",
-      "docs/evidence/session-input-wait-v0-1.json"
+      "scripts/test_analyze_put_wait.py"
     ],
     "returncode": 0,
-    "log": "proof-analysis.log",
-    "log_sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
+    "log": "analysis-tests-final.log",
+    "log_sha256": "eff869ac89b95c042aef4e872a58d7a7f0ad454c94b3960cc42c950a4e93660e"
   },
   {
     "command": [
       "python3",
-      "scripts/test_compare_c12_build_timing.py"
+      "scripts/validate_put_wait_evidence.py",
+      "docs/evidence/put-wait-breakdown-v0-1.json"
     ],
     "returncode": 0,
-    "log": "historical-proof-tests.log",
-    "log_sha256": "1c4ae311b1f65257ea3123e4c99bd1aaf976b99d50983d56bbdf0d9c0227c9d6"
-  },
-  {
-    "command": [
-      "python3",
-      "scripts/compare_c12_build_timing.py",
-      "--dev",
-      "docs/evidence/c12-end-to-end-timing-v0-1.json",
-      "--release",
-      "docs/evidence/c12-release-vs-dev-v0-1.json"
-    ],
-    "returncode": 0,
-    "log": "historical-proof-analysis.log",
-    "log_sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
-  },
-  {
-    "command": [
-      "cargo",
-      "fmt",
-      "--all",
-      "--check"
-    ],
-    "returncode": 0,
-    "log": "format.log",
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "command": [
-      "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
-      ".github/workflows/pipeline.yml"
-    ],
-    "returncode": 0,
-    "log": "actionlint.log",
-    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
   },
   {
     "command": [
@@ -95,7 +116,44 @@
       "--check"
     ],
     "returncode": 0,
-    "log": "diff-check.log",
+    "log": "final-diff.log",
     "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "/home/mimir/phoneboost-dev-pipeline-v1/.tooling/pipeline-bin/actionlint",
+      ".github/workflows/pipeline.yml"
+    ],
+    "returncode": 0,
+    "log": "final-actionlint.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "bash",
+      "-n",
+      "phoneboost_perfetto_bench/run_campaign.sh",
+      "phoneboost_perfetto_bench/capture_profile.sh"
+    ],
+    "returncode": 0,
+    "log": "final-shell-syntax.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": "gitleaks dir <decompressed numeric public traces> --redact --no-banner",
+    "returncode": 0,
+    "log": "gitleaks-raw.log"
+  },
+  {
+    "command": "gitleaks dir docs/evidence/put-wait-v0-1 --redact --no-banner",
+    "returncode": 0,
+    "scope": "Final uncompressed numeric JSON traces"
+  },
+  {
+    "command": "python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json",
+    "returncode": 0,
+    "log": "evidence-validation.log",
+    "log_sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035",
+    "scope": "Final JSON format/source list; all four raw traces recomputed"
   }
 ]

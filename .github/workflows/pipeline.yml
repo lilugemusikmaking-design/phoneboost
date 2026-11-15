@@ -90,6 +90,9 @@ jobs:
         run: |
           python3 scripts/test_compare_c12_build_timing.py
           python3 scripts/test_analyze_session_wait.py
+          python3 scripts/test_analyze_put_wait.py
+          python3 scripts/test_physical_campaign_power.py
+          python3 scripts/validate_put_wait_evidence.py docs/evidence/put-wait-breakdown-v0-1.json
           python3 scripts/analyze_session_wait.py docs/evidence/session-input-wait-v0-1.json
           python3 scripts/compare_c12_build_timing.py --dev docs/evidence/c12-end-to-end-timing-v0-1.json --release docs/evidence/c12-release-vs-dev-v0-1.json
   frontend:

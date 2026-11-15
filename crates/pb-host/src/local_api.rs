@@ -235,6 +235,7 @@ pub fn serve_local_client(client: AuthenticatedLocalClient, context: Arc<LocalAp
     #[cfg(feature = "diagnostic-timing")]
     if submitted {
         timing.emit_delta("host");
+        pb_types::put_timing::emit();
     }
 }
 
