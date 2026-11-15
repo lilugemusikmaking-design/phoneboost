@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "branch": "spike/android-decrypt-v0-1",
-  "head": "3dcfdd32bce15c4425dce68a5c32cb731f1bb447",
+  "head": "a5f01532f19bc7fd7bdd7bd0731141c1e8efabc6",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Qualify current Android decrypt backend and only retain a safe physical A/B improvement",
-  "status": "NEON_PHYSICAL_AB_VALIDATED_RESTORATION_PENDING",
+  "status": "ANDROID_NEON_PHYSICALLY_VALIDATED",
   "report": "docs/architecture/ANDROID_DECRYPT_V0_1.md",
   "evidence": "docs/evidence/android-decrypt-v0-1.json",
   "previous_checkpoint": {
@@ -41,7 +41,8 @@
     "feat(diag): correlate local PUT wait stages without protocol changes",
     "docs(diag): publish PUT wait breakdown and reversible campaign power guard",
     "feat(diag): qualify Android decrypt backends with physical replay",
-    "perf(android): select pinned ChaCha20 NEON after physical paired validation"
+    "perf(android): select pinned ChaCha20 NEON after physical paired validation",
+    "docs(android): close physical decrypt evidence and verify restored power state"
   ],
   "last_tests": [
     {
@@ -101,7 +102,8 @@
     {
       "command": "python3 scripts/test_analyze_android_decrypt.py",
       "returncode": 0,
-      "scope": "3 physical trace/provenance/equality rejection tests"
+      "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
+      "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
     },
     {
       "command": "cargo fmt --all -- --check; git diff --check",
@@ -112,17 +114,22 @@
       "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
       "returncode": 1,
       "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
+    },
+    {
+      "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
+      "returncode": 0,
+      "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
     }
   ],
-  "physical_proof": "2 warmups +3 paired AB runs exact; NEON decrypt and end-to-end faster in3/3pairs; cleanup ON confirmation pending",
-  "next_action": "Verify Battery Saver ON cleanup and await dedicated PR CI; no further workload",
+  "physical_proof": "Microbenchmark ABAB + 2warmups/3paired app runs exact;3/3 decrypt and end-to-end favorable; Health nominal. Cleanup verified: SaverON, profile1, timingOFF, isolated app/host stopped, product intact.",
+  "next_action": "Await PR36 final checks, then address only measured Android polling residual; no further workload now",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T18:40:38.145455+00:00",
-    "commit": "3dcfdd32bce15c4425dce68a5c32cb731f1bb447",
+    "date": "2026-11-15T18:48:34.515779+00:00",
+    "commit": "a5f01532f19bc7fd7bdd7bd0731141c1e8efabc6",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -271,5 +278,10 @@
     "path": "scripts/physical_campaign_power.py",
     "status": "DETERMINISTIC_TESTS_PASS_PHYSICAL_OEM_REFUSAL",
     "physical": "Samsung cmd power set-mode 0 ineffective; witness refused, initial ON verified; no product change"
+  },
+  "pull_request": {
+    "number": 36,
+    "draft": true,
+    "merged": false
   }
 }

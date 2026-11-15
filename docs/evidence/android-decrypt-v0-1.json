@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "PHYSICAL_AB_GAIN_CONFIRMED_RESTORATION_PENDING",
+  "status": "PHYSICAL_AB_VALIDATED_AND_CLEANUP_VERIFIED",
   "base_master": "5446240bedb630be93bdec4f619afee7a6b781c7",
   "build": {
     "source_head": "3dcfdd32bce15c4425dce68a5c32cb731f1bb447",
@@ -1564,6 +1564,15 @@
         "path": "android/core-jni/Cargo.toml",
         "sha256": "3f6b37ad02d4ffbdaa735a207d873c70c23a8c68619208ba809e130b713fe8a8"
       }
+    ],
+    "snow_features": [
+      "aes-gcm",
+      "blake2",
+      "chacha20poly1305",
+      "curve25519-dalek",
+      "default",
+      "default-resolver",
+      "sha2"
     ]
   },
   "apk_runs": [
@@ -21323,12 +21332,21 @@
   "cleanup": {
     "initial_battery_saver": true,
     "automatic_restore_succeeded": false,
-    "manual_restore_pending": true,
+    "manual_restore_pending": false,
+    "battery_saver_restored": true,
+    "restored_health": {
+      "power_save": true,
+      "at_ms": 1141724673,
+      "age_ms": 2367
+    },
     "experimental_profile": 1,
     "timing_enabled": false,
     "product_unchanged": true,
-    "experimental_app_stopped": false,
-    "reason": "Samsung cmd power set-mode 1 returned without observed Health ON; wrapper failed closed with explicit RestorationError"
+    "product_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
+    "host_daemon_absent": true,
+    "owned_forward_absent": true,
+    "experimental_app_stopped": true,
+    "reason": "Automatic OEM command failed explicitly; operator restored ON; fresh official Health ON verified before stopping isolated app"
   },
   "next_action": "Traiter le polling Android r\u00e9siduel mesur\u00e9 (~634 ms r\u00e9ception + retour handler), sans modifier la crypto ni le protocole.",
   "residual": {
@@ -21431,7 +21449,8 @@
     {
       "command": "python3 scripts/test_analyze_android_decrypt.py",
       "returncode": 0,
-      "scope": "3 physical trace/provenance/equality rejection tests"
+      "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
+      "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
     },
     {
       "command": "cargo fmt --all -- --check; git diff --check",
@@ -21442,6 +21461,11 @@
       "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
       "returncode": 1,
       "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
+    },
+    {
+      "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
+      "returncode": 0,
+      "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
     }
   ]
 }

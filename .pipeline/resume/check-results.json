@@ -56,7 +56,8 @@
   {
     "command": "python3 scripts/test_analyze_android_decrypt.py",
     "returncode": 0,
-    "scope": "3 physical trace/provenance/equality rejection tests"
+    "scope": "3 tests: raw trace recomputation; substituted artifact, changed bytes, fallback, ordering and missing restoration rejected",
+    "log_sha256": "70a3916260756e654135124525fd7094d0c7db129333e63242eff7e261815d55"
   },
   {
     "command": "cargo fmt --all -- --check; git diff --check",
@@ -67,5 +68,10 @@
     "log_sha256": "21d821da542c20c15686db256b2842b99cd0957a798f32c18ded2b2522ab6a39",
     "returncode": 1,
     "scope": "Initial sandbox invocation unavailable before tests due read-only shared Git lock; rerun with access passed"
+  },
+  {
+    "command": "scripts/project-pipeline checkpoint (Gitleaks staged patch + complete indexed tree)",
+    "returncode": 0,
+    "scope": "a5f01532 checkpoint: no leaks in patch4.56MB / tree20.16MB"
   }
 ]

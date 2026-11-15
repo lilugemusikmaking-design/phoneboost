@@ -26,6 +26,12 @@ def verify_traces(doc):
 
 
 def compare(doc):
+    cleanup = doc['cleanup']
+    assert all(cleanup[name] for name in ('battery_saver_restored', 'product_unchanged',
+               'experimental_app_stopped', 'host_daemon_absent', 'owned_forward_absent'))
+    assert cleanup['initial_battery_saver'] is True and cleanup['restored_health']['power_save'] is True
+    assert 0 <= cleanup['restored_health']['age_ms'] <= 6000
+    assert cleanup['experimental_profile'] == 1 and cleanup['timing_enabled'] is False
     runs = doc['apk_runs']
     assert [r['label'] for r in runs] == [
         'warmupA', 'warmupB', 'pair1A', 'pair1B', 'pair2B', 'pair2A', 'pair3A', 'pair3B']

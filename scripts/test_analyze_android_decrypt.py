@@ -21,7 +21,7 @@ class DecryptEvidence(unittest.TestCase):
         self.assertTrue(all(p['decrypt_faster'] and p['end_to_end_faster'] for p in result['pairs']))
 
     def test_substituted_artifact_or_changed_workload_refused(self):
-        for mutation in ('artifact', 'bytes', 'fallback', 'order'):
+        for mutation in ('artifact', 'bytes', 'fallback', 'order', 'unrestored'):
             d = copy.deepcopy(self.doc)
             if mutation == 'artifact':
                 d['apk_build']['apks']['neon']['apk_sha256'] = '0' * 64
@@ -29,8 +29,10 @@ class DecryptEvidence(unittest.TestCase):
                 d['apk_runs'][3]['measurement']['metrics']['android']['Decrypt']['bytes'] += 1
             elif mutation == 'fallback':
                 d['apk_runs'][3]['measurement']['execution_source'] = 'LOCAL_FALLBACK'
-            else:
+            elif mutation == 'order':
                 d['apk_runs'][3]['measurement']['utc'] = d['apk_runs'][2]['measurement']['utc']
+            else:
+                d['cleanup']['battery_saver_restored'] = False
             with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
                 compare(d)
 
