@@ -1,9 +1,9 @@
 {
-  "next_action": "Build candidate and compare baseline/candidate with Battery SaverON and profile1",
+  "next_action": "Quantify socket-wait, scheduling and local-read contributions inside Android WireReadBody (~726 ms), before selecting one reception optimization",
   "writer": "Codex",
-  "parent_head": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
-  "date": "2026-11-15T19:40:35.456633+00:00",
+  "parent_head": "572dc0e0430df6cff6733cd1c6799d422da5f25b",
+  "date": "2026-11-15T19:59:23.663336+00:00",
   "branch": "spike/android-waits-v0-1",
   "push": "verify remote on resume",
-  "physical_proof": "No new workload yet; original Samsung Battery SaverON, HealthThrottle1, memory1132MiB, budget128MiB; use profile1 identically A/B"
+  "physical_proof": "2 warmups +3 alternating pairs; all REMOTE_SUCCESS/exact; paired median gain11.80%,2/3 favorable; BatterySaverON/profile1 unchanged"
 }

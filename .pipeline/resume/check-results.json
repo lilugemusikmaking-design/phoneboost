@@ -23,5 +23,45 @@
     "log": "build-baseline.log",
     "returncode": 0,
     "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
+  },
+  {
+    "log": "build-candidate.log",
+    "returncode": 0,
+    "sha256": "20c2371ec15bf7c23866c687ef913e2fd517ba3cec5df5db57f2c5ca625e18e8"
+  },
+  {
+    "log": "final-analysis.log",
+    "returncode": 0,
+    "sha256": "608cb6ed177fa84acf4c09414be88c21f223cd2b14e512a1635b97f83e38cd20"
+  },
+  {
+    "log": "historical-decrypt-validation.log",
+    "returncode": 0,
+    "sha256": "78de871a0ebaf22020d2f2e9f0d3cf9f4cfde0a42de5701abdf4b4546da5a5c5"
+  },
+  {
+    "log": "historical-put-validation.log",
+    "returncode": 0,
+    "sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
+  },
+  {
+    "log": "historical-session-validation.log",
+    "returncode": 0,
+    "sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
+  },
+  {
+    "log": "historical-c12-validation.log",
+    "returncode": 0,
+    "sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
+  },
+  {
+    "log": "analyzer-tests.log",
+    "returncode": 0,
+    "sha256": "63fae94ebda308ca88c373b47f361d0a74f201cfad14766ccc34293adfa70cf4"
+  },
+  {
+    "log": "actionlint.log",
+    "returncode": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 ]

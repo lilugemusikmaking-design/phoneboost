@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "branch": "spike/android-waits-v0-1",
-  "head": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
+  "head": "572dc0e0430df6cff6733cd1c6799d422da5f25b",
   "head_meaning": "Parent of the containing checkpoint; live HEAD resolved by project-pipeline status.",
   "task": "Reduce Android receive and handler completion polling with separate causal A/B proof",
-  "status": "CANDIDATE_SOFTWARE_VALIDATED",
+  "status": "PHYSICAL_AB_VALIDATED_CI_PENDING",
   "report": "docs/architecture/ANDROID_WAITS_V0_1.md",
   "evidence": "docs/evidence/android-waits-v0-1.json",
   "previous_checkpoint": {
@@ -42,7 +42,8 @@
     "perf(android): select pinned ChaCha20 NEON after physical paired validation",
     "docs(android): close physical decrypt evidence and verify restored power state",
     "feat(diag): observe Android wait readiness without advancing legacy wakeups",
-    "perf(android): wake session receive and handler completion waits"
+    "perf(android): wake session receive and handler completion waits",
+    "docs(android): qualify paired receive and completion wakeups"
   ],
   "last_tests": [
     {
@@ -69,17 +70,57 @@
       "log": "build-baseline.log",
       "returncode": 0,
       "sha256": "8e9745fb25bf3936ade812d98cd17d1a55c9a0437c1d03892d87f36ebb0b38d1"
+    },
+    {
+      "log": "build-candidate.log",
+      "returncode": 0,
+      "sha256": "20c2371ec15bf7c23866c687ef913e2fd517ba3cec5df5db57f2c5ca625e18e8"
+    },
+    {
+      "log": "final-analysis.log",
+      "returncode": 0,
+      "sha256": "608cb6ed177fa84acf4c09414be88c21f223cd2b14e512a1635b97f83e38cd20"
+    },
+    {
+      "log": "historical-decrypt-validation.log",
+      "returncode": 0,
+      "sha256": "78de871a0ebaf22020d2f2e9f0d3cf9f4cfde0a42de5701abdf4b4546da5a5c5"
+    },
+    {
+      "log": "historical-put-validation.log",
+      "returncode": 0,
+      "sha256": "e1587f53c278d8adbb3e6af6fa74adffc5e32f755567524c1787ac5fd0802035"
+    },
+    {
+      "log": "historical-session-validation.log",
+      "returncode": 0,
+      "sha256": "bc89868c497ac3d7886ed5218bdc3c8baaef4b38979bbed9b9d1259b556497ad"
+    },
+    {
+      "log": "historical-c12-validation.log",
+      "returncode": 0,
+      "sha256": "dba800b5e73acccf59a158ed236538f1df23da46a0ba77c8d34d6e55829e947c"
+    },
+    {
+      "log": "analyzer-tests.log",
+      "returncode": 0,
+      "sha256": "63fae94ebda308ca88c373b47f361d0a74f201cfad14766ccc34293adfa70cf4"
+    },
+    {
+      "log": "actionlint.log",
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
-  "physical_proof": "No new workload yet; original Samsung Battery SaverON, HealthThrottle1, memory1132MiB, budget128MiB; use profile1 identically A/B",
-  "next_action": "Build candidate and compare baseline/candidate with Battery SaverON and profile1",
+  "physical_proof": "2 warmups +3 alternating pairs; all REMOTE_SUCCESS/exact; paired median gain11.80%,2/3 favorable; BatterySaverON/profile1 unchanged",
+  "next_action": "Quantify socket-wait, scheduling and local-read contributions inside Android WireReadBody (~726 ms), before selecting one reception optimization",
   "writer": "Codex",
   "deferred": [
     "Improve pairing and automatic screen-lock test ergonomics later, as explicitly deferred by user."
   ],
   "checkpoint": {
-    "date": "2026-11-15T19:40:35.455265+00:00",
-    "commit": "a80f66ab77cdc4c32cc9bdcac600e1577ac78d3f",
+    "date": "2026-11-15T19:59:23.662403+00:00",
+    "commit": "572dc0e0430df6cff6733cd1c6799d422da5f25b",
     "meaning": "parent of containing checkpoint commit; exact commit resolved by resume"
   },
   "canonical_documents": {
@@ -156,63 +197,22 @@
   },
   "scheduler_evidence": "docs/evidence/android-multicore-scheduler-1-2-v0-2.json",
   "cleanup_completed": {
-    "verified_utc": "2026-11-15T17:16:04.288020+00:00",
-    "battery_saver_initial": true,
+    "verified_utc": "2026-11-15T19:53:44.851342+00:00",
+    "initial_battery_saver": true,
     "battery_saver_restored": true,
-    "health_verification": {
-      "observed_boottime_ms": 1136294590,
-      "effective_sample_age_ms": 1241,
-      "sample": {
-        "count": "471",
-        "at_ms": "1136293355",
-        "sample_worker_ms": "943883",
-        "age_ms": "6",
-        "result": "0",
-        "safety": "1",
-        "thermal": "0",
-        "battery": "0",
-        "charging": "true",
-        "power_save": "true",
-        "low_memory": "false",
-        "memory_mib": "1031",
-        "memory_bytes": "1081237504",
-        "total_memory_bytes": "3848155136",
-        "thermal_code": "0",
-        "battery_pct": "100",
-        "budget_bytes": "134217728"
-      },
-      "ready": false
+    "power_mode_command_sent": false,
+    "restored_health": {
+      "power_save": true,
+      "at_ms": 1145752937,
+      "age_ms": 1953
     },
-    "timing_collection": false,
     "experimental_profile": 1,
-    "product_unchanged": true,
+    "timing_enabled": false,
     "experimental_app_stopped": true,
-    "host_auto_use": "OFF",
     "host_daemon_absent": true,
     "owned_forward_absent": true,
-    "apk_sha256": {
-      "org.phoneboost.app": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a",
-      "org.phoneboost.app.multicore": "efc70d8adb6e00302ae6ca8edfd5f6fee69f4466d30cad08f6c3b59c09791a6e"
-    },
-    "post_power_tool_verified_utc": "2026-11-15T17:23:43.262586+00:00",
-    "power_tool_smoke": {
-      "schema": 1,
-      "initial_power_save": true,
-      "stage": "RESTORED",
-      "created_utc": "2026-11-15T17:22:08.052685+00:00",
-      "updated_utc": "2026-11-15T17:22:39.787073+00:00",
-      "campaign_error_type": "PowerError",
-      "campaign_error": "Battery Saver confirmation failed: Health/system do not yet confirm expected powerSave",
-      "restored_health": {
-        "power_save": true,
-        "at_ms": 1136689667,
-        "age_ms": 653
-      },
-      "restoration_verified": true,
-      "exit_code": 2,
-      "command_reached": false,
-      "adb_command_ineffective": true
-    }
+    "product_unchanged": true,
+    "product_apk_sha256": "fe4aaedecd63359bdbaeb01a64b962fcc0cee9fa9cba462143f46ca984d48b2a"
   },
   "comparison_evidence": "docs/evidence/android-multicore-comparison-2-4-v0-2.json",
   "spike_closed": true,
@@ -228,5 +228,14 @@
     "path": "scripts/physical_campaign_power.py",
     "status": "DETERMINISTIC_TESTS_PASS_PHYSICAL_OEM_REFUSAL",
     "physical": "Samsung cmd power set-mode 0 ineffective; witness refused, initial ON verified; no product change"
-  }
+  },
+  "physical_comparison": {
+    "evidence": "docs/evidence/android-waits-v0-1.json",
+    "paired_median_gain_pct": 11.804433069982768,
+    "favorable_pairs": 2,
+    "total_pairs": 3,
+    "scope": "combined two-wait change, no factorial attribution",
+    "retained_for_review": true
+  },
+  "review": "Independent read-only path, completion and final evidence reviews: no blocking finding; final analyzer reexecuted from 16 hash-checked traces"
 }
